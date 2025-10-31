@@ -83,7 +83,7 @@ const Tabs = React.forwardRef<HTMLDivElement, TabsProps>(
           />
 
           {/* Tabs */}
-           <div className="relative flex flex-wrap space-x-[6px] items-center">
+           <div className="relative flex flex-wrap space-x-[6px] items-center justify-center">
              {tabs.map((tab, index) => (
                <div
                  key={tab.id}

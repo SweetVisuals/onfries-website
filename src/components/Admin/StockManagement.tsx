@@ -95,7 +95,7 @@ const StockManagement: React.FC = () => {
 
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
               <DialogTrigger asChild>
-                <Button>
+                <Button size="sm">
                   <Plus className="w-4 h-4 mr-2" />
                   Add Item
                 </Button>

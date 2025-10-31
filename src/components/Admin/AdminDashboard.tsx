@@ -104,25 +104,29 @@ const AdminDashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
-        <div className="mb-8 relative">
-           <img src={logo} alt="OnFries Logo" className="absolute left-0 w-auto" style={{ height: '120px' }} />
-           <div className="text-center">
-             <h1 className="text-3xl font-bold text-foreground mb-2">{getTabTitle(selectedTab)}</h1>
-             <p className="text-muted-foreground">{getTabDescription(selectedTab)}</p>
+        <div className="mb-8">
+           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
+             <img src={logo} alt="OnFries Logo" className="w-auto h-16 md:h-20 mb-4 md:mb-0" />
+             <div className="text-center md:text-right">
+               <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">{getTabTitle(selectedTab)}</h1>
+               <p className="text-sm md:text-base text-muted-foreground">{getTabDescription(selectedTab)}</p>
+             </div>
            </div>
          </div>
 
         <div className="mb-8 flex justify-center">
-          <Tabs
-            tabs={[
-              { id: "overview", label: "Overview" },
-              { id: "current-orders", label: "Current Orders" },
-              { id: "past-orders", label: "Past Orders" },
-              { id: "stock", label: "Stock" },
-              { id: "customers", label: "Customers" }
-            ]}
-            onTabChange={(tabId) => setSelectedTab(tabId)}
-          />
+          <div className="w-full max-w-4xl">
+            <Tabs
+              tabs={[
+                { id: "overview", label: "Overview" },
+                { id: "current-orders", label: "Current Orders" },
+                { id: "past-orders", label: "Past Orders" },
+                { id: "stock", label: "Stock" },
+                { id: "customers", label: "Customers" }
+              ]}
+              onTabChange={(tabId) => setSelectedTab(tabId)}
+            />
+          </div>
         </div>
 
         {selectedTab === 'overview' && (
