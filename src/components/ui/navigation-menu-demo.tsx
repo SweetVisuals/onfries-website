@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import { CircleCheckIcon, CircleHelpIcon, CircleIcon } from "lucide-react"
-import { useIsMobile } from "../../hooks/use-mobile"
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -57,7 +56,7 @@ interface NavigationMenuDemoProps {
   user?: { role: string } | null;
 }
 
-export function NavigationMenuDemo({ onNavigate, currentPage, user }: NavigationMenuDemoProps) {
+export function NavigationMenuDemo({ onNavigate, user }: NavigationMenuDemoProps) {
 
   return (
     <NavigationMenu>

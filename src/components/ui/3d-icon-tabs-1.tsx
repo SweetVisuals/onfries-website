@@ -66,7 +66,7 @@ function Component({ className, onTabChange }: { className?: string; onTabChange
       setActiveTab(newTabId);
       onTabChange?.(newTabId);
       // Reset all videos first
-      videoRefs.current.forEach((video, index) => {
+      videoRefs.current.forEach((video) => {
         if (video) {
           // Pause and reset any playing videos
           video.pause();
@@ -87,7 +87,7 @@ function Component({ className, onTabChange }: { className?: string; onTabChange
     <div className="flex flex-col items-center w-full">
       {/* <NewBadge /> */}
       <div className={cn("flex space-x-8 rounded-full", className)}>
-        {tabs.map((tab, index) => (
+        {tabs.map((tab) => (
           <motion.button
             key={tab.id}
             whileTap={"tapped"}

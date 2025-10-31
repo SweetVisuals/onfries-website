@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, CreditCard as Edit, TriangleAlert as AlertTriangle, Package } from 'lucide-react';
+import { Plus, TriangleAlert as AlertTriangle, Package } from 'lucide-react';
 import { menuItems, menuCategories } from '../../data/menuData';
 import { useToast } from '@/hooks/use-toast';
 
@@ -38,19 +38,6 @@ const StockManagement: React.FC = () => {
     });
   };
 
-  const toggleItemAvailability = (itemId: string) => {
-    setItems(prevItems =>
-      prevItems.map(item =>
-        item.id === itemId ? { ...item, isAvailable: !item.isAvailable } : item
-      )
-    );
-
-    const item = items.find(i => i.id === itemId);
-    toast({
-      title: item?.isAvailable ? 'Item disabled' : 'Item enabled',
-      description: `${item?.name} is now ${item?.isAvailable ? 'unavailable' : 'available'}`,
-    });
-  };
 
   const toggleSoldOutOverride = (itemId: string) => {
     setItems(prevItems =>
@@ -66,18 +53,6 @@ const StockManagement: React.FC = () => {
     });
   };
 
-  const updateItem = (updatedItem: any) => {
-    setItems(prevItems =>
-      prevItems.map(item =>
-        item.id === updatedItem.id ? updatedItem : item
-      )
-    );
-
-    toast({
-      title: 'Item updated',
-      description: `${updatedItem.name} has been updated successfully`,
-    });
-  };
 
   const addNewItem = (newItem: any) => {
     const item = {

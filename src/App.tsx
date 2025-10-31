@@ -45,7 +45,7 @@ function AppContent() {
   const renderCurrentPage = () => {
     switch (currentPage) {
       case 'home':
-        return <LandingPage onNavigate={setCurrentPage} />;
+        return <LandingPage />;
       case 'menu':
         return <MenuPage />;
       case 'orders':
@@ -67,7 +67,7 @@ function AppContent() {
           </div>
         );
       default:
-        return <LandingPage onNavigate={setCurrentPage} />;
+        return <LandingPage />;
     }
   };
 
