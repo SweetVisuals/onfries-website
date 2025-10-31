@@ -11,7 +11,6 @@ import OrderHistory from './OrderHistory';
 import StockManagement from './StockManagement';
 import CustomerOverview from './CustomerOverview';
 import { Tabs } from '../ui/vercel-tabs';
-import logo from '../../images/OnFriesLogo.webp';
 import {
   getDashboardStats,
   getRevenueByItemToday,
@@ -105,9 +104,12 @@ const AdminDashboard: React.FC = () => {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="mb-8">
-           <div className="text-center">
-             <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">{getTabTitle(selectedTab)}</h1>
-             <p className="text-sm md:text-base text-muted-foreground">{getTabDescription(selectedTab)}</p>
+           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
+             <img src="/src/images/OnFriesLogo.webp" alt="OnFries Logo" className="w-auto h-16 md:h-20 mb-4 md:mb-0 mx-auto md:mx-0" />
+             <div className="text-center md:text-right">
+               <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">{getTabTitle(selectedTab)}</h1>
+               <p className="text-sm md:text-base text-muted-foreground">{getTabDescription(selectedTab)}</p>
+             </div>
            </div>
          </div>
 

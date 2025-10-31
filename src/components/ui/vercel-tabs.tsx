@@ -19,30 +19,32 @@ const Tabs = React.forwardRef<HTMLDivElement, TabsProps>(
   ({ className, tabs, activeTab, onTabChange, ...props }, ref) => {
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
     const [activeIndex, setActiveIndex] = useState(0)
-    const [hoverStyle, setHoverStyle] = useState({})
-    const [activeStyle, setActiveStyle] = useState({ left: "0px", width: "0px" })
+    const [hoverStyle, setHoverStyle] = useState({ left: "0px", width: "0px", top: "0px" })
+    const [activeStyle, setActiveStyle] = useState({ left: "0px", width: "0px", top: "0px" })
     const tabRefs = useRef<(HTMLDivElement | null)[]>([])
 
     useEffect(() => {
       if (hoveredIndex !== null) {
         const hoveredElement = tabRefs.current[hoveredIndex]
         if (hoveredElement) {
-          const { offsetLeft, offsetWidth } = hoveredElement
+          const { offsetLeft, offsetWidth, offsetTop } = hoveredElement
           setHoverStyle({
             left: `${offsetLeft}px`,
             width: `${offsetWidth}px`,
+            top: `${offsetTop}px`,
           })
         }
       }
     }, [hoveredIndex])
-
+  
     useEffect(() => {
       const activeElement = tabRefs.current[activeIndex]
       if (activeElement) {
-        const { offsetLeft, offsetWidth } = activeElement
+        const { offsetLeft, offsetWidth, offsetTop } = activeElement
         setActiveStyle({
           left: `${offsetLeft}px`,
           width: `${offsetWidth}px`,
+          top: `${offsetTop + 30}px`,
         })
       }
     }, [activeIndex])
@@ -51,10 +53,11 @@ const Tabs = React.forwardRef<HTMLDivElement, TabsProps>(
       requestAnimationFrame(() => {
         const firstElement = tabRefs.current[0]
         if (firstElement) {
-          const { offsetLeft, offsetWidth } = firstElement
+          const { offsetLeft, offsetWidth, offsetTop } = firstElement
           setActiveStyle({
             left: `${offsetLeft}px`,
             width: `${offsetWidth}px`,
+            top: `${offsetTop + 30}px`,
           })
         }
       })
@@ -68,19 +71,19 @@ const Tabs = React.forwardRef<HTMLDivElement, TabsProps>(
       >
         <div className="relative">
           {/* Hover Highlight */}
-          <div
-            className="absolute h-[30px] transition-all duration-300 ease-out bg-primary/10 dark:bg-primary/20 rounded-[6px] flex items-center"
-            style={{
-              ...hoverStyle,
-              opacity: hoveredIndex !== null ? 1 : 0,
-            }}
-          />
+           <div
+             className="absolute h-[30px] transition-all duration-300 ease-out bg-primary/10 dark:bg-primary/20 rounded-[6px] flex items-center"
+             style={{
+               ...hoverStyle,
+               opacity: hoveredIndex !== null ? 1 : 0,
+             }}
+           />
 
-          {/* Active Indicator */}
-          <div
-            className="absolute bottom-[-6px] h-[2px] bg-primary transition-all duration-300 ease-out"
-            style={activeStyle}
-          />
+           {/* Active Indicator */}
+           <div
+             className="hidden md:block absolute bottom-[-6px] h-[2px] bg-primary transition-all duration-300 ease-out"
+             style={activeStyle}
+           />
 
           {/* Tabs */}
            <div className="relative flex flex-wrap space-x-[6px] items-center justify-center">
