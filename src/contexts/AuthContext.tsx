@@ -104,24 +104,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     }
 
-    // If signup successful, insert user data into users table
-    if (data.user) {
-      const { error: insertError } = await supabase
-        .from('users')
-        .insert([
-          {
-            id: data.user.id,
-            full_name: name,
-            email: email,
-          },
-        ]);
-
-      if (insertError) {
-        console.error('Error inserting user data:', insertError.message);
-        // Note: Auth user is created, but profile data failed
-        // You might want to handle this case differently
-      }
-    }
+    // User profile is now automatically created via database trigger
+    // No need to manually insert into users table
 
     setIsLoading(false);
     return !!data.user;

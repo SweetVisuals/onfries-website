@@ -51,38 +51,8 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, currentPage }) => {
   return (
     <>
       <header className="bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-50 w-full border-b backdrop-blur-lg">
-        <nav className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-4">
-          {currentPage !== 'admin' ? (
-            <div
-              className="flex items-center gap-2 cursor-pointer"
-              onClick={() => user?.isAdmin ? onNavigate('admin-dashboard') : onNavigate('home')}
-            >
-              <img src={OnFriesLogo} alt="OnFries Logo" className="w-auto" style={{ height: '45px', marginTop: '4px' }} />
-              <p className="text-lg font-black" style={{ fontFamily: "'Ysabeau SC', serif" }}>OnFries</p>
-            </div>
-          ) : (
-            <div
-              className="flex items-center gap-2 cursor-pointer md:hidden"
-              onClick={() => onNavigate('home')}
-            >
-              <img src={OnFriesLogo} alt="OnFries Logo" className="w-auto" style={{ height: '32px', marginTop: '2px' }} />
-              <p className="text-sm font-black" style={{ fontFamily: "'Ysabeau SC', serif" }}>OnFries</p>
-            </div>
-          )}
-
+        <nav className="mx-auto flex h-14 w-full max-w-6xl items-center justify-end px-4">
           <div className="flex items-center gap-4">
-            {/* Theme Toggle */}
-            <div
-              className="cursor-pointer p-2 hover:bg-accent rounded-md"
-              onClick={toggleTheme}
-            >
-              {isDarkMode ? (
-                <Sun className="h-4 w-4" />
-              ) : (
-                <Moon className="h-4 w-4" />
-              )}
-            </div>
-
             {user ? (
               <>
                 {/* User Avatar and Dropdown */}
@@ -127,6 +97,18 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, currentPage }) => {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+
+                {/* Theme Toggle */}
+                <div
+                  className="cursor-pointer p-2 hover:bg-accent rounded-md"
+                  onClick={toggleTheme}
+                >
+                  {isDarkMode ? (
+                    <Sun className="h-4 w-4" />
+                  ) : (
+                    <Moon className="h-4 w-4" />
+                  )}
+                </div>
 
                 {/* Cart Button - Only show for non-admin users */}
                 {!user.isAdmin && (

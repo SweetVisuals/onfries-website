@@ -270,3 +270,59 @@ export const getTotalCustomers = async (): Promise<number> => {
   if (error) throw error;
   return count || 0;
 };
+
+// Menu management functions
+export const getMenuItems = async (): Promise<MenuItem[]> => {
+  const { data, error } = await supabase
+    .from('menu_items')
+    .select('*')
+    .order('category', { ascending: true })
+    .order('name', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+};
+
+export const addMenuItem = async (menuItem: Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>): Promise<MenuItem> => {
+  const { data, error } = await supabase
+    .from('menu_items')
+    .insert([menuItem])
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
+export const updateMenuItem = async (id: string, menuItem: Partial<MenuItem>): Promise<MenuItem> => {
+  const { data, error } = await supabase
+    .from('menu_items')
+    .update(menuItem)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
+export const deleteMenuItem = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from('menu_items')
+    .delete()
+    .eq('id', id);
+
+  if (error) throw error;
+};
+
+export const toggleMenuItemAvailability = async (id: string, isAvailable: boolean): Promise<MenuItem> => {
+  const { data, error } = await supabase
+    .from('menu_items')
+    .update({ is_available: isAvailable })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};

@@ -2,14 +2,18 @@ import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, Trash2, Clock } from 'lucide-react';
-import { getOrdersByCustomer, dummyOrders } from '../../data/orderData';
+import { getOrdersByCustomer, dummyOrders, addOrder, Order } from '../../data/orderData';
 import { useAuth } from '../../contexts/AuthContext';
 import CurrentOrderCard from '../Orders/CurrentOrderCard'; // Adjusted path
 import { Card, CardContent } from '@/components/ui/card'; // Keep Card and CardContent for the "No orders found" message
+import AddOrderDialog from './AddOrderDialog';
+import { MenuItem } from '../../data/menuData';
+import MeatCookingCards from './MeatCookingCards';
 
 const CurrentOrderManagement: React.FC = () => {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
+  const [orders, setOrders] = useState<Order[]>(dummyOrders);
 
   if (!user) {
     return (
@@ -20,10 +24,10 @@ const CurrentOrderManagement: React.FC = () => {
   }
 
   // For admin users, show all current orders; for customers, show their current orders
-  const allOrders = user.role === 'admin' ? dummyOrders : getOrdersByCustomer(user.id);
-  const orders = allOrders.filter(order => order.status === 'preparing' || order.status === 'pending');
+  const allOrders = user.role === 'admin' ? orders : getOrdersByCustomer(user.id);
+  const currentOrders = allOrders.filter(order => order.status === 'preparing' || order.status === 'pending');
 
-  const filteredOrders = orders.filter(order =>
+  const filteredOrders = currentOrders.filter(order =>
     order.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     order.id.toString().includes(searchTerm) ||
     order.items.some(item => item.item.name.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -36,11 +40,38 @@ const CurrentOrderManagement: React.FC = () => {
     console.log('Clear history functionality would be implemented here.');
   };
 
+  const handleOrderComplete = (updatedOrder: Order) => {
+    // Update the order in the state with completion information
+    setOrders(prevOrders =>
+      prevOrders.map(order =>
+        order.id === updatedOrder.id ? updatedOrder : order
+      )
+    );
+    
+    console.log(`Order ${updatedOrder.id} completed. Time taken: ${updatedOrder.totalTimeTaken} minutes`);
+  };
+
+  const handleAddOrder = (customerName: string, customerEmail: string, items: Array<{ item: MenuItem; quantity: number }>) => {
+    const newOrder = {
+      id: (dummyOrders.length + 1).toString().padStart(3, '0'),
+      customerId: 'admin-created', // Placeholder for admin-created orders
+      customerName,
+      customerEmail,
+      items,
+      total: items.reduce((sum, item) => sum + (item.item.price * item.quantity), 0),
+      status: 'pending' as const,
+      orderDate: new Date().toISOString(),
+      estimatedDelivery: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes from now
+    };
+    addOrder(newOrder);
+    setOrders([...orders, newOrder]);
+  };
+
   return (
     <div className="min-h-screen bg-background py-8">
       <div className="container mx-auto px-4 max-w-7xl">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Current Orders</h1>
+          <MeatCookingCards orders={orders} />
         </div>
 
         <div className="flex items-center space-x-4 mb-8">
@@ -54,6 +85,7 @@ const CurrentOrderManagement: React.FC = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+          <AddOrderDialog onAddOrder={handleAddOrder} />
           <Button
             variant="outline"
             className="flex items-center gap-2"
@@ -75,7 +107,11 @@ const CurrentOrderManagement: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredOrders.map((order) => (
-              <CurrentOrderCard key={order.id} order={order} />
+              <CurrentOrderCard
+                key={order.id}
+                order={order}
+                onComplete={handleOrderComplete}
+              />
             ))}
           </div>
         )}

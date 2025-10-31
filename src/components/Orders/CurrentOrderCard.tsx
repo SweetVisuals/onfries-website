@@ -1,22 +1,36 @@
 import React, { useState } from 'react';
-import { Receipt, Check, Loader2 } from 'lucide-react';
+import { Receipt, Check, Loader2, Clock } from 'lucide-react';
 import { Order } from '../../data/orderData';
+import { useOrderTimer } from '../../hooks/useOrderTimer';
 
 interface CurrentOrderCardProps {
   order: Order;
-  onComplete?: () => void;
+  onComplete?: (updatedOrder: Order) => void;
   isPastOrder?: boolean;
 }
 
 const CurrentOrderCard: React.FC<CurrentOrderCardProps> = ({ order, onComplete, isPastOrder = false }) => {
   const [isCompleting, setIsCompleting] = useState(false);
+  const { formattedTime, totalTimeInMinutes } = useOrderTimer({ 
+    startTime: order.orderDate, 
+    endTime: order.completedAt 
+  });
 
   const handleComplete = async () => {
     if (onComplete) {
       setIsCompleting(true);
+      
+      // Calculate total time taken in minutes
+      const completedOrder = {
+        ...order,
+        completedAt: new Date().toISOString(),
+        totalTimeTaken: totalTimeInMinutes,
+        status: 'delivered' as const
+      };
+      
       // Simulate animation delay
       setTimeout(() => {
-        onComplete();
+        onComplete(completedOrder);
         setIsCompleting(false);
       }, 1000);
     }
@@ -47,21 +61,33 @@ const CurrentOrderCard: React.FC<CurrentOrderCardProps> = ({ order, onComplete, 
         </div>
       </div>
       <div className={`p-5 space-y-4 flex-grow ${isPastOrder ? 'text-white' : 'text-card-foreground'}`}>
+{/* Timer Display for current orders */}
+        {!isPastOrder && (
+          <div className="bg-yellow-100 dark:bg-yellow-900 rounded-lg p-3 mb-4">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-yellow-800 dark:text-yellow-200" />
+              <span className="text-sm font-medium text-yellow-800 dark:text-yellow-200 truncate">
+                Time Elapsed: {formattedTime}
+              </span>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-4">
           {order.items.map((orderItem) => (
             <div className={`border-b pb-4 last:border-b-0 last:pb-0 ${isPastOrder ? 'border-green-700' : 'border-border'}`}>
-              <div className="flex justify-between items-start mb-2">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className={`font-bold text-lg ${isPastOrder ? 'text-white' : 'text-card-foreground'}`}>{orderItem.item.name}</p>
-                    <span className={`text-sm ${isPastOrder ? 'text-green-100' : 'text-muted-foreground'}`}>x{orderItem.quantity}</span>
-                  </div>
-                  {orderItem.item.description && (
-                    <p className={`text-sm mt-1 ${isPastOrder ? 'text-green-100' : 'text-muted-foreground'}`}>{orderItem.item.description}</p>
-                  )}
-                </div>
-                <p className={`font-semibold text-lg ${isPastOrder ? 'text-white' : 'text-card-foreground'}`}>£{(orderItem.item.price * orderItem.quantity).toFixed(2)}</p>
-              </div>
+<div className="flex justify-between items-start mb-2">
+  <div className="flex-1 min-w-0 pr-4">
+    <div className="flex items-center gap-2">
+      <p className={`font-bold text-lg ${isPastOrder ? 'text-white' : 'text-card-foreground'} overflow-hidden text-ellipsis whitespace-nowrap`}>{orderItem.item.name}</p>
+      <span className={`text-sm ${isPastOrder ? 'text-green-100' : 'text-muted-foreground'} shrink-0`}>x{orderItem.quantity}</span>
+    </div>
+    {orderItem.item.description && (
+      <p className={`text-sm mt-1 ${isPastOrder ? 'text-green-100' : 'text-muted-foreground'} overflow-hidden text-ellipsis`} style={{display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'}}>{orderItem.item.description}</p>
+    )}
+  </div>
+  <p className={`font-semibold text-lg ${isPastOrder ? 'text-white' : 'text-card-foreground'} shrink-0`}>£{(orderItem.item.price * orderItem.quantity).toFixed(2)}</p>
+</div>
               {/* Hardcoded extras for now as per image, since orderData.ts doesn't support them */}
               <div className="mt-2">
                 <p className={`text-sm italic ${isPastOrder ? 'text-green-100' : 'text-muted-foreground'}`}>Add-ons: Green Sauce</p>
@@ -104,7 +130,7 @@ const CurrentOrderCard: React.FC<CurrentOrderCardProps> = ({ order, onComplete, 
          </button>
        </div>
      )}
-   </div>
+    </div>
   );
 };
 

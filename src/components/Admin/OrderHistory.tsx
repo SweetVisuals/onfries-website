@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, Trash2, Clock } from 'lucide-react';
-import { getOrdersByCustomer, dummyOrders } from '../../data/orderData';
+import { getOrdersByCustomer, dummyOrders, Order } from '../../data/orderData';
 import { useAuth } from '../../contexts/AuthContext';
 import PastOrderCard from '../Orders/PastOrderCard'; // Adjusted path
 import { Card, CardContent } from '@/components/ui/card'; // Keep Card and CardContent for the "No orders found" message
@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card'; // Keep Card and CardC
 const OrderHistory: React.FC = () => {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
+  const [orders, setOrders] = useState<Order[]>(dummyOrders);
 
   if (!user) {
     return (
@@ -20,10 +21,10 @@ const OrderHistory: React.FC = () => {
   }
 
   // For admin users, show all past orders; for customers, show their past orders
-  const allOrders = user.role === 'admin' ? dummyOrders : getOrdersByCustomer(user.id);
-  const orders = allOrders.filter(order => order.status === 'delivered' || order.status === 'ready');
+  const allOrders = user.role === 'admin' ? orders : getOrdersByCustomer(user.id);
+  const pastOrders = allOrders.filter(order => order.status === 'delivered' || order.status === 'ready');
 
-  const filteredOrders = orders.filter(order =>
+  const filteredOrders = pastOrders.filter(order =>
     order.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     order.id.toString().includes(searchTerm) ||
     order.items.some(item => item.item.name.toLowerCase().includes(searchTerm.toLowerCase()))

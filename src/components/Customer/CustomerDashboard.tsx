@@ -17,12 +17,14 @@ import { ShoppingCart, User, LogOut, Settings, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import CartDrawer from '../Cart/CartDrawer';
+import { Component as FloatingAuthModal } from '../ui/sign-in-flo';
 
 const CustomerDashboard: React.FC = () => {
   const [selectedTab, setSelectedTab] = React.useState('menu');
   const { user, logout } = useAuth();
   const { getItemCount } = useCart();
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
@@ -54,96 +56,113 @@ const CustomerDashboard: React.FC = () => {
       </div>
 
       {/* Logo Section */}
-      <div className="bg-background py-8 relative">
+      <div className="bg-background py-4">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-8">
-            <img src={OnFriesLogo} alt="OnFries Logo" className="mx-auto w-64 h-auto mb-2" />
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Browse our menu and manage your orders
-            </p>
-          </div>
+          <div className="relative">
+            <div className="text-center mb-6">
+              <img src={OnFriesLogo} alt="OnFries Logo" className="mx-auto w-48 h-auto mb-4" />
+              <div className="mb-8">
+                <Tabs
+                  tabs={[
+                    { id: "menu", label: "Menu" },
+                    { id: "orders", label: "Orders" }
+                  ]}
+                  onTabChange={(tabId) => setSelectedTab(tabId)}
+                />
+              </div>
+            </div>
 
-          {/* Top Right Controls - Positioned absolutely */}
-          <div className="absolute top-4 right-4 flex items-center gap-4">
-            {/* Theme Toggle */}
-            <div
-              className="cursor-pointer p-2 hover:bg-accent rounded-md"
-              onClick={toggleTheme}
-            >
-              {isDarkMode ? (
-                <Sun className="h-4 w-4" />
+            {/* Controls aligned to right edge */}
+            <div className="absolute top-0 right-0 flex items-center gap-4">
+              {/* Theme Toggle */}
+              <div
+                className="cursor-pointer p-2 hover:bg-accent rounded-md"
+                onClick={toggleTheme}
+              >
+                {isDarkMode ? (
+                  <Sun className="h-4 w-4" />
+                ) : (
+                  <Moon className="h-4 w-4" />
+                )}
+              </div>
+
+              {/* Cart Button */}
+              <div
+                className="cursor-pointer p-2 relative hover:bg-accent rounded-md"
+                onClick={() => setIsCartOpen(true)}
+              >
+                <ShoppingCart className="h-4 w-4" />
+                {getItemCount() > 0 && (
+                  <Badge className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs">
+                    {getItemCount()}
+                  </Badge>
+                )}
+              </div>
+
+              {user ? (
+                // Show user avatar and dropdown when authenticated
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src="" alt={user?.name} />
+                        <AvatarFallback className="bg-primary/10 text-primary">
+                          {user?.name.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56" align="end" forceMount>
+                    <div className="flex items-center justify-start gap-2 p-2">
+                      <div className="flex flex-col space-y-1 leading-none">
+                        <p className="font-medium">{user?.name}</p>
+                        <p className="w-[200px] truncate text-sm text-muted-foreground">
+                          {user?.email}
+                        </p>
+                      </div>
+                    </div>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => {}}>
+                      <User className="mr-2 h-4 w-4" />
+                      <span>Profile</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {}}>
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>Settings</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Log out</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               ) : (
-                <Moon className="h-4 w-4" />
-              )}
-            </div>
-
-            {/* Cart Button */}
-            <div
-              className="cursor-pointer p-2 relative hover:bg-accent rounded-md"
-              onClick={() => setIsCartOpen(true)}
-            >
-              <ShoppingCart className="h-4 w-4" />
-              {getItemCount() > 0 && (
-                <Badge className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs">
-                  {getItemCount()}
-                </Badge>
-              )}
-            </div>
-
-            {/* User Avatar and Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src="" alt={user?.name} />
-                    <AvatarFallback className="bg-primary/10 text-primary">
-                      {user?.name.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
-                <div className="flex items-center justify-start gap-2 p-2">
-                  <div className="flex flex-col space-y-1 leading-none">
-                    <p className="font-medium">{user?.name}</p>
-                    <p className="w-[200px] truncate text-sm text-muted-foreground">
-                      {user?.email}
-                    </p>
-                  </div>
+                // Show sign up/sign in buttons when not authenticated
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsAuthModalOpen(true)}
+                    className="text-sm"
+                  >
+                    Sign In
+                  </Button>
+                  <Button
+                    onClick={() => setIsAuthModalOpen(true)}
+                    className="text-sm bg-primary text-primary-foreground hover:bg-primary/90"
+                  >
+                    Sign Up
+                  </Button>
                 </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => {}}>
-                  <User className="mr-2 h-4 w-4" />
-                  <span>Profile</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => {}}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Settings</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Log out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="py-8">
+      <div className="py-4">
         <div className="container mx-auto px-4">
-          <div className="mb-8 flex justify-center">
-            <Tabs
-              tabs={[
-                { id: "menu", label: "Menu" },
-                { id: "orders", label: "Orders" }
-              ]}
-              onTabChange={(tabId) => setSelectedTab(tabId)}
-            />
-          </div>
-
           {selectedTab === 'menu' && <MenuPage />}
           {selectedTab === 'orders' && <OrderHistory />}
         </div>
@@ -154,6 +173,23 @@ const CustomerDashboard: React.FC = () => {
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
       />
+
+      {/* Floating Auth Modal */}
+      {isAuthModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <div className="relative w-full max-w-md mx-4">
+            <button
+              onClick={() => setIsAuthModalOpen(false)}
+              className="absolute -top-4 -right-4 z-[60] w-8 h-8 bg-background border border-border rounded-full flex items-center justify-center hover:bg-accent text-xl"
+            >
+              ×
+            </button>
+            <div className="max-h-[90vh] overflow-y-auto">
+              <FloatingAuthModal onClose={() => setIsAuthModalOpen(false)} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

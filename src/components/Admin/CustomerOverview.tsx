@@ -116,7 +116,7 @@ const CustomerOverview: React.FC = () => {
       {/* Customer Management */}
       <Card>
         <CardHeader>
-          <CardTitle>Customer Management</CardTitle>
+          <CardTitle className="text-left md:text-center">Customer Management</CardTitle>
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <Input

@@ -44,7 +44,8 @@
         "list_tables",
         "list_projects",
         "get_project",
-        "execute_sql"
+        "execute_sql",
+        "get_anon_key"
       ]
     }
   }

@@ -13,7 +13,7 @@ import './App.css';
 
 function AppContent() {
    const { user, isLoading } = useAuth();
-   const [currentPage, setCurrentPage] = useState('menu');
+   const [currentPage, setCurrentPage] = useState('customer');
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -37,10 +37,7 @@ function AppContent() {
     );
   }
 
-  // Show sign-in form if not authenticated
-  if (!user) {
-    return <SignInForm />;
-  }
+  // No need to set default page here - CustomerDashboard handles authentication internally
 
   const renderCurrentPage = () => {
     switch (currentPage) {
@@ -73,7 +70,6 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-background">
-      {currentPage !== 'customer' && <Header onNavigate={setCurrentPage} currentPage={currentPage} />}
       <main>
         {renderCurrentPage()}
       </main>

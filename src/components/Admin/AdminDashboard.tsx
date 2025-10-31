@@ -10,6 +10,7 @@ import CurrentOrderManagement from './CurrentOrderManagement';
 import OrderHistory from './OrderHistory';
 import StockManagement from './StockManagement';
 import CustomerOverview from './CustomerOverview';
+import MenuManagement from './MenuManagement';
 import { Tabs } from '../ui/vercel-tabs';
 import {
   getDashboardStats,
@@ -76,6 +77,8 @@ const AdminDashboard: React.FC = () => {
         return 'Past Orders';
       case 'stock':
         return 'Stock Management';
+      case 'menu':
+        return 'Menu Management';
       case 'customers':
         return 'Customer Overview';
       default:
@@ -93,6 +96,8 @@ const AdminDashboard: React.FC = () => {
         return 'View completed orders and order history';
       case 'stock':
         return 'Monitor and manage inventory levels';
+      case 'menu':
+        return 'Manage menu items and their details';
       case 'customers':
         return 'View customer information and analytics';
       default:
@@ -104,14 +109,14 @@ const AdminDashboard: React.FC = () => {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="mb-8">
-           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
-             <img src="/src/images/OnFriesLogo.webp" alt="OnFries Logo" className="w-auto h-16 md:h-20 mb-4 md:mb-0 mx-auto md:mx-0" />
-             <div className="text-center md:text-right">
-               <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">{getTabTitle(selectedTab)}</h1>
-               <p className="text-sm md:text-base text-muted-foreground">{getTabDescription(selectedTab)}</p>
-             </div>
-           </div>
-         </div>
+            <div className="flex flex-col md:grid md:grid-cols-3 md:items-center mb-4">
+              <img src="/src/images/OnFriesLogo.webp" alt="OnFries Logo" className="w-auto h-20 md:h-24 mb-4 md:mb-0 md:col-start-1 md:justify-self-start" />
+              <div className="text-center md:col-start-2 md:justify-self-center">
+                <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">{getTabTitle(selectedTab)}</h1>
+                <p className="text-sm md:text-base text-muted-foreground">{getTabDescription(selectedTab)}</p>
+              </div>
+            </div>
+          </div>
 
         <div className="mb-8 flex justify-center">
           <div className="w-full max-w-4xl">
@@ -121,6 +126,7 @@ const AdminDashboard: React.FC = () => {
                 { id: "current-orders", label: "Current Orders" },
                 { id: "past-orders", label: "Past Orders" },
                 { id: "stock", label: "Stock" },
+                { id: "menu", label: "Menu" },
                 { id: "customers", label: "Customers" }
               ]}
               onTabChange={(tabId) => setSelectedTab(tabId)}
@@ -287,6 +293,8 @@ const AdminDashboard: React.FC = () => {
         {selectedTab === 'past-orders' && <OrderHistory />}
 
         {selectedTab === 'stock' && <StockManagement />}
+
+        {selectedTab === 'menu' && <MenuManagement />}
 
         {selectedTab === 'customers' && <CustomerOverview />}
       </div>

@@ -111,65 +111,53 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent className="w-full sm:max-w-md flex flex-col">
-        <SheetHeader>
-          <SheetTitle className="flex items-center justify-between">
-            <span className="flex items-center gap-2">
+        <SheetHeader className="pr-12 pt-5">
+          <SheetTitle className="flex items-center gap-3">
+            <span className="flex items-center gap-3">
               <ShoppingBag className="w-5 h-5" />
               Your Orders
             </span>
-            <Badge variant="secondary">
+            <Badge variant="secondary" className="ml-auto">
               {getItemCount()} items
             </Badge>
           </SheetTitle>
         </SheetHeader>
         
         <div className="flex-1 overflow-y-auto py-4">
-          <div className="space-y-4">
+          <div className="px-2.5 space-y-4">
             {items.map((item) => (
-              <div key={item.id} className="flex items-center gap-3 bg-gray-50 rounded-lg p-3">
-                <img 
-                  src={item.image} 
-                  alt={item.name}
-                  className="w-16 h-16 object-cover rounded-md"
-                />
-                
+              <div key={item.id} className="flex items-center gap-3 bg-muted rounded-lg p-3">
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-gray-900 truncate">{item.name}</h4>
-                  <p className="text-sm text-gray-600">${item.price.toFixed(2)}</p>
+                  <h4 className="font-medium text-foreground truncate">{item.name}</h4>
+                  <p className="text-sm text-muted-foreground">£{item.price.toFixed(2)}</p>
                   
                   <div className="flex items-center justify-between mt-2">
                     <div className="flex items-center gap-2">
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        className="h-6 w-6"
+                      <div
+                        className="cursor-pointer p-1 hover:bg-accent rounded-md transition-colors"
                         onClick={() => updateQuantity(item.id, item.quantity - 1)}
                       >
-                        <Minus className="w-3 h-3" />
-                      </Button>
+                        <Minus className="w-3 h-3 text-foreground" />
+                      </div>
                       
-                      <span className="text-sm font-medium w-8 text-center">
+                      <span className="text-sm font-medium w-8 text-center text-foreground">
                         {item.quantity}
                       </span>
                       
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        className="h-6 w-6"
+                      <div
+                        className="cursor-pointer p-1 hover:bg-accent rounded-md transition-colors"
                         onClick={() => updateQuantity(item.id, item.quantity + 1)}
                       >
-                        <Plus className="w-3 h-3" />
-                      </Button>
+                        <Plus className="w-3 h-3 text-foreground" />
+                      </div>
                     </div>
                     
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-6 w-6 text-red-600 hover:text-red-700"
+                    <div
+                      className="cursor-pointer p-1 hover:bg-accent rounded-md transition-colors"
                       onClick={() => removeItem(item.id)}
                     >
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
+                      <Trash2 className="w-3 h-3 text-destructive hover:text-destructive" />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -177,25 +165,25 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
           </div>
         </div>
         
-        <div className="border-t pt-4 mt-4">
+        <div className="border-t pt-4 mt-4 px-2.5">
           <div className="flex justify-between items-center mb-4">
             <span className="text-lg font-semibold">Total:</span>
-            <span className="text-xl font-bold text-orange-600">
-              ${getTotal().toFixed(2)}
+            <span className="text-xl font-bold text-yellow-600">
+              £{getTotal().toFixed(2)}
             </span>
           </div>
           
           <div className="space-y-2">
-            <Button 
-              className="w-full" 
+            <Button
+              className="w-full"
               size="lg"
               onClick={handleCheckout}
             >
               Checkout
             </Button>
             
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="w-full"
               onClick={clearCart}
             >

@@ -4,6 +4,10 @@ import React, { useState, useEffect, useRef } from "react";
 import { Eye, EyeOff, Mail, Lock, User } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
+interface FloatingAuthModalProps {
+  onClose?: () => void;
+}
+
 interface FormFieldProps {
   type: string;
   placeholder: string;
@@ -14,6 +18,8 @@ interface FormFieldProps {
   onToggle?: () => void;
   showPassword?: boolean;
 }
+
+export interface FloatingAuthModalInterface extends React.FC<FloatingAuthModalProps> {}
 
 const AnimatedFormField: React.FC<FormFieldProps> = ({
   type,
@@ -70,13 +76,12 @@ const AnimatedFormField: React.FC<FormFieldProps> = ({
         )}
 
         {showToggle && (
-          <button
-            type="button"
+          <div
             onClick={onToggle}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
           >
             {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-          </button>
+          </div>
         )}
 
         {isHovering && (
@@ -181,7 +186,11 @@ const FloatingParticles: React.FC = () => {
   );
 };
 
-export const Component: React.FC = () => {
+interface FloatingAuthModalProps {
+  onClose?: () => void;
+}
+
+export const Component: React.FC<FloatingAuthModalProps> = ({ onClose }) => {
   const { login, signup } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -190,6 +199,51 @@ export const Component: React.FC = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+
+  // Custom checkbox component
+  const CustomCheckbox: React.FC<{
+    checked: boolean;
+    onChange: (checked: boolean) => void;
+    label: string;
+  }> = ({ checked, onChange, label }) => (
+    <label className="flex items-center space-x-3 cursor-pointer group">
+      <div className="relative">
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          className="sr-only"
+        />
+        <div
+          onClick={() => onChange(!checked)}
+          className={`w-5 h-5 border-2 border-border rounded-full flex items-center justify-center transition-all duration-200 ${
+            checked
+              ? 'bg-primary border-primary'
+              : 'bg-background group-hover:border-primary/50'
+          }`}
+        >
+          {checked && (
+            <svg
+              className="w-3 h-3 text-primary-foreground"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+          )}
+        </div>
+      </div>
+      <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
+        {label}
+      </span>
+    </label>
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -204,8 +258,10 @@ export const Component: React.FC = () => {
 
     if (success) {
       console.log('Authentication successful');
-      // The app will handle navigation based on user role
-      // No need for manual redirect as the AuthContext will update and trigger re-render
+      // Close modal on successful authentication
+      if (onClose) {
+        onClose();
+      }
     } else {
       console.log('Authentication failed');
       alert('Login failed. Please check your credentials and try again.');
@@ -223,106 +279,96 @@ export const Component: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
-      <FloatingParticles />
-
-      <div className="relative z-10 w-full max-w-md">
-        <div className="bg-card/80 backdrop-blur-xl border border-border rounded-2xl p-8 shadow-2xl">
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-full mb-2">
-              <User className="w-8 h-8 text-primary" />
-            </div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">
-              {isSignUp ? 'Create Account' : 'Welcome Back'}
-            </h1>
-            <p className="text-muted-foreground">
-              {isSignUp ? 'Sign up to get started' : 'Sign in to continue'}
-            </p>
+    <div className="relative z-10 w-full max-w-md">
+      <div className="bg-card/80 backdrop-blur-xl border border-border rounded-2xl p-8">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-full mb-2">
+            <User className="w-8 h-8 text-primary" />
           </div>
+          <h1 className="text-3xl font-bold text-foreground mb-2">
+            {isSignUp ? 'Create Account' : 'Welcome Back'}
+          </h1>
+          <p className="text-muted-foreground">
+            {isSignUp ? 'Sign up to get started' : 'Sign in to continue'}
+          </p>
+        </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {isSignUp && (
-              <AnimatedFormField
-                type="text"
-                placeholder="Full Name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                icon={<User size={18} />}
-              />
-            )}
-
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {isSignUp && (
             <AnimatedFormField
               type="text"
-              placeholder="Email Address"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              icon={<Mail size={18} />}
+              placeholder="Full Name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              icon={<User size={18} />}
+            />
+          )}
+
+          <AnimatedFormField
+            type="text"
+            placeholder="Email Address"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            icon={<Mail size={18} />}
+          />
+
+          <AnimatedFormField
+            type={showPassword ? "text" : "password"}
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            icon={<Lock size={18} />}
+            showToggle
+            onToggle={() => setShowPassword(!showPassword)}
+            showPassword={showPassword}
+          />
+
+          <div className="flex items-center justify-between">
+            <CustomCheckbox
+              checked={rememberMe}
+              onChange={setRememberMe}
+              label="Remember me"
             />
 
-            <AnimatedFormField
-              type={showPassword ? "text" : "password"}
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              icon={<Lock size={18} />}
-              showToggle
-              onToggle={() => setShowPassword(!showPassword)}
-              showPassword={showPassword}
-            />
-
-            <div className="flex items-center justify-between">
-              <label className="flex items-center space-x-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 text-primary bg-background border-border rounded focus:ring-primary focus:ring-2"
-                />
-                <span className="text-sm text-muted-foreground">Remember me</span>
-              </label>
-
-              {!isSignUp && (
-                <button
-                  type="button"
-                  className="text-sm text-primary hover:underline"
-                >
-                  Forgot password?
-                </button>
-              )}
-            </div>
-
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full relative group bg-primary text-primary-foreground py-3 px-4 rounded-lg font-medium transition-all duration-300 ease-in-out hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden"
-            >
-              <span className={`transition-opacity duration-200 ${isSubmitting ? 'opacity-0' : 'opacity-100'}`}>
-                {isSignUp ? 'Create Account' : 'Sign In'}
-              </span>
-
-              {isSubmitting && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                </div>
-              )}
-
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
-            </button>
-          </form>
-
-
-          <div className="mt-8 text-center">
-            <p className="text-sm text-muted-foreground">
-              {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
-              <button
-                type="button"
-                onClick={toggleMode}
-                className="text-primary hover:underline font-medium"
+            {!isSignUp && (
+              <span
+                onClick={() => {}}
+                className="text-sm text-primary cursor-pointer"
               >
-                {isSignUp ? 'Sign in' : 'Sign up'}
-              </button>
-            </p>
+                Forgot password?
+              </span>
+            )}
           </div>
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full relative group bg-primary text-primary-foreground py-3 px-4 rounded-lg font-medium transition-all duration-300 ease-in-out hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden"
+          >
+            <span className={`transition-opacity duration-200 ${isSubmitting ? 'opacity-0' : 'opacity-100'}`}>
+              {isSignUp ? 'Create Account' : 'Sign In'}
+            </span>
+
+            {isSubmitting && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+              </div>
+            )}
+
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
+          </button>
+        </form>
+
+        <div className="mt-8 text-center">
+          <p className="text-sm text-muted-foreground">
+            {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
+            <span
+              onClick={toggleMode}
+              className="text-primary cursor-pointer font-medium hover:underline"
+            >
+              {isSignUp ? 'Sign in' : 'Sign up'}
+            </span>
+          </p>
         </div>
       </div>
     </div>
