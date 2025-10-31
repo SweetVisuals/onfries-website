@@ -18,7 +18,7 @@ export interface Order {
 
 export const dummyOrders: Order[] = [
   {
-    id: 'ORD-001',
+    id: '001',
     customerId: '2',
     customerName: 'John Doe',
     customerEmail: 'john@example.com',
@@ -57,7 +57,7 @@ export const dummyOrders: Order[] = [
     notes: 'Extra basil please'
   },
   {
-    id: 'ORD-002',
+    id: '002',
     customerId: '3',
     customerName: 'Jane Smith',
     customerEmail: 'jane@example.com',
@@ -96,7 +96,7 @@ export const dummyOrders: Order[] = [
     notes: 'White wine please'
   },
   {
-    id: 'ORD-003',
+    id: '003',
     customerId: '2',
     customerName: 'John Doe',
     customerEmail: 'john@example.com',
@@ -134,7 +134,7 @@ export const dummyOrders: Order[] = [
     estimatedDelivery: '2024-12-26T20:00:00Z'
   },
   {
-    id: 'ORD-004',
+    id: '004',
     customerId: '3',
     customerName: 'Jane Smith',
     customerEmail: 'jane@example.com',

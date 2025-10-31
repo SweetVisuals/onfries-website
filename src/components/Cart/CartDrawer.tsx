@@ -8,6 +8,7 @@ import { useCart } from '../../contexts/CartContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { dummyOrders } from '../../data/orderData';
+import { isOrderingAllowed } from '../../lib/utils';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -38,9 +39,20 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
       return;
     }
 
+    if (!isOrderingAllowed()) {
+      toast({
+        title: 'Ordering not available',
+        description: 'The food truck is currently closed. Please check our hours.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     // Create a new order (in real app, this would be an API call)
+    // Generate sequential order ID starting from 005
+    const nextOrderId = String(dummyOrders.length + 1).padStart(3, '0');
     const newOrder = {
-      id: `ORD-${Date.now()}`,
+      id: nextOrderId,
       customerId: user.id,
       customerName: user.name,
       customerEmail: user.email,
@@ -82,15 +94,15 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               <ShoppingBag className="w-5 h-5" />
-              Your Cart
+              Your Orders
             </SheetTitle>
           </SheetHeader>
           
           <div className="flex flex-col items-center justify-center h-full text-center py-8">
             <ShoppingBag className="w-16 h-16 text-gray-300 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Your cart is empty</h3>
-            <p className="text-gray-500 mb-6">Add some delicious items from our menu</p>
-            <Button onClick={onClose}>Continue Shopping</Button>
+            <h3 className="text-lg font-medium text-foreground mb-2">No orders found</h3>
+            <p className="text-muted-foreground mb-6">Add some delicious items from our menu</p>
+            <Button onClick={onClose}>Continue Browsing</Button>
           </div>
         </SheetContent>
       </Sheet>
@@ -104,7 +116,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
           <SheetTitle className="flex items-center justify-between">
             <span className="flex items-center gap-2">
               <ShoppingBag className="w-5 h-5" />
-              Your Cart
+              Your Orders
             </span>
             <Badge variant="secondary">
               {getItemCount()} items

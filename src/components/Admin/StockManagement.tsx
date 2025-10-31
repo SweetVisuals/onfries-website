@@ -15,7 +15,8 @@ const StockManagement: React.FC = () => {
   const { toast } = useToast();
   const [items, setItems] = useState(menuItems.map(item => ({
     ...item,
-    stock: Math.floor(Math.random() * 50) + 10 // Random stock for demo
+    stock: Math.floor(Math.random() * 50) + 10, // Random stock for demo
+    soldOutOverride: false // New property for sold out override
   })));
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -39,16 +40,30 @@ const StockManagement: React.FC = () => {
   };
 
   const toggleItemAvailability = (itemId: string) => {
-    setItems(prevItems => 
-      prevItems.map(item => 
+    setItems(prevItems =>
+      prevItems.map(item =>
         item.id === itemId ? { ...item, isAvailable: !item.isAvailable } : item
       )
     );
-    
+
     const item = items.find(i => i.id === itemId);
     toast({
       title: item?.isAvailable ? 'Item disabled' : 'Item enabled',
       description: `${item?.name} is now ${item?.isAvailable ? 'unavailable' : 'available'}`,
+    });
+  };
+
+  const toggleSoldOutOverride = (itemId: string) => {
+    setItems(prevItems =>
+      prevItems.map(item =>
+        item.id === itemId ? { ...item, soldOutOverride: !item.soldOutOverride } : item
+      )
+    );
+
+    const item = items.find(i => i.id === itemId);
+    toast({
+      title: item?.soldOutOverride ? 'Sold out override enabled' : 'Sold out override disabled',
+      description: `${item?.name} is now ${item?.soldOutOverride ? 'marked as sold out' : 'available'}`,
     });
   };
 
@@ -104,7 +119,7 @@ const StockManagement: React.FC = () => {
         <CardHeader>
           <div className="flex justify-between items-center">
             <CardTitle>Stock Management</CardTitle>
-            
+
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
               <DialogTrigger asChild>
                 <Button>
@@ -120,7 +135,7 @@ const StockManagement: React.FC = () => {
               </DialogContent>
             </Dialog>
           </div>
-          
+
           <div className="flex gap-2 mt-4">
             {menuCategories.map((category) => (
               <Button
@@ -136,78 +151,78 @@ const StockManagement: React.FC = () => {
         </CardHeader>
       </Card>
 
-      <div className="grid gap-4">
-        {filteredItems.map((item) => (
-          <Card key={item.id} className={item.stock < 5 ? 'border-orange-200' : ''}>
-            <CardContent className="p-6">
-              <div className="flex justify-between items-start">
-                <div className="flex gap-4">
-                  <img 
-                    src={item.image} 
-                    alt={item.name}
-                    className="w-16 h-16 object-cover rounded"
-                  />
-                  
-                  <div>
-                    <h3 className="text-lg font-semibold">{item.name}</h3>
-                    <p className="text-gray-600">{item.description}</p>
-                    <div className="flex gap-2 mt-2">
-                      <Badge variant="secondary">{item.category}</Badge>
-                      <Badge variant="outline">${item.price}</Badge>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left Column: Stock Overview */}
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Stock Overview</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {filteredItems.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between py-2 px-3 border-b">
+                    <div className="flex-1">
+                      <h4 className="font-medium">{item.name}</h4>
+                      <p className="text-sm text-gray-600">{item.category}</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <div className="text-lg font-bold">{item.stock}</div>
+                        <div className="text-xs text-gray-500">in stock</div>
+                      </div>
+                      {item.stock < 5 && (
+                        <Badge variant="destructive" className="text-xs">
+                          Low
+                        </Badge>
+                      )}
                     </div>
                   </div>
-                </div>
-                
-                <div className="text-right space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Label>Available:</Label>
-                    <Switch 
-                      checked={item.isAvailable} 
-                      onCheckedChange={() => toggleItemAvailability(item.id)}
-                    />
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <Label>Stock:</Label>
-                    <Input 
-                      type="number" 
-                      value={item.stock}
-                      onChange={(e) => updateItemStock(item.id, parseInt(e.target.value) || 0)}
-                      className="w-20"
-                      min="0"
-                    />
-                  </div>
-                  
-                  {item.stock < 5 && (
-                    <Badge variant="destructive" className="flex items-center gap-1">
-                      <AlertTriangle className="w-3 h-3" />
-                      Low Stock
-                    </Badge>
-                  )}
-                  
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => setEditingItem(item)}
-                      >
-                        <Edit className="w-4 h-4 mr-1" />
-                        Edit
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Edit Menu Item</DialogTitle>
-                      </DialogHeader>
-                      <ItemForm initialData={item} onSubmit={updateItem} />
-                    </DialogContent>
-                  </Dialog>
-                </div>
+                ))}
               </div>
             </CardContent>
           </Card>
-        ))}
+        </div>
+
+        {/* Right Column: Sold Out Management */}
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Sold Out Management</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {filteredItems.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between py-2 px-3 border-b">
+                    <div className="flex-1">
+                      <h4 className="font-medium">{item.name}</h4>
+                      <p className="text-sm text-gray-600">{item.category}</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <Label className="text-sm">Sold Out:</Label>
+                        <Switch
+                          checked={item.soldOutOverride}
+                          onCheckedChange={() => toggleSoldOutOverride(item.id)}
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Label className="text-sm">Stock:</Label>
+                        <Input
+                          type="number"
+                          value={item.stock}
+                          onChange={(e) => updateItemStock(item.id, parseInt(e.target.value) || 0)}
+                          className="w-16 h-8"
+                          min="0"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {filteredItems.length === 0 && (

@@ -1,17 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { ShoppingCart, User, LogOut, Settings, History } from 'lucide-react';
+import { ShoppingCart, User, LogOut, Settings, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import AuthModal from '../Auth/AuthModal';
 import CartDrawer from '../Cart/CartDrawer';
+import { SimpleHeader } from '../ui/simple-header';
+import OnFriesLogo from '../../images/OnFriesLogo.webp';
 
 interface HeaderProps {
   onNavigate: (page: string) => void;
@@ -23,6 +27,22 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, currentPage }) => {
   const { getItemCount } = useCart();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+    setIsDarkMode(theme === 'dark');
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = !isDarkMode;
+    setIsDarkMode(newTheme);
+    document.documentElement.classList.toggle('dark', newTheme);
+    localStorage.setItem('theme', newTheme ? 'dark' : 'light');
+  };
 
   const handleLogout = () => {
     logout();
@@ -31,113 +51,118 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, currentPage }) => {
 
   return (
     <>
-      <header className="bg-white shadow-md border-b sticky top-0 z-40">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            {/* Logo */}
-            <div 
-              className="flex items-center space-x-2 cursor-pointer"
-              onClick={() => onNavigate('home')}
+      <header className="bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-50 w-full border-b backdrop-blur-lg">
+        <nav className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-4">
+          {currentPage !== 'admin' ? (
+            <div
+              className="flex items-center gap-2 cursor-pointer"
+              onClick={() => user?.isAdmin ? onNavigate('admin-dashboard') : onNavigate('home')}
             >
-              <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">F</span>
-              </div>
-              <span className="text-xl font-bold text-gray-800">Foodie</span>
+              <img src={OnFriesLogo} alt="OnFries Logo" className="w-auto" style={{ height: '45px', marginTop: '4px' }} />
+              <p className="text-lg font-black" style={{ fontFamily: "'Ysabeau SC', serif" }}>OnFries</p>
+            </div>
+          ) : (
+            <div></div>
+          )}
+
+          <div className="flex items-center gap-4">
+            {/* Theme Toggle */}
+            <div
+              className="cursor-pointer p-2 hover:bg-accent rounded-md"
+              onClick={toggleTheme}
+            >
+              {isDarkMode ? (
+                <Sun className="h-4 w-4" />
+              ) : (
+                <Moon className="h-4 w-4" />
+              )}
             </div>
 
-            {/* Navigation */}
-            <nav className="hidden md:flex space-x-6">
-              <Button
-                variant={currentPage === 'home' ? 'default' : 'ghost'}
-                onClick={() => onNavigate('home')}
-              >
-                Home
-              </Button>
-              <Button
-                variant={currentPage === 'menu' ? 'default' : 'ghost'}
-                onClick={() => onNavigate('menu')}
-              >
-                Menu
-              </Button>
-              {user?.role === 'admin' && (
-                <Button
-                  variant={currentPage === 'admin' ? 'default' : 'ghost'}
-                  onClick={() => onNavigate('admin')}
-                >
-                  Admin Dashboard
-                </Button>
-              )}
-            </nav>
-
-            {/* User Actions */}
-            <div className="flex items-center space-x-4">
-              {/* Cart */}
-              <Button
-                variant="outline"
-                size="icon"
-                className="relative"
-                onClick={() => setIsCartOpen(true)}
-              >
-                <ShoppingCart className="w-4 h-4" />
-                {getItemCount() > 0 && (
-                  <Badge className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs">
-                    {getItemCount()}
-                  </Badge>
-                )}
-              </Button>
-
-              {/* User Menu */}
-              {user ? (
+            {user ? (
+              <>
+                {/* User Avatar and Dropdown */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="icon">
-                      <User className="w-4 h-4" />
+                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src="" alt={user.name} />
+                        <AvatarFallback className="bg-muted text-muted-foreground hover:bg-accent">
+                            {user.name.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                      </Avatar>
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuContent className="w-56" align="end" forceMount>
+                    <div className="flex items-center justify-start gap-2 p-2">
+                      <div className="flex flex-col space-y-1 leading-none">
+                        <p className="font-medium">{user.name}</p>
+                        <p className="w-[200px] truncate text-sm text-muted-foreground">
+                          {user.email}
+                        </p>
+                        {user.isAdmin && (
+                          <Badge variant="secondary" className="w-fit text-xs">
+                            Admin
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => onNavigate('profile')}>
-                      <User className="w-4 h-4 mr-2" />
-                      Profile
+                      <User className="mr-2 h-4 w-4" />
+                      <span>Profile</span>
                     </DropdownMenuItem>
-                    {user.role === 'customer' && (
-                      <DropdownMenuItem onClick={() => onNavigate('orders')}>
-                        <History className="w-4 h-4 mr-2" />
-                        Order History
-                      </DropdownMenuItem>
-                    )}
                     <DropdownMenuItem onClick={() => onNavigate('settings')}>
-                      <Settings className="w-4 h-4 mr-2" />
-                      Settings
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>Settings</span>
                     </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout}>
-                      <LogOut className="w-4 h-4 mr-2" />
-                      Logout
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Log out</span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-              ) : (
-                <Button onClick={() => setIsAuthModalOpen(true)}>
-                  Login
-                </Button>
-              )}
-            </div>
+
+                {/* Cart Button - Only show for non-admin users */}
+                {!user.isAdmin && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="relative"
+                    onClick={() => setIsCartOpen(true)}
+                  >
+                    <ShoppingCart className="h-4 w-4" />
+                    {getItemCount() > 0 && (
+                      <Badge className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs">
+                        {getItemCount()}
+                      </Badge>
+                    )}
+                  </Button>
+                )}
+              </>
+            ) : (
+              <Button onClick={() => setIsAuthModalOpen(true)}>
+                Sign In
+              </Button>
+            )}
           </div>
-        </div>
+        </nav>
       </header>
 
       {/* Auth Modal */}
-      <AuthModal 
-        isOpen={isAuthModalOpen} 
-        onClose={() => setIsAuthModalOpen(false)} 
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
       />
 
       {/* Cart Drawer */}
-      <CartDrawer 
-        isOpen={isCartOpen} 
-        onClose={() => setIsCartOpen(false)} 
+      <CartDrawer
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
       />
     </>
   );
 };
+
 
 export default Header;

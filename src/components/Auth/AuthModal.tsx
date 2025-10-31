@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs } from '@/components/ui/vercel-tabs';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Loader as Loader2 } from 'lucide-react';
@@ -18,6 +18,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const { toast } = useToast();
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [signupForm, setSignupForm] = useState({ name: '', email: '', password: '' });
+  const [activeTab, setActiveTab] = useState("login");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,13 +76,17 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           <DialogTitle>Welcome to Foodie</DialogTitle>
         </DialogHeader>
         
-        <Tabs defaultValue="login" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="login">Login</TabsTrigger>
-            <TabsTrigger value="signup">Sign Up</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="login" className="space-y-4">
+        <Tabs
+          tabs={[
+            { id: "login", label: "Login" },
+            { id: "signup", label: "Sign Up" }
+          ]}
+          onTabChange={(tabId) => setActiveTab(tabId)}
+          className="w-full"
+        />
+
+        {activeTab === "login" && (
+          <div className="space-y-4 mt-4">
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="login-email">Email</Label>
@@ -94,7 +99,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                   required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="login-password">Password</Label>
                 <Input
@@ -106,21 +111,23 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                   required
                 />
               </div>
-              
+
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                 Login
               </Button>
             </form>
-            
+
             <div className="text-sm text-gray-600 space-y-1">
               <p><strong>Demo Credentials:</strong></p>
               <p>Admin: admin@foodie.com / admin123</p>
               <p>Customer: any email with password "password"</p>
             </div>
-          </TabsContent>
-          
-          <TabsContent value="signup" className="space-y-4">
+          </div>
+        )}
+
+        {activeTab === "signup" && (
+          <div className="space-y-4 mt-4">
             <form onSubmit={handleSignup} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="signup-name">Full Name</Label>
@@ -133,7 +140,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                   required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="signup-email">Email</Label>
                 <Input
@@ -145,7 +152,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                   required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="signup-password">Password</Label>
                 <Input
@@ -158,14 +165,14 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                   minLength={6}
                 />
               </div>
-              
+
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                 Create Account
               </Button>
             </form>
-          </TabsContent>
-        </Tabs>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
