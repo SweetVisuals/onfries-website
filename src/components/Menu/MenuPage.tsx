@@ -93,10 +93,10 @@ const MenuPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Search and Filters */}
-        <div className="flex justify-between items-start mb-6">
-          {/* Left side - Search */}
-          <div className="w-64">
+{/* Search and Filters */}
+        <div className="mb-6">
+          {/* Search - Mobile: Full width, Desktop: Left side */}
+          <div className="w-full md:w-64 md:mb-0 mb-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <Input
@@ -109,8 +109,8 @@ const MenuPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Right side - Category Filters */}
-          <div className="flex flex-wrap gap-2">
+          {/* Category Filters - Mobile: Centered, Desktop: Right side */}
+          <div className="flex flex-wrap gap-2 justify-center md:justify-end">
             {['All', 'Steak', 'Fries', 'Drinks'].map((filter) => (
               <Button
                 key={filter}

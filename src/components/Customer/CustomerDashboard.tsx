@@ -60,7 +60,11 @@ const CustomerDashboard: React.FC = () => {
         <div className="container mx-auto px-4">
           <div className="relative">
             <div className="text-center mb-6">
-              <img src={OnFriesLogo} alt="OnFries Logo" className="mx-auto w-48 h-auto mb-4" />
+              <img
+                src={OnFriesLogo}
+                alt="OnFries Logo"
+                className="mx-auto w-48 h-auto mb-4 md:mb-4 mt-0 md:mt-0 mt-[30px]"
+              />
               <div className="mb-8">
                 <Tabs
                   tabs={[
