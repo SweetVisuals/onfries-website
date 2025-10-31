@@ -8,7 +8,6 @@ import MenuPage from './components/Menu/MenuPage';
 import OrderHistory from './components/Orders/OrderHistory';
 import AdminDashboard from './components/Admin/AdminDashboard';
 import CustomerDashboard from './components/Customer/CustomerDashboard';
-import { Component as SignInForm } from './components/ui/sign-in-flo';
 import './App.css';
 
 function AppContent() {
@@ -70,6 +69,7 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-background">
+      <Header onNavigate={setCurrentPage} />
       <main>
         {renderCurrentPage()}
       </main>

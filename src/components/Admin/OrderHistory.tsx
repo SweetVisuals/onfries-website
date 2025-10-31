@@ -10,7 +10,7 @@ import { Card, CardContent } from '@/components/ui/card'; // Keep Card and CardC
 const OrderHistory: React.FC = () => {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
-  const [orders, setOrders] = useState<Order[]>(dummyOrders);
+  const [orders] = useState<Order[]>(dummyOrders);
 
   if (!user) {
     return (

@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Search, Plus, Clock, MapPin, Phone, Navigation, FileText, Loader2 } from 'lucide-react';
+import { Search, Plus, Clock, MapPin, Phone, Navigation, Loader2 } from 'lucide-react';
 import { useMenuItems } from '../../hooks/useMenuItems';
 import { useCart } from '../../contexts/CartContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -15,7 +15,7 @@ const MenuPage: React.FC = () => {
   const { addItem } = useCart();
   const { user } = useAuth();
   const { toast } = useToast();
-  const { menuItems, categories, loading, error } = useMenuItems();
+  const { menuItems, loading, error } = useMenuItems();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [showAddOns, setShowAddOns] = useState(false);

@@ -14,14 +14,12 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import AuthModal from '../Auth/AuthModal';
 import CartDrawer from '../Cart/CartDrawer';
-import OnFriesLogo from '../../images/OnFriesLogo.webp';
 
 interface HeaderProps {
   onNavigate: (page: string) => void;
-  currentPage: string;
 }
 
-const Header: React.FC<HeaderProps> = ({ onNavigate, currentPage }) => {
+const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
   const { user, logout } = useAuth();
   const { getItemCount } = useCart();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
