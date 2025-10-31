@@ -89,7 +89,7 @@ const Tabs = React.forwardRef<HTMLDivElement, TabsProps>(
                  key={tab.id}
                  ref={(el) => (tabRefs.current[index] = el)}
                  className={cn(
-                   "px-3 py-2 cursor-pointer transition-colors duration-300 h-[30px]",
+                   "px-3 py-2 cursor-pointer transition-colors duration-300 h-[30px] flex-shrink-0",
                    index === activeIndex
                      ? "text-[#0e0e10] dark:text-white"
                      : "text-[#0e0f1199] dark:text-[#ffffff99]"

@@ -61,7 +61,13 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, currentPage }) => {
               <p className="text-lg font-black" style={{ fontFamily: "'Ysabeau SC', serif" }}>OnFries</p>
             </div>
           ) : (
-            <div></div>
+            <div
+              className="flex items-center gap-2 cursor-pointer md:hidden"
+              onClick={() => onNavigate('home')}
+            >
+              <img src={OnFriesLogo} alt="OnFries Logo" className="w-auto" style={{ height: '32px', marginTop: '2px' }} />
+              <p className="text-sm font-black" style={{ fontFamily: "'Ysabeau SC', serif" }}>OnFries</p>
+            </div>
           )}
 
           <div className="flex items-center gap-4">

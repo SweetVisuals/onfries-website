@@ -130,67 +130,67 @@ const CustomerOverview: React.FC = () => {
       </Card>
 
       {/* Customer List */}
-      <div className="grid gap-4">
-        {filteredCustomers.map((customer) => {
-          const tier = getCustomerTier(customer.totalSpent);
-          
-          return (
-            <Card key={customer.id}>
-              <CardContent className="p-6">
-                <div className="flex justify-between items-start">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-                        <span className="font-semibold text-orange-600">
-                          {customer.name.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                      
-                      <div>
-                        <h3 className="font-semibold text-lg">{customer.name}</h3>
-                        <div className="flex items-center gap-4 text-sm text-gray-600">
-                          <div className="flex items-center gap-1">
-                            <Mail className="w-4 h-4" />
-                            {customer.email}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex gap-4 text-sm">
-                      <div>
-                        <span className="font-medium">Total Orders:</span> {customer.totalOrders}
-                      </div>
-                      <div>
-                        <span className="font-medium">Total Spent:</span> ${customer.totalSpent.toFixed(2)}
-                      </div>
-                      <div>
-                        <span className="font-medium">Last Order:</span> {new Date(customer.lastOrderDate).toLocaleDateString()}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="text-right space-y-2">
-                    <Badge className={tier.color}>
-                      {tier.label}
-                    </Badge>
-                    
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline">
-                        <Mail className="w-4 h-4 mr-1" />
-                        Email
-                      </Button>
-                      <Button size="sm" variant="outline">
-                        View Orders
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+       <div className="grid gap-4">
+         {filteredCustomers.map((customer) => {
+           const tier = getCustomerTier(customer.totalSpent);
+
+           return (
+             <Card key={customer.id}>
+               <CardContent className="p-4 md:p-6">
+                 <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
+                   <div className="space-y-2 flex-1">
+                     <div className="flex items-center gap-3">
+                       <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                         <span className="font-semibold text-orange-600">
+                           {customer.name.charAt(0).toUpperCase()}
+                         </span>
+                       </div>
+
+                       <div className="min-w-0 flex-1">
+                         <h3 className="font-semibold text-lg truncate">{customer.name}</h3>
+                         <div className="flex items-center gap-4 text-sm text-gray-600">
+                           <div className="flex items-center gap-1 min-w-0">
+                             <Mail className="w-4 h-4 flex-shrink-0" />
+                             <span className="truncate">{customer.email}</span>
+                           </div>
+                         </div>
+                       </div>
+                     </div>
+
+                     <div className="flex flex-wrap gap-4 text-sm">
+                       <div>
+                         <span className="font-medium">Total Orders:</span> {customer.totalOrders}
+                       </div>
+                       <div>
+                         <span className="font-medium">Total Spent:</span> ${customer.totalSpent.toFixed(2)}
+                       </div>
+                       <div>
+                         <span className="font-medium">Last Order:</span> {new Date(customer.lastOrderDate).toLocaleDateString()}
+                       </div>
+                     </div>
+                   </div>
+
+                   <div className="flex flex-col items-start md:items-end gap-2">
+                     <Badge className={tier.color}>
+                       {tier.label}
+                     </Badge>
+
+                     <div className="flex gap-2">
+                       <Button size="sm" variant="outline">
+                         <Mail className="w-4 h-4 mr-1" />
+                         Email
+                       </Button>
+                       <Button size="sm" variant="outline">
+                         View Orders
+                       </Button>
+                     </div>
+                   </div>
+                 </div>
+               </CardContent>
+             </Card>
+           );
+         })}
+       </div>
 
       {filteredCustomers.length === 0 && (
         <Card>
