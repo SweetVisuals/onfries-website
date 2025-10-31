@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { TabsContent } from '@/components/ui/tabs';
 import { Tabs } from '../ui/vercel-tabs';
 import MenuPage from '../Menu/MenuPage';
 import OrderHistory from '../Orders/OrderHistory';

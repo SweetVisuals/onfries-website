@@ -20,7 +20,6 @@ const StockManagement: React.FC = () => {
   })));
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<any>(null);
 
   const filteredItems = items.filter(item => 
     selectedCategory === 'All' || item.category === selectedCategory
@@ -68,13 +67,12 @@ const StockManagement: React.FC = () => {
   };
 
   const updateItem = (updatedItem: any) => {
-    setItems(prevItems => 
-      prevItems.map(item => 
+    setItems(prevItems =>
+      prevItems.map(item =>
         item.id === updatedItem.id ? updatedItem : item
       )
     );
-    
-    setEditingItem(null);
+
     toast({
       title: 'Item updated',
       description: `${updatedItem.name} has been updated successfully`,

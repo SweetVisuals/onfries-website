@@ -58,7 +58,6 @@ interface NavigationMenuDemoProps {
 }
 
 export function NavigationMenuDemo({ onNavigate, currentPage, user }: NavigationMenuDemoProps) {
-  const isMobile = useIsMobile()
 
   return (
     <NavigationMenu>

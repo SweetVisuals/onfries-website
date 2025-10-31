@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Users, ShoppingCart, DollarSign, Search, Mail, Phone } from 'lucide-react';
+import { Users, ShoppingCart, DollarSign, Search, Mail } from 'lucide-react';
 import { dummyOrders } from '../../data/orderData';
 
 const CustomerOverview: React.FC = () => {

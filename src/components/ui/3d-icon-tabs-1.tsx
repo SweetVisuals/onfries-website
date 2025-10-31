@@ -48,45 +48,7 @@ const tabs = [
   },
 ];
 
-function getBadgePosition(tabId: number) {
-  switch (tabId) {
-    case 0:
-      return "-top-5 -right-8";
-    case 1:
-      return "-top-[38px] -right-8";
-    case 2:
-      return "-top-[18px] -right-8";
-    case 3:
-      return "-top-[41px] -right-6";
-    case 4:
-      return "-top-[44px] -right-6";
-    default:
-      return "-top-5 -right-8";
-  }
-}
 
-function NewBadge({ className }: { className?: string }) {
-  return (
-    <div
-      className={cn(
-        "bg-primary px-2 py-1 rounded-t-full rounded-br-full rounded-bl-sm text-xs font-bold text-primary-foreground transition-all duration-200 relative overflow-hidden before:content-[''] before:absolute before:inset-0 before:rounded-[inherit] before:pointer-events-none before:z-[1] before:shadow-[inset_0_0_0_1px_rgba(170,202,255,0.2),inset_0_0_10px_0_rgba(170,202,255,0.3),inset_0_3px_7px_0_rgba(170,202,255,0.4),inset_0_-4px_3px_0_rgba(170,202,255,0.4),0_1px_3px_0_rgba(0,0,0,0.50),0_4px_12px_0_rgba(0,0,0,0.65)]  backdrop-blur-md",
-        className
-      )}
-    >
-      <span>NEW</span>
-      <span
-        className="absolute left-1/2 -translate-x-1/2 opacity-40 z-50 scale-y-[-1] translate-y-2.5"
-        style={{
-          maskImage: "linear-gradient(to top, white 20%, transparent 50%)",
-          WebkitMaskImage:
-            "linear-gradient(to top, white 10%, transparent 50%)",
-        }}
-      >
-        NEW
-      </span>
-    </div>
-  );
-}
 
 function Component({ className, onTabChange }: { className?: string; onTabChange?: (tabId: number) => void }) {
   const [activeTab, setActiveTab] = useState(0);
@@ -156,7 +118,7 @@ function Component({ className, onTabChange }: { className?: string; onTabChange
                   bounce: 0.2,
                   damping: 7,
                   duration: 0.4,
-                  delay: index * 0.1,
+                  delay: tab.id * 0.1,
                 },
               }}
               variants={{

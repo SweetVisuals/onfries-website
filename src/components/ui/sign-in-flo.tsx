@@ -182,7 +182,7 @@ const FloatingParticles: React.FC = () => {
 };
 
 export const Component: React.FC = () => {
-  const { login, signup, isLoading } = useAuth();
+  const { login, signup } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");

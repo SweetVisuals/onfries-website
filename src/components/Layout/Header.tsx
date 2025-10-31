@@ -14,7 +14,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import AuthModal from '../Auth/AuthModal';
 import CartDrawer from '../Cart/CartDrawer';
-import { SimpleHeader } from '../ui/simple-header';
 import OnFriesLogo from '../../images/OnFriesLogo.webp';
 
 interface HeaderProps {

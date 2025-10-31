@@ -48,7 +48,7 @@ const CurrentOrderCard: React.FC<CurrentOrderCardProps> = ({ order, onComplete, 
       </div>
       <div className={`p-5 space-y-4 flex-grow ${isPastOrder ? 'text-white' : 'text-card-foreground'}`}>
         <div className="space-y-4">
-          {order.items.map((orderItem, index) => (
+          {order.items.map((orderItem) => (
             <div className={`border-b pb-4 last:border-b-0 last:pb-0 ${isPastOrder ? 'border-green-700' : 'border-border'}`}>
               <div className="flex justify-between items-start mb-2">
                 <div className="flex-1">

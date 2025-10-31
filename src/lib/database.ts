@@ -170,28 +170,22 @@ export const getRevenueByItemToday = async (): Promise<RevenueByItem[]> => {
 
 export const getRevenueOverTime = async (period: string): Promise<RevenueData[]> => {
   let days: number;
-  let dateFormat: string;
 
   switch (period) {
     case '1d':
       days = 1;
-      dateFormat = 'hour';
       break;
     case '7d':
       days = 7;
-      dateFormat = 'date';
       break;
     case '30d':
       days = 30;
-      dateFormat = 'date';
       break;
     case '90d':
       days = 90;
-      dateFormat = 'date';
       break;
     default:
       days = 7;
-      dateFormat = 'date';
   }
 
   const endDate = new Date();
