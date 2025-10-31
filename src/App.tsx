@@ -12,8 +12,8 @@ import { Component as SignInForm } from './components/ui/sign-in-flo';
 import './App.css';
 
 function AppContent() {
-  const { user, isLoading } = useAuth();
-  const [currentPage, setCurrentPage] = useState('home');
+   const { user, isLoading } = useAuth();
+   const [currentPage, setCurrentPage] = useState('menu');
 
   useEffect(() => {
     if (!isLoading && user) {
