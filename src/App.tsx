@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import { Toaster } from '@/components/ui/sonner';
-import Header from './components/Layout/Header';
 import LandingPage from './components/Landing/LandingPage';
 import MenuPage from './components/Menu/MenuPage';
 import OrderHistory from './components/Orders/OrderHistory';
@@ -47,7 +46,7 @@ function AppContent() {
       case 'orders':
         return <OrderHistory />;
       case 'admin':
-        return <AdminDashboard />;
+        return <AdminDashboard onNavigate={setCurrentPage} />;
       case 'customer':
         return <CustomerDashboard />;
       case 'profile':
@@ -69,7 +68,6 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header onNavigate={setCurrentPage} />
       <main>
         {renderCurrentPage()}
       </main>

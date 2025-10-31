@@ -43,7 +43,13 @@ const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
 
   const handleLogout = () => {
     logout();
-    onNavigate('home');
+    // If user is admin, redirect to customer dashboard after logout
+    // Otherwise, redirect to home
+    if (user?.isAdmin) {
+      onNavigate('customer');
+    } else {
+      onNavigate('home');
+    }
   };
 
   return (

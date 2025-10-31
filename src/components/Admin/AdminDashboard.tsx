@@ -6,6 +6,7 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } 
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '../../contexts/AuthContext';
+import Header from '../Layout/Header';
 import CurrentOrderManagement from './CurrentOrderManagement';
 import OrderHistory from './OrderHistory';
 import StockManagement from './StockManagement';
@@ -23,7 +24,11 @@ import {
   Order
 } from '../../lib/database';
 
-const AdminDashboard: React.FC = () => {
+interface AdminDashboardProps {
+  onNavigate: (page: string) => void;
+}
+
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   const { user } = useAuth();
   const [selectedTab, setSelectedTab] = useState('overview');
   const [timeframe, setTimeframe] = useState('7d');
@@ -32,6 +37,10 @@ const AdminDashboard: React.FC = () => {
   const [revenueOverTime, setRevenueOverTime] = useState<RevenueData[]>([]);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const handleNavigate = (page: string) => {
+    onNavigate(page);
+  };
 
   if (!user || user.role !== 'admin') {
     return (
@@ -107,6 +116,7 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Header onNavigate={handleNavigate} />
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="mb-8">
             <div className="flex flex-col md:grid md:grid-cols-3 md:items-center mb-4">
