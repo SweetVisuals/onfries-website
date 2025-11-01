@@ -31,9 +31,9 @@ const meatCategories = [
   },
   {
     id: 'other',
-    name: 'Other',
+    name: '£1 Steak Special',
     icon: Fish,
-    keywords: ['fries', 'sauce', 'drink'],
+    keywords: ['fries', 'sauce', 'drink', 'steak special'],
     color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
   }
 ];

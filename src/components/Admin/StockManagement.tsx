@@ -70,7 +70,7 @@ const StockManagement: React.FC = () => {
     });
   };
 
-  const getLowStockItems = () => items.filter(item => item.stock < 5);
+  const getLowStockItems = () => items.filter(item => item.stock >= 0 && item.stock < 5);
 
   return (
     <div className="space-y-6">
@@ -144,7 +144,7 @@ const StockManagement: React.FC = () => {
                         <div className="text-lg font-bold">{item.stock}</div>
                         <div className="text-xs text-gray-500">in stock</div>
                       </div>
-                      {item.stock < 5 && (
+                      {item.stock >= 0 && item.stock < 5 && (
                         <Badge variant="destructive" className="text-xs">
                           Low
                         </Badge>

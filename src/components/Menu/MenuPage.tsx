@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Search, Plus, Clock, MapPin, Phone, Navigation, Loader2 } from 'lucide-react';
+import { Search, Plus, Clock, MapPin, Phone, Navigation, Loader2, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useMenuItems } from '../../hooks/useMenuItems';
 import { useCart } from '../../contexts/CartContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -20,25 +20,27 @@ const MenuPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [showAddOns, setShowAddOns] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [showFAQ, setShowFAQ] = useState(false);
+  const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
   const orderingStatus = getOrderingStatus();
 
   const filteredItems = menuItems.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.description.toLowerCase().includes(searchTerm.toLowerCase());
-    
+                          item.description.toLowerCase().includes(searchTerm.toLowerCase());
+
     let matchesCategory = true;
     if (selectedCategory === 'Steak') {
       matchesCategory = item.category === 'Main Courses';
     } else if (selectedCategory === 'Fries') {
-      // Show fries items for the Fries filter
-      matchesCategory = item.name.includes('Fries') && !item.name.includes('Loaded');
+      // Show fries items for the Fries filter - only classic fries now
+      matchesCategory = item.name === 'Classic Fries';
     } else if (selectedCategory === 'Drinks') {
       matchesCategory = item.category === 'Add-ons' && item.name.includes('Drink');
     } else if (selectedCategory !== 'All') {
       matchesCategory = item.category === selectedCategory;
     }
-    
-    return matchesSearch && matchesCategory && item.isAvailable && item.category !== 'Add-ons';
+
+    return matchesSearch && matchesCategory && item.isAvailable && item.category !== 'Add-ons' && item.name !== 'Custom Item';
   });
 
   const handleAddToCart = (item: any) => {
@@ -227,7 +229,7 @@ const MenuPage: React.FC = () => {
                   <h2 className="text-3xl font-bold text-center mb-8 text-yellow-600 border-b-2 border-yellow-200 pb-2">
                     Fries
                   </h2>
-                  <div className="grid gap-6 md:grid-cols-3">
+                  <div className="grid gap-6 md:grid-cols-1 max-w-md mx-auto">
                     {/* Since all steak items come with fries, show them as add-ons or sides */}
                     <Card className="hover:shadow-lg transition-all duration-200 hover:border-yellow-400 group border-yellow-200">
                       <CardContent className="p-6">
@@ -240,67 +242,11 @@ const MenuPage: React.FC = () => {
                               £3.50
                             </span>
                           </div>
-                          
+
                           <p className="text-sm text-muted-foreground leading-relaxed mb-4 flex-grow">
                             Crispy golden fries served with all steak orders
                           </p>
-                          
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="bg-yellow-500 hover:bg-yellow-600 text-black font-medium px-4"
-                          >
-                            <Plus className="w-4 h-4 mr-1" />
-                            Add Extra
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
 
-                    <Card className="hover:shadow-lg transition-all duration-200 hover:border-yellow-400 group border-yellow-200">
-                      <CardContent className="p-6">
-                        <div className="flex flex-col h-full text-center">
-                          <div className="mb-3">
-                            <h3 className="text-lg font-semibold text-foreground">
-                              Sweet Potato Fries
-                            </h3>
-                            <span className="text-xl font-bold text-yellow-600 px-2 py-1 inline-block mt-2">
-                              £4.00
-                            </span>
-                          </div>
-                          
-                          <p className="text-sm text-muted-foreground leading-relaxed mb-4 flex-grow">
-                            Sweet and crispy alternative to classic fries
-                          </p>
-                          
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="bg-yellow-500 hover:bg-yellow-600 text-black font-medium px-4"
-                          >
-                            <Plus className="w-4 h-4 mr-1" />
-                            Add Extra
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="hover:shadow-lg transition-all duration-200 hover:border-yellow-400 group border-yellow-200">
-                      <CardContent className="p-6">
-                        <div className="flex flex-col h-full text-center">
-                          <div className="mb-3">
-                            <h3 className="text-lg font-semibold text-foreground">
-                              Loaded Fries
-                            </h3>
-                            <span className="text-xl font-bold text-yellow-600 px-2 py-1 inline-block mt-2">
-                              £5.50
-                            </span>
-                          </div>
-                          
-                          <p className="text-sm text-muted-foreground leading-relaxed mb-4 flex-grow">
-                            Fries topped with cheese, bacon, and green sauce
-                          </p>
-                          
                           <Button
                             size="sm"
                             variant="outline"
@@ -497,7 +443,7 @@ const MenuPage: React.FC = () => {
                 if (selectedCategory === 'Steak') {
                   hasItems = filteredItems.some(item => item.category === 'Main Courses');
                 } else if (selectedCategory === 'Fries') {
-                  hasItems = menuItems.some(item => item.name.includes('Fries') && !item.name.includes('Loaded'));
+                  hasItems = menuItems.some(item => item.name === 'Classic Fries');
                 } else if (selectedCategory === 'Drinks') {
                   hasItems = menuItems.some(item => item.category === 'Add-ons' && item.name.includes('Drink'));
                 } else if (selectedCategory === 'All') {
@@ -551,7 +497,7 @@ const MenuPage: React.FC = () => {
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium">Friday</span>
-                      <span className="text-muted-foreground">12:00 - 18:00</span>
+                      <span className="text-muted-foreground">12:00 - 18:00, 19:00 - 22:00</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium">Saturday</span>
@@ -562,6 +508,114 @@ const MenuPage: React.FC = () => {
                       <span className="text-muted-foreground">12:00 - 16:00</span>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* FAQ Section */}
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-semibold flex items-center">
+                      <HelpCircle className="w-5 h-5 mr-2 text-yellow-600" />
+                      FAQ
+                    </h3>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowFAQ(!showFAQ)}
+                      className="text-yellow-600 hover:text-yellow-700"
+                    >
+                      {showFAQ ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </Button>
+                  </div>
+
+                  {showFAQ && (
+                    <div className="space-y-4">
+                      <div className="border-b border-border pb-4">
+                        <button
+                          className="w-full text-left flex items-center justify-between py-2 hover:text-yellow-600 transition-colors"
+                          onClick={() => setExpandedFAQ(expandedFAQ === 1 ? null : 1)}
+                        >
+                          <span className="font-medium">What type of steak do you serve?</span>
+                          {expandedFAQ === 1 ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </button>
+                        {expandedFAQ === 1 && (
+                          <p className="text-sm text-muted-foreground mt-2">
+                            We serve premium quality beef steaks, including ribeye, sirloin, and tenderloin cuts.
+                            All our steaks are sourced from local suppliers and cooked to your preferred doneness.
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="border-b border-border pb-4">
+                        <button
+                          className="w-full text-left flex items-center justify-between py-2 hover:text-yellow-600 transition-colors"
+                          onClick={() => setExpandedFAQ(expandedFAQ === 2 ? null : 2)}
+                        >
+                          <span className="font-medium">How does the ordering process work?</span>
+                          {expandedFAQ === 2 ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </button>
+                        {expandedFAQ === 2 && (
+                          <p className="text-sm text-muted-foreground mt-2">
+                            Simply browse our menu, add items to your cart, and proceed to checkout.
+                            You'll need to create an account or sign in to place an order. Orders can be placed
+                            for immediate pickup or scheduled for later collection.
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="border-b border-border pb-4">
+                        <button
+                          className="w-full text-left flex items-center justify-between py-2 hover:text-yellow-600 transition-colors"
+                          onClick={() => setExpandedFAQ(expandedFAQ === 3 ? null : 3)}
+                        >
+                          <span className="font-medium">Do you accommodate dietary restrictions?</span>
+                          {expandedFAQ === 3 ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </button>
+                        {expandedFAQ === 3 && (
+                          <p className="text-sm text-muted-foreground mt-2">
+                            We can accommodate most dietary needs. Please contact us directly for allergies,
+                            gluten-free options, or other special requirements. Our team will work with you
+                            to ensure a safe and enjoyable dining experience.
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="border-b border-border pb-4">
+                        <button
+                          className="w-full text-left flex items-center justify-between py-2 hover:text-yellow-600 transition-colors"
+                          onClick={() => setExpandedFAQ(expandedFAQ === 4 ? null : 4)}
+                        >
+                          <span className="font-medium">How long does it take to prepare an order?</span>
+                          {expandedFAQ === 4 ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </button>
+                        {expandedFAQ === 4 && (
+                          <p className="text-sm text-muted-foreground mt-2">
+                            Preparation times vary by item. Steaks typically take 20-40 minutes depending on
+                            size and doneness preference. You'll see preparation times listed with each menu item.
+                            We recommend ordering ahead during peak hours.
+                          </p>
+                        )}
+                      </div>
+
+                      <div>
+                        <button
+                          className="w-full text-left flex items-center justify-between py-2 hover:text-yellow-600 transition-colors"
+                          onClick={() => setExpandedFAQ(expandedFAQ === 5 ? null : 5)}
+                        >
+                          <span className="font-medium">Can I modify my order after placing it?</span>
+                          {expandedFAQ === 5 ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </button>
+                        {expandedFAQ === 5 && (
+                          <p className="text-sm text-muted-foreground mt-2">
+                            Orders can be modified up to 30 minutes before the scheduled pickup time.
+                            Please contact us immediately if you need to make changes. Once preparation
+                            has begun, modifications may not be possible.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 

@@ -51,14 +51,18 @@ const CurrentOrderManagement: React.FC = () => {
     console.log(`Order ${updatedOrder.id} completed. Time taken: ${updatedOrder.totalTimeTaken} minutes`);
   };
 
-  const handleAddOrder = (customerName: string, customerEmail: string, items: Array<{ item: MenuItem; quantity: number }>) => {
+  const handleAddOrder = (customerName: string, customerEmail: string, items: Array<{ item: MenuItem; quantity: number; addOns?: Array<{ item: MenuItem; quantity: number }> }>) => {
     const newOrder = {
       id: (dummyOrders.length + 1).toString().padStart(3, '0'),
       customerId: 'admin-created', // Placeholder for admin-created orders
       customerName,
       customerEmail,
       items,
-      total: items.reduce((sum, item) => sum + (item.item.price * item.quantity), 0),
+      total: items.reduce((sum, item) => {
+        const itemTotal = item.item.price * item.quantity;
+        const addOnsTotal = (item.addOns || []).reduce((addOnSum, addOn) => addOnSum + (addOn.item.price * addOn.quantity), 0) * item.quantity;
+        return sum + itemTotal + addOnsTotal;
+      }, 0),
       status: 'pending' as const,
       orderDate: new Date().toISOString(),
       estimatedDelivery: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes from now

@@ -16,11 +16,11 @@ export const menuCategories = [
 ];
 
 export const menuItems: MenuItem[] = [
-  // Main Courses
+  // Main Courses - Reorganized by ascending price
   {
     id: '1',
     name: 'Steak & Fries',
-    description: 'Classic steak served with crispy fries',
+    description: 'Classic steak served with crispy fries and signature seasoning',
     price: 12.00,
     image: '',
     category: 'Main Courses',
@@ -66,16 +66,6 @@ export const menuItems: MenuItem[] = [
     category: 'Main Courses',
     isAvailable: true,
     preparationTime: 40
-  },
-  {
-    id: '6',
-    name: 'Custom Item',
-    description: 'Personalized meal with custom pricing',
-    price: 0.00,
-    image: '',
-    category: 'Main Courses',
-    isAvailable: true,
-    preparationTime: 25
   },
 
   // Add-ons
@@ -128,5 +118,15 @@ export const menuItems: MenuItem[] = [
     category: 'Add-ons',
     isAvailable: true,
     preparationTime: 0
+  },
+  {
+    id: '12',
+    name: '£1 Steak Special',
+    description: 'Special steak offer at £1',
+    price: 1.00,
+    image: '',
+    category: 'Main Courses',
+    isAvailable: true,
+    preparationTime: 15
   }
 ];

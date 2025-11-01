@@ -7,13 +7,22 @@ import MenuPage from './components/Menu/MenuPage';
 import OrderHistory from './components/Orders/OrderHistory';
 import AdminDashboard from './components/Admin/AdminDashboard';
 import CustomerDashboard from './components/Customer/CustomerDashboard';
+import CustomerDetailPage from './components/Admin/CustomerDetailPage';
 import './App.css';
 
 function AppContent() {
-   const { user, isLoading } = useAuth();
-   const [currentPage, setCurrentPage] = useState('customer');
+    const { user, isLoading } = useAuth();
+    const [currentPage, setCurrentPage] = useState('customer');
 
   useEffect(() => {
+    // Check for hash-based navigation (e.g., customer-detail:123)
+    const hash = window.location.hash;
+    if (hash.startsWith('#customer-detail:')) {
+      const customerId = hash.replace('#customer-detail:', '');
+      setCurrentPage(`customer-detail:${customerId}`);
+      return;
+    }
+
     if (!isLoading && user) {
       // Redirect based on user role after authentication
       if (user.isAdmin) {
@@ -49,6 +58,8 @@ function AppContent() {
         return <AdminDashboard onNavigate={setCurrentPage} />;
       case 'customer':
         return <CustomerDashboard />;
+      case 'customer-detail':
+        return <CustomerDetailPage customerId={currentPage.split(':')[1]} onBack={() => setCurrentPage('admin')} />;
       case 'profile':
         return (
           <div className="min-h-screen bg-background py-8 flex items-center justify-center">

@@ -17,25 +17,14 @@ const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [selectedItems, setSelectedItems] = useState<Array<{ item: MenuItem; quantity: number; addOns: Array<{ item: MenuItem; quantity: number }> }>>([]);
+  const [selectedAddOns, setSelectedAddOns] = useState<{ [itemId: string]: Array<{ item: MenuItem; quantity: number }> }>({});
 
   const handleAddItem = (item: MenuItem, mainItemId?: string) => {
     if (item.category === 'Add-ons' && mainItemId) {
       // Add add-on to a specific main item
-      setSelectedItems(selectedItems.map(si => {
-        if (si.item.id === mainItemId) {
-          const existingAddOn = si.addOns.find(ao => ao.item.id === item.id);
-          if (existingAddOn) {
-            return {
-              ...si,
-              addOns: si.addOns.map(ao =>
-                ao.item.id === item.id ? { ...ao, quantity: ao.quantity + 1 } : ao
-              )
-            };
-          } else {
-            return { ...si, addOns: [...si.addOns, { item, quantity: 1 }] };
-          }
-        }
-        return si;
+      setSelectedAddOns(prev => ({
+        ...prev,
+        [mainItemId]: prev[mainItemId] ? [...prev[mainItemId], { item, quantity: 1 }] : [{ item, quantity: 1 }]
       }));
     } else {
       // Add main item
@@ -66,17 +55,24 @@ const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
 
   const handleSubmit = () => {
     if (customerName && customerEmail && selectedItems.length > 0) {
-      onAddOrder(customerName, customerEmail, selectedItems);
+      // Combine main items with their add-ons
+      const itemsWithAddOns = selectedItems.map(item => ({
+        item: item.item,
+        quantity: item.quantity,
+        addOns: selectedAddOns[item.item.id] || []
+      }));
+      onAddOrder(customerName, customerEmail, itemsWithAddOns);
       setIsOpen(false);
       setCustomerName('');
       setCustomerEmail('');
       setSelectedItems([]);
+      setSelectedAddOns({});
     }
   };
 
   const total = selectedItems.reduce((sum, si) => {
     const itemTotal = si.item.price * si.quantity;
-    const addOnsTotal = si.addOns.reduce((addOnSum, addOn) => addOnSum + (addOn.item.price * addOn.quantity), 0) * si.quantity;
+    const addOnsTotal = (selectedAddOns[si.item.id] || []).reduce((addOnSum, addOn) => addOnSum + (addOn.item.price * addOn.quantity), 0) * si.quantity;
     return sum + itemTotal + addOnsTotal;
   }, 0);
 
@@ -165,6 +161,16 @@ const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
                              </Button>
                            ))}
                          </div>
+                         {selectedAddOns[item.id] && selectedAddOns[item.id].length > 0 && (
+                           <div className="mt-2">
+                             <p className="text-xs font-medium text-green-600">Selected add-ons:</p>
+                             {selectedAddOns[item.id].map((addOn, idx) => (
+                               <span key={idx} className="text-xs bg-green-100 text-green-800 px-1 py-0.5 rounded mr-1">
+                                 {addOn.item.name} x{addOn.quantity}
+                               </span>
+                             ))}
+                           </div>
+                         )}
                        </div>
                      </CardContent>
                    </Card>
@@ -185,11 +191,11 @@ const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
                    <div>
                      <p className="font-medium">{si.item.name}</p>
                      <p className="text-sm text-muted-foreground">£{si.item.price.toFixed(2)} each</p>
-                     {si.addOns.length > 0 && (
+                     {(selectedAddOns[si.item.id] || []).length > 0 && (
                        <div className="mt-2">
                          <p className="text-xs font-semibold text-muted-foreground">Add-ons:</p>
                          <p className="text-xs text-muted-foreground">
-                           {si.addOns.map(addOn => `${addOn.item.name} x${addOn.quantity}`).join(', ')}
+                           {(selectedAddOns[si.item.id] || []).map(addOn => `${addOn.item.name} x${addOn.quantity}`).join(', ')}
                          </p>
                        </div>
                      )}

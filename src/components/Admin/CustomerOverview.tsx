@@ -6,7 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Users, ShoppingCart, DollarSign, Search, Mail } from 'lucide-react';
 import { dummyOrders } from '../../data/orderData';
 
-const CustomerOverview: React.FC = () => {
+interface CustomerOverviewProps {
+  onNavigate: (page: string) => void;
+}
+
+const CustomerOverview: React.FC<CustomerOverviewProps> = ({ onNavigate }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
   // Generate customer data from orders
@@ -180,7 +184,7 @@ const CustomerOverview: React.FC = () => {
                          <Mail className="w-4 h-4 mr-1" />
                          Email
                        </Button>
-                       <Button size="sm" variant="outline">
+                       <Button size="sm" variant="outline" onClick={() => onNavigate(`customer-detail:${customer.id}`)}>
                          View Orders
                        </Button>
                      </div>

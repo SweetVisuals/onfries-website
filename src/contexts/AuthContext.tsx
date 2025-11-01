@@ -104,11 +104,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     }
 
-    // User profile is now automatically created via database trigger
-    // No need to manually insert into users table
+    // If signup was successful and we have a user, automatically sign them in
+    if (data.user) {
+      // Check if the user is already authenticated (no email confirmation required)
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData.session) {
+        // User is already signed in, return success
+        setIsLoading(false);
+        return true;
+      } else {
+        // Try to sign in automatically after signup
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (signInError) {
+          console.error('Auto-login after signup failed:', signInError.message);
+          // Still return true for successful signup, but user will need to sign in manually
+          setIsLoading(false);
+          return true;
+        }
+
+        setIsLoading(false);
+        return !!signInData.user;
+      }
+    }
 
     setIsLoading(false);
-    return !!data.user;
+    return false;
   };
 
   const logout = async () => {

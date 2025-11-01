@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ShoppingCart, DollarSign, Users, TrendingUp } from 'lucide-react';
+import { ShoppingCart, DollarSign, Users, TrendingUp, Clock, Settings } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -37,6 +37,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   const [revenueOverTime, setRevenueOverTime] = useState<RevenueData[]>([]);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [storeOpen, setStoreOpen] = useState(true);
 
   const handleNavigate = (page: string) => {
     onNavigate(page);
@@ -130,17 +131,35 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
 
         <div className="mb-8 flex justify-center">
           <div className="w-full max-w-4xl">
-            <Tabs
-              tabs={[
-                { id: "overview", label: "Overview" },
-                { id: "current-orders", label: "Current Orders" },
-                { id: "past-orders", label: "Past Orders" },
-                { id: "stock", label: "Stock" },
-                { id: "menu", label: "Menu" },
-                { id: "customers", label: "Customers" }
-              ]}
-              onTabChange={(tabId) => setSelectedTab(tabId)}
-            />
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-full max-w-4xl">
+                <Tabs
+                  tabs={[
+                    { id: "overview", label: "Overview" },
+                    { id: "current-orders", label: "Current Orders" },
+                    { id: "past-orders", label: "Past Orders" },
+                    { id: "stock", label: "Stock" },
+                    { id: "menu", label: "Menu" },
+                    { id: "customers", label: "Customers" }
+                  ]}
+                  onTabChange={(tabId) => setSelectedTab(tabId)}
+                />
+              </div>
+              <div className="flex items-center gap-2 ml-4">
+                <Settings className="w-4 h-4" />
+                <span className="text-sm font-medium">Store Status:</span>
+                <button
+                  onClick={() => setStoreOpen(!storeOpen)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                    storeOpen
+                      ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                      : 'bg-red-100 text-red-800 hover:bg-red-200'
+                  }`}
+                >
+                  {storeOpen ? 'Open' : 'Closed'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -202,6 +221,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                       <div className="text-2xl font-bold">{stats.totalCustomers}</div>
                       <p className="text-xs text-muted-foreground">
                         {stats.customersChange >= 0 ? '+' : ''}{stats.customersChange.toFixed(1)} new today
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Average Order Time</CardTitle>
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{stats.averageOrderTime.toFixed(1)}m</div>
+                      <p className="text-xs text-muted-foreground">
+                        Average completion time
                       </p>
                     </CardContent>
                   </Card>
@@ -306,7 +338,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
 
         {selectedTab === 'menu' && <MenuManagement />}
 
-        {selectedTab === 'customers' && <CustomerOverview />}
+        {selectedTab === 'customers' && <CustomerOverview onNavigate={handleNavigate} />}
       </div>
     </div>
   );

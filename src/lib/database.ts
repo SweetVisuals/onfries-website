@@ -66,6 +66,7 @@ export interface DashboardStats {
   ordersChange: number;
   averageOrderChange: number;
   customersChange: number;
+  averageOrderTime: number;
 }
 
 // Revenue data for charts
@@ -88,7 +89,7 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
   // Get today's orders
   const { data: todayOrders, error: todayError } = await supabase
     .from('orders')
-    .select('total, customer_id')
+    .select('*')
     .gte('order_date', today);
 
   if (todayError) throw todayError;
@@ -120,6 +121,17 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
   const averageOrderChange = yesterdayAverageOrder > 0 ? ((averageOrderValue - yesterdayAverageOrder) / yesterdayAverageOrder) * 100 : 0;
   const customersChange = yesterdayCustomers > 0 ? ((totalCustomers - yesterdayCustomers) / yesterdayCustomers) * 100 : 0;
 
+  // Calculate average order time for completed orders
+  const completedOrders = todayOrders?.filter(order => order.status === 'delivered' && order.completedAt) || [];
+  const averageOrderTime = completedOrders.length > 0
+    ? completedOrders.reduce((sum: number, order: any) => {
+        const orderDate = new Date(order.order_date);
+        const completedAt = new Date(order.completedAt!);
+        const timeTaken = (completedAt.getTime() - orderDate.getTime()) / (1000 * 60); // in minutes
+        return sum + timeTaken;
+      }, 0) / completedOrders.length
+    : 0;
+
   return {
     todayRevenue,
     totalOrders,
@@ -129,6 +141,7 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
     ordersChange,
     averageOrderChange,
     customersChange,
+    averageOrderTime,
   };
 };
 
