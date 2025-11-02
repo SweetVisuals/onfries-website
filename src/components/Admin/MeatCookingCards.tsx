@@ -8,34 +8,34 @@ interface MeatCookingCardsProps {
 
 // Define meat categories with their corresponding icons and keywords
 const meatCategories = [
-  {
-    id: 'steak',
-    name: 'Steak',
-    icon: Beef,
-    keywords: ['steak', 'deluxe steak', 'premium steak', 'quadzilla', 'centurion', 'custom item'],
-    color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-  },
-  {
-    id: 'lamb',
-    name: 'Lamb',
-    icon: Cookie,
-    keywords: ['lamb chop'],
-    color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-  },
-  {
-    id: 'ribs',
-    name: 'Short Rib',
-    icon: Drumstick,
-    keywords: ['short rib'],
-    color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-  },
-  {
-    id: 'other',
-    name: '£1 Steak Special',
-    icon: Fish,
-    keywords: ['fries', 'sauce', 'drink', 'steak special'],
-    color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-  }
+{
+  id: 'steak',
+  name: 'Steak',
+  icon: Beef,
+  keywords: ['steak', 'deluxe steak', 'premium steak', 'quadzilla', 'centurion', 'custom item'],
+  color: 'bg-card text-card-foreground border border-border'
+},
+{
+  id: 'lamb',
+  name: 'Lamb',
+  icon: Cookie,
+  keywords: ['lamb chop'],
+  color: 'bg-card text-card-foreground border border-border'
+},
+{
+  id: 'ribs',
+  name: 'Short Rib',
+  icon: Drumstick,
+  keywords: ['short rib'],
+  color: 'bg-card text-card-foreground border border-border'
+},
+{
+  id: 'other',
+  name: '£1 Steak Special',
+  icon: Fish,
+  keywords: ['fries', 'sauce', 'drink', 'steak special'],
+  color: 'bg-card text-card-foreground border border-border'
+}
 ];
 
 const MeatCookingCards: React.FC<MeatCookingCardsProps> = ({ orders }) => {
@@ -74,14 +74,14 @@ const MeatCookingCards: React.FC<MeatCookingCardsProps> = ({ orders }) => {
         return (
           <div
             key={meat.id}
-            className={`${meat.color} rounded-lg p-4 border-2 border-opacity-20 transition-all duration-200 hover:scale-105 hover:shadow-lg`}
+            className={`${meat.color} rounded-lg p-4 transition-all duration-200 hover:scale-105 hover:shadow-lg`}
           >
             <div className="flex items-center justify-between mb-2">
-              <IconComponent className="w-6 h-6" />
-              <span className="text-2xl font-bold">{meat.quantity}</span>
+              <IconComponent className="w-6 h-6 text-muted-foreground" />
+              <span className="text-2xl font-bold text-card-foreground">{meat.quantity}</span>
             </div>
-            <h3 className="font-semibold text-sm">{meat.name}</h3>
-            <p className="text-xs opacity-80">to cook</p>
+            <h3 className="font-semibold text-sm text-card-foreground">{meat.name}</h3>
+            <p className="text-xs text-muted-foreground">to cook</p>
           </div>
         );
       })}

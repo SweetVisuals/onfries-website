@@ -11,13 +11,14 @@ import CurrentOrderManagement from './CurrentOrderManagement';
 import OrderHistory from './OrderHistory';
 import StockManagement from './StockManagement';
 import CustomerOverview from './CustomerOverview';
-import MenuManagement from './MenuManagement';
 import { Tabs } from '../ui/vercel-tabs';
 import {
   getDashboardStats,
   getRevenueByItemToday,
   getRevenueOverTime,
   getRecentOrders,
+  getStoreStatus,
+  setStoreStatus,
   DashboardStats,
   RevenueData,
   RevenueByItem,
@@ -55,17 +56,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        const [statsData, revenueByItemData, revenueOverTimeData, recentOrdersData] = await Promise.all([
+        const [statsData, revenueByItemData, revenueOverTimeData, recentOrdersData, storeStatusData] = await Promise.all([
           getDashboardStats(),
           getRevenueByItemToday(),
           getRevenueOverTime(timeframe),
-          getRecentOrders(5)
+          getRecentOrders(5),
+          getStoreStatus()
         ]);
 
         setStats(statsData);
         setRevenueByItem(revenueByItemData);
         setRevenueOverTime(revenueOverTimeData);
         setRecentOrders(recentOrdersData);
+        setStoreOpen(storeStatusData);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
       } finally {
@@ -87,8 +90,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
         return 'Past Orders';
       case 'stock':
         return 'Stock Management';
-      case 'menu':
-        return 'Menu Management';
       case 'customers':
         return 'Customer Overview';
       default:
@@ -101,13 +102,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
       case 'overview':
         return 'Track your restaurant performance and key metrics';
       case 'current-orders':
-        return 'Manage active orders and their status';
+        return '';
       case 'past-orders':
-        return 'View completed orders and order history';
+        return '';
       case 'stock':
         return 'Monitor and manage inventory levels';
-      case 'menu':
-        return 'Manage menu items and their details';
       case 'customers':
         return 'View customer information and analytics';
       default:
@@ -139,7 +138,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                     { id: "current-orders", label: "Current Orders" },
                     { id: "past-orders", label: "Past Orders" },
                     { id: "stock", label: "Stock" },
-                    { id: "menu", label: "Menu" },
                     { id: "customers", label: "Customers" }
                   ]}
                   onTabChange={(tabId) => setSelectedTab(tabId)}
@@ -149,7 +147,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                 <Settings className="w-4 h-4" />
                 <span className="text-sm font-medium">Store Status:</span>
                 <button
-                  onClick={() => setStoreOpen(!storeOpen)}
+                  onClick={async () => {
+                    const newStatus = !storeOpen;
+                    try {
+                      await setStoreStatus(newStatus);
+                      setStoreOpen(newStatus);
+                    } catch (error) {
+                      console.error('Error updating store status:', error);
+                    }
+                  }}
                   className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                     storeOpen
                       ? 'bg-green-100 text-green-800 hover:bg-green-200'
@@ -336,7 +342,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
 
         {selectedTab === 'stock' && <StockManagement />}
 
-        {selectedTab === 'menu' && <MenuManagement />}
 
         {selectedTab === 'customers' && <CustomerOverview onNavigate={handleNavigate} />}
       </div>

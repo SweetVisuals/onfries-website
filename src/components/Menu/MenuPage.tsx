@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,18 +11,106 @@ import { useToast } from '@/hooks/use-toast';
 import { getOrderingStatus } from '../../lib/utils';
 import { Component as FloatingAuthModal } from '../ui/sign-in-flo';
 
+// Menu Item Card Component
+const MenuItemCard: React.FC<{ item: any; orderingStatus: any; onAddToCart: (item: any) => void }> = ({ item, orderingStatus, onAddToCart }) => {
+  return (
+    <Card className="hover:shadow-lg transition-all duration-200 hover:border-yellow-400 group border-yellow-200">
+      <CardContent className="p-6">
+        <div className="flex flex-col h-full">
+          <div className="mb-3">
+            <h3 className="text-lg font-semibold text-foreground group-hover:text-yellow-600 transition-colors">
+              {item.name}
+            </h3>
+            <span className="text-xl font-bold text-yellow-600 px-2 py-1 inline-block mt-2">
+              £{item.price.toFixed(2)}
+            </span>
+          </div>
+          
+          <p className="text-sm text-muted-foreground leading-relaxed mb-4 flex-grow">
+            {item.description}
+          </p>
+          
+          <div className="flex items-center justify-between mt-auto">
+            <div className="flex items-center text-xs text-muted-foreground">
+              <Clock className="w-3 h-3 mr-1" />
+              <span>{item.preparationTime} min</span>
+            </div>
+            
+            <Button
+              size="sm"
+              onClick={() => onAddToCart(item)}
+              disabled={!item.isAvailable || !orderingStatus.allowed}
+              variant={!orderingStatus.allowed ? 'secondary' : 'default'}
+              className="bg-yellow-500 hover:bg-yellow-600 text-black font-medium px-4"
+            >
+              {!orderingStatus.allowed ? (
+                <>
+                  <Clock className="w-4 h-4 mr-1" />
+                  Closed
+                </>
+              ) : orderingStatus.isPreOrder ? (
+                <>
+                  <Plus className="w-4 h-4 mr-1" />
+                  Pre-Order
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4 mr-1" />
+                  Add
+                </>
+              )}
+            </Button>
+          </div>
+          
+          {!item.isAvailable && (
+            <div className="mt-2">
+              <Badge variant="destructive" className="text-xs">
+                Currently Unavailable
+              </Badge>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
 const MenuPage: React.FC = () => {
   const { addItem } = useCart();
   const { user } = useAuth();
   const { toast } = useToast();
-  const { menuItems, loading, error } = useMenuItems();
+  const { menuItems, loading, error, refreshMenu } = useMenuItems();
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedCategory, setSelectedCategory] = useState('Steak');
   const [showAddOns, setShowAddOns] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [showFAQ, setShowFAQ] = useState(false);
   const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
-  const orderingStatus = getOrderingStatus();
+  const [showCustomizeDialog, setShowCustomizeDialog] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [selectedAddOns, setSelectedAddOns] = useState<{[key: string]: {item: any, quantity: number}}>({});
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [orderingStatus, setOrderingStatus] = useState({ allowed: true, isPreOrder: false });
+
+  useEffect(() => {
+    const fetchOrderingStatus = async () => {
+      try {
+        const status = await getOrderingStatus();
+        console.log('Fetched ordering status:', status);
+        setOrderingStatus(status);
+      } catch (error) {
+        console.error('Error fetching ordering status:', error);
+      }
+    };
+
+    // Fetch immediately
+    fetchOrderingStatus();
+
+    // Poll every 5 seconds to check for admin status changes (reduced for testing)
+    const interval = setInterval(fetchOrderingStatus, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const filteredItems = menuItems.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -30,17 +118,19 @@ const MenuPage: React.FC = () => {
 
     let matchesCategory = true;
     if (selectedCategory === 'Steak') {
-      matchesCategory = item.category === 'Main Courses';
+      matchesCategory = item.category === 'Main Courses' && item.name !== 'Fries';
     } else if (selectedCategory === 'Fries') {
-      // Show fries items for the Fries filter - only classic fries now
-      matchesCategory = item.name === 'Classic Fries';
+      // For fries filter, show fries items
+      matchesCategory = item.name === 'Premium Steak & Fries' || item.name === 'Fries';
     } else if (selectedCategory === 'Drinks') {
-      matchesCategory = item.category === 'Add-ons' && item.name.includes('Drink');
-    } else if (selectedCategory !== 'All') {
+      matchesCategory = item.name.includes('Drink');
+    } else if (selectedCategory === 'All') {
+      matchesCategory = true;
+    } else {
       matchesCategory = item.category === selectedCategory;
     }
 
-    return matchesSearch && matchesCategory && item.isAvailable && item.category !== 'Add-ons' && item.name !== 'Custom Item';
+    return matchesSearch && matchesCategory && item.isAvailable && item.name !== 'Custom Item';
   });
 
   const handleAddToCart = (item: any) => {
@@ -58,16 +148,69 @@ const MenuPage: React.FC = () => {
       return;
     }
 
-    addItem(item);
+    // For main courses, show customization dialog instead of adding directly
+    if (item.category === 'Main Courses') {
+      setSelectedItem(item);
+      setShowCustomizeDialog(true);
+    } else {
+      // For add-ons, add directly
+      addItem(item);
+      toast({
+        title: orderingStatus.isPreOrder ? 'Pre-order added to cart' : 'Added to cart',
+        description: `${item.name} has been added to your cart.`,
+      });
+    }
+  };
+
+  const handleConfirmCustomize = () => {
+    // Convert selectedAddOns object to array with quantities
+    const addOnsWithQuantities = Object.values(selectedAddOns).map(({ item, quantity }) => ({
+      ...item,
+      quantity
+    }));
+    
+    // Calculate total price with add-ons quantities
+    const totalPrice = selectedItem.price + addOnsWithQuantities.reduce((sum, addOn) => sum + (addOn.price * addOn.quantity), 0);
+    
+    // Create customized item
+    const customizedItem = {
+      ...selectedItem,
+      price: totalPrice,
+      addOns: addOnsWithQuantities,
+      name: selectedItem.name + (Object.keys(selectedAddOns).length > 0 ? ' + Add-ons' : '')
+    };
+
+    addItem(customizedItem);
     toast({
-      title: orderingStatus.isPreOrder ? 'Pre-order added to cart' : 'Added to cart',
-      description: `${item.name} has been added to your cart.`,
+      title: orderingStatus.isPreOrder ? 'Custom order added to cart' : 'Order added to cart',
+      description: `${customizedItem.name} has been added to your cart.`,
     });
 
-    // Show add-ons after adding main item
-    if (item.category === 'Main Courses') {
-      setShowAddOns(true);
-    }
+    // Reset state
+    setShowCustomizeDialog(false);
+    setSelectedItem(null);
+    setSelectedAddOns({});
+  };
+
+  const updateAddOnQuantity = (addOn: any, newQuantity: number) => {
+    setSelectedAddOns(prev => {
+      const newSelected = { ...prev };
+      if (newQuantity === 0) {
+        delete newSelected[addOn.id];
+      } else {
+        newSelected[addOn.id] = {
+          item: addOn,
+          quantity: newQuantity
+        };
+      }
+      return newSelected;
+    });
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refreshMenu();
+    setIsRefreshing(false);
   };
 
   const handleAddAddOn = (addOn: any) => {
@@ -85,44 +228,91 @@ const MenuPage: React.FC = () => {
     });
   };
 
+  const noItemsFound = (() => {
+    let hasItems = false;
+    if (selectedCategory === 'Steak') {
+      hasItems = filteredItems.some(item => item.category === 'Main Courses');
+    } else if (selectedCategory === 'Fries') {
+      hasItems = filteredItems.length > 0;
+    } else if (selectedCategory === 'Drinks') {
+      hasItems = filteredItems.length > 0;
+    } else if (selectedCategory === 'All') {
+      hasItems = filteredItems.length > 0;
+    }
+    
+    return !hasItems && (
+      <div className="text-center py-12">
+        <p className="text-xl text-muted-foreground">No items found matching your criteria.</p>
+        <Button
+          variant="outline"
+          className="mt-4"
+          onClick={() => {
+            setSearchTerm('');
+            setSelectedCategory('Steak');
+          }}
+        >
+          Clear Filters
+        </Button>
+      </div>
+    );
+  })();
+
   return (
     <div className="min-h-screen bg-background py-4">
       <div className="container mx-auto px-4">
         <div className="text-center mb-4">
           <h1 className="text-4xl font-bold text-foreground mb-2">Our Menu</h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Discover our delicious selection of freshly prepared dishes
+            Fresh steak and fries with premium add-ons
           </p>
         </div>
 
-{/* Search and Filters */}
+        {/* Search and Filters */}
         <div className="mb-6">
-          {/* Search - Mobile: Full width, Desktop: Left side */}
-          <div className="w-full md:w-64 md:mb-0 mb-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-              <Input
-                type="text"
-                placeholder="Search menu items..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+          <div className="flex flex-col md:flex-row gap-4 items-center">
+            <div className="w-full md:w-64">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  type="text"
+                  placeholder="Search menu items..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
             </div>
-          </div>
 
-          {/* Category Filters - Mobile: Centered, Desktop: Right side */}
-          <div className="flex flex-wrap gap-2 justify-center md:justify-end">
-            {['All', 'Steak', 'Fries', 'Drinks'].map((filter) => (
+            <div className="flex flex-wrap gap-2 justify-center md:justify-end">
+              {['All', 'Steak', 'Fries', 'Drinks'].map((filter) => (
+                <Button
+                  key={filter}
+                  variant={selectedCategory === filter ? 'default' : 'outline'}
+                  onClick={() => setSelectedCategory(filter)}
+                  className="text-sm"
+                >
+                  {filter}
+                </Button>
+              ))}
+              
               <Button
-                key={filter}
-                variant={selectedCategory === filter ? 'default' : 'outline'}
-                onClick={() => setSelectedCategory(filter)}
-                className="text-sm"
+                variant="outline"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="text-sm ml-2"
               >
-                {filter}
+                {isRefreshing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                    Refreshing...
+                  </>
+                ) : (
+                  <>
+                    Refresh Menu
+                  </>
+                )}
               </Button>
-            ))}
+            </div>
           </div>
         </div>
 
@@ -150,327 +340,83 @@ const MenuPage: React.FC = () => {
           <div className="grid lg:grid-cols-3 gap-8">
             {/* Left Column - Menu Items */}
             <div className="lg:col-span-2">
-              {/* Dynamic sections based on filter */}
-              
-              {/* Steak Section */}
-              {(selectedCategory === 'All' || selectedCategory === 'Steak') && (
+              {/* Menu Items Section */}
+              {selectedCategory === 'All' && (
                 <div className="mb-12">
                   <h2 className="text-3xl font-bold text-center mb-8 text-yellow-600 border-b-2 border-yellow-200 pb-2">
-                    Steak
+                    Main Courses
                   </h2>
-                  <div className="grid gap-6 md:grid-cols-3">
+                  <div className="grid gap-6 md:grid-cols-1 max-w-md mx-auto">
                     {filteredItems.filter(item => item.category === 'Main Courses').map((item) => (
-                      <Card key={item.id} className="hover:shadow-lg transition-all duration-200 hover:border-yellow-400 group border-yellow-200">
-                        <CardContent className="p-6">
-                          <div className="flex flex-col h-full">
-                            <div className="mb-3">
-                              <h3 className="text-lg font-semibold text-foreground group-hover:text-yellow-600 transition-colors">
-                                {item.name}
-                              </h3>
-                              <span className="text-xl font-bold text-yellow-600 px-2 py-1 inline-block mt-2">
-                                £{item.price.toFixed(2)}
-                              </span>
-                            </div>
-                            
-                            <p className="text-sm text-muted-foreground leading-relaxed mb-4 flex-grow">
-                              {item.description}
-                            </p>
-                            
-                            <div className="flex items-center justify-between mt-auto">
-                              <div className="flex items-center text-xs text-muted-foreground">
-                                <Clock className="w-3 h-3 mr-1" />
-                                <span>{item.preparationTime} min</span>
-                              </div>
-                              
-                              <Button
-                                size="sm"
-                                onClick={() => handleAddToCart(item)}
-                                disabled={!item.isAvailable || !orderingStatus.allowed}
-                                variant={!orderingStatus.allowed ? 'secondary' : 'default'}
-                                className="bg-yellow-500 hover:bg-yellow-600 text-black font-medium px-4"
-                              >
-                                {!orderingStatus.allowed ? (
-                                  <>
-                                    <Clock className="w-4 h-4 mr-1" />
-                                    Closed
-                                  </>
-                                ) : orderingStatus.isPreOrder ? (
-                                  <>
-                                    <Plus className="w-4 h-4 mr-1" />
-                                    Pre-Order
-                                  </>
-                                ) : (
-                                  <>
-                                    <Plus className="w-4 h-4 mr-1" />
-                                    Add
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                            
-                            {!item.isAvailable && (
-                              <div className="mt-2">
-                                <Badge variant="destructive" className="text-xs">
-                                  Currently Unavailable
-                                </Badge>
-                              </div>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
+                      <MenuItemCard key={item.id} item={item} orderingStatus={orderingStatus} onAddToCart={handleAddToCart} />
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Fries Section */}
-              {(selectedCategory === 'All' || selectedCategory === 'Fries') && (
+              {selectedCategory === 'Steak' && (
+                <div className="mb-12">
+                  <h2 className="text-3xl font-bold text-center mb-8 text-yellow-600 border-b-2 border-yellow-200 pb-2">
+                    Premium Steak & Fries
+                  </h2>
+                  <div className="grid gap-6 md:grid-cols-1 max-w-md mx-auto">
+                    {filteredItems.filter(item => item.category === 'Main Courses').map((item) => (
+                      <MenuItemCard key={item.id} item={item} orderingStatus={orderingStatus} onAddToCart={handleAddToCart} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedCategory === 'Fries' && (
                 <div className="mb-12">
                   <h2 className="text-3xl font-bold text-center mb-8 text-yellow-600 border-b-2 border-yellow-200 pb-2">
                     Fries
                   </h2>
                   <div className="grid gap-6 md:grid-cols-1 max-w-md mx-auto">
-                    {/* Since all steak items come with fries, show them as add-ons or sides */}
-                    <Card className="hover:shadow-lg transition-all duration-200 hover:border-yellow-400 group border-yellow-200">
-                      <CardContent className="p-6">
-                        <div className="flex flex-col h-full text-center">
-                          <div className="mb-3">
-                            <h3 className="text-lg font-semibold text-foreground">
-                              Classic Fries
-                            </h3>
-                            <span className="text-xl font-bold text-yellow-600 px-2 py-1 inline-block mt-2">
-                              £3.50
-                            </span>
-                          </div>
-
-                          <p className="text-sm text-muted-foreground leading-relaxed mb-4 flex-grow">
-                            Crispy golden fries served with all steak orders
-                          </p>
-
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="bg-yellow-500 hover:bg-yellow-600 text-black font-medium px-4"
-                          >
-                            <Plus className="w-4 h-4 mr-1" />
-                            Add Extra
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </div>
-              )}
-
-              {/* Drinks Section */}
-              {(selectedCategory === 'All' || selectedCategory === 'Drinks') && (
-                <div className="mb-12">
-                  <h2 className="text-3xl font-bold text-center mb-8 text-yellow-600 border-b-2 border-yellow-200 pb-2">
-                    Drinks
-                  </h2>
-                  <div className="grid gap-6 md:grid-cols-3">
-                    {menuItems.filter(item => item.category === 'Add-ons' && item.name.includes('Drink')).map((drink) => (
-                      <Card key={drink.id} className="hover:shadow-lg transition-all duration-200 hover:border-yellow-400 group border-yellow-200">
-                        <CardContent className="p-6">
-                          <div className="flex flex-col h-full text-center">
-                            <div className="mb-3">
-                              <h3 className="text-lg font-semibold text-foreground group-hover:text-yellow-600 transition-colors">
-                                {drink.name}
-                              </h3>
-                              <span className="text-xl font-bold text-yellow-600 px-2 py-1 inline-block mt-2">
-                                £{drink.price.toFixed(2)}
-                              </span>
-                            </div>
-                            
-                            <p className="text-sm text-muted-foreground leading-relaxed mb-4 flex-grow">
-                              {drink.description}
-                            </p>
-                            
-                            <Button
-                              size="sm"
-                              onClick={() => handleAddAddOn(drink)}
-                              disabled={!drink.isAvailable || !orderingStatus.allowed}
-                              variant="outline"
-                              className="bg-yellow-500 hover:bg-yellow-600 text-black font-medium px-4"
-                            >
-                              <Plus className="w-4 h-4 mr-1" />
-                              Add
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
+                    {filteredItems.map((item) => (
+                      <MenuItemCard key={item.id} item={item} orderingStatus={orderingStatus} onAddToCart={handleAddToCart} />
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Add-ons Section - Only show when showAddOns is true */}
-              {showAddOns && (
+              {selectedCategory === 'Drinks' && (
                 <div className="mb-12">
-                  <h3 className="text-2xl font-bold text-center mb-8 text-yellow-600 border-b-2 border-yellow-200 pb-2">
-                    Add Some Extras
-                  </h3>
-                  
-                  {/* Meat Add-ons */}
-                  <div className="mb-8">
-                    <h4 className="text-xl font-semibold mb-4 text-center text-foreground">Meat Add-ons</h4>
-                    <div className="grid gap-4 md:grid-cols-3">
-                      {menuItems.filter(item => item.category === 'Add-ons' && (item.name.includes('Lamb') || item.name.includes('Ribs'))).map((addOn) => (
-                        <Card key={addOn.id} className="hover:shadow-lg transition-all duration-200 hover:border-yellow-400 group border-yellow-200">
-                          <CardContent className="p-4">
-                            <div className="text-center">
-                              <h5 className="font-semibold text-foreground group-hover:text-yellow-600 transition-colors">
-                                {addOn.name}
-                              </h5>
-                              <p className="text-sm text-muted-foreground mb-2">
-                                {addOn.description}
-                              </p>
-                              <span className="text-lg font-bold text-yellow-600">
-                                £{addOn.price.toFixed(2)}
-                              </span>
-                              <div className="mt-3">
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleAddAddOn(addOn)}
-                                  disabled={!addOn.isAvailable || !orderingStatus.allowed}
-                                  variant="outline"
-                                  className="text-black border-yellow-400 hover:bg-yellow-50 w-full"
-                                >
-                                  <Plus className="w-4 h-4 mr-1" />
-                                  Add
-                                </Button>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Sauces */}
-                  <div className="mb-8">
-                    <h4 className="text-xl font-semibold mb-4 text-center text-foreground">Sauces</h4>
-                    <div className="grid gap-4 md:grid-cols-3">
-                      {menuItems.filter(item => item.category === 'Add-ons' && item.name.includes('Sauce')).map((addOn) => (
-                        <Card key={addOn.id} className="hover:shadow-lg transition-all duration-200 hover:border-yellow-400 group border-yellow-200">
-                          <CardContent className="p-4">
-                            <div className="text-center">
-                              <h5 className="font-semibold text-foreground group-hover:text-yellow-600 transition-colors">
-                                {addOn.name}
-                              </h5>
-                              <p className="text-sm text-muted-foreground mb-2">
-                                {addOn.description}
-                              </p>
-                              <span className="text-lg font-bold text-yellow-600">
-                                £{addOn.price.toFixed(2)}
-                              </span>
-                              <div className="mt-3">
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleAddAddOn(addOn)}
-                                  disabled={!addOn.isAvailable || !orderingStatus.allowed}
-                                  variant="outline"
-                                  className="text-black border-yellow-400 hover:bg-yellow-50 w-full"
-                                >
-                                  <Plus className="w-4 h-4 mr-1" />
-                                  Add
-                                </Button>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Drinks */}
-                  <div className="mb-8">
-                    <h4 className="text-xl font-semibold mb-4 text-center text-foreground">Drinks</h4>
-                    <div className="grid gap-4 md:grid-cols-3">
-                      {menuItems.filter(item => item.category === 'Add-ons' && item.name.includes('Drink')).map((addOn) => (
-                        <Card key={addOn.id} className="hover:shadow-lg transition-all duration-200 hover:border-yellow-400 group border-yellow-200">
-                          <CardContent className="p-4">
-                            <div className="text-center">
-                              <h5 className="font-semibold text-foreground group-hover:text-yellow-600 transition-colors">
-                                {addOn.name}
-                              </h5>
-                              <p className="text-sm text-muted-foreground mb-2">
-                                {addOn.description}
-                              </p>
-                              <span className="text-lg font-bold text-yellow-600">
-                                £{addOn.price.toFixed(2)}
-                              </span>
-                              <div className="mt-3">
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleAddAddOn(addOn)}
-                                  disabled={!addOn.isAvailable || !orderingStatus.allowed}
-                                  variant="outline"
-                                  className="text-black border-yellow-400 hover:bg-yellow-50 w-full"
-                                >
-                                  <Plus className="w-4 h-4 mr-1" />
-                                  Add
-                                </Button>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="text-center mt-6">
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowAddOns(false)}
-                      className="mr-4"
-                    >
-                      Skip Add-ons
-                    </Button>
-                    <Button
-                      onClick={() => setShowAddOns(false)}
-                      className="bg-yellow-500 hover:bg-yellow-600 text-black"
-                    >
-                      Continue to Cart
-                    </Button>
+                  <h2 className="text-3xl font-bold text-center mb-8 text-yellow-600 border-b-2 border-yellow-200 pb-2">
+                    Drinks
+                  </h2>
+                  <div className="grid gap-6 md:grid-cols-1 max-w-md mx-auto">
+                    {filteredItems.map((item) => (
+                      <MenuItemCard key={item.id} item={item} orderingStatus={orderingStatus} onAddToCart={handleAddToCart} />
+                    ))}
                   </div>
                 </div>
               )}
 
-              {(() => {
-                // Determine if we should show "no items" message based on current filter
-                let hasItems = false;
-                if (selectedCategory === 'Steak') {
-                  hasItems = filteredItems.some(item => item.category === 'Main Courses');
-                } else if (selectedCategory === 'Fries') {
-                  hasItems = menuItems.some(item => item.name === 'Classic Fries');
-                } else if (selectedCategory === 'Drinks') {
-                  hasItems = menuItems.some(item => item.category === 'Add-ons' && item.name.includes('Drink'));
-                } else if (selectedCategory === 'All') {
-                  hasItems = filteredItems.length > 0;
-                }
-                
-                return !hasItems && (
-                  <div className="text-center py-12">
-                    <p className="text-xl text-muted-foreground">No items found matching your criteria.</p>
-                    <Button
-                      variant="outline"
-                      className="mt-4"
-                      onClick={() => {
-                        setSearchTerm('');
-                        setSelectedCategory('All');
-                      }}
-                    >
-                      Clear Filters
-                    </Button>
-                  </div>
-                );
-              })()}
+              {/* Remove add-ons section from main menu display */}
+              {showAddOns && (
+                <div className="text-center mt-6">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowAddOns(false)}
+                    className="mr-4"
+                  >
+                    Skip Add-ons
+                  </Button>
+                  <Button
+                    onClick={() => setShowAddOns(false)}
+                    className="bg-yellow-500 hover:bg-yellow-600 text-black"
+                  >
+                    Continue to Cart
+                  </Button>
+                </div>
+              )}
+
+              {noItemsFound}
             </div>
 
             {/* Right Column - Location & Hours */}
             <div className="space-y-6">
-              {/* Operating Hours Card */}
               <Card className="mt-10">
                 <CardContent className="p-6">
                   <h3 className="text-xl font-semibold mb-4 flex items-center">
@@ -481,37 +427,36 @@ const MenuPage: React.FC = () => {
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span className="font-medium">Monday</span>
-                      <span className="text-muted-foreground">Closed</span>
+                      <span className="text-muted-foreground">24/7</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium">Tuesday</span>
-                      <span className="text-muted-foreground">Closed</span>
+                      <span className="text-muted-foreground">24/7</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium">Wednesday</span>
-                      <span className="text-muted-foreground">12:00 - 18:00</span>
+                      <span className="text-muted-foreground">24/7</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium">Thursday</span>
-                      <span className="text-muted-foreground">12:00 - 18:00</span>
+                      <span className="text-muted-foreground">24/7</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium">Friday</span>
-                      <span className="text-muted-foreground">12:00 - 18:00, 19:00 - 22:00</span>
+                      <span className="text-muted-foreground">24/7</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium">Saturday</span>
-                      <span className="text-muted-foreground">12:00 - 18:00, 19:00 - 22:00</span>
+                      <span className="text-muted-foreground">24/7</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium">Sunday</span>
-                      <span className="text-muted-foreground">12:00 - 16:00</span>
+                      <span className="text-muted-foreground">24/7</span>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* FAQ Section */}
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-4">
@@ -564,7 +509,7 @@ const MenuPage: React.FC = () => {
                         )}
                       </div>
 
-                      <div className="border-b border-border pb-4">
+                      <div>
                         <button
                           className="w-full text-left flex items-center justify-between py-2 hover:text-yellow-600 transition-colors"
                           onClick={() => setExpandedFAQ(expandedFAQ === 3 ? null : 3)}
@@ -580,46 +525,11 @@ const MenuPage: React.FC = () => {
                           </p>
                         )}
                       </div>
-
-                      <div className="border-b border-border pb-4">
-                        <button
-                          className="w-full text-left flex items-center justify-between py-2 hover:text-yellow-600 transition-colors"
-                          onClick={() => setExpandedFAQ(expandedFAQ === 4 ? null : 4)}
-                        >
-                          <span className="font-medium">How long does it take to prepare an order?</span>
-                          {expandedFAQ === 4 ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                        </button>
-                        {expandedFAQ === 4 && (
-                          <p className="text-sm text-muted-foreground mt-2">
-                            Preparation times vary by item. Steaks typically take 20-40 minutes depending on
-                            size and doneness preference. You'll see preparation times listed with each menu item.
-                            We recommend ordering ahead during peak hours.
-                          </p>
-                        )}
-                      </div>
-
-                      <div>
-                        <button
-                          className="w-full text-left flex items-center justify-between py-2 hover:text-yellow-600 transition-colors"
-                          onClick={() => setExpandedFAQ(expandedFAQ === 5 ? null : 5)}
-                        >
-                          <span className="font-medium">Can I modify my order after placing it?</span>
-                          {expandedFAQ === 5 ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                        </button>
-                        {expandedFAQ === 5 && (
-                          <p className="text-sm text-muted-foreground mt-2">
-                            Orders can be modified up to 30 minutes before the scheduled pickup time.
-                            Please contact us immediately if you need to make changes. Once preparation
-                            has begun, modifications may not be possible.
-                          </p>
-                        )}
-                      </div>
                     </div>
                   )}
                 </CardContent>
               </Card>
 
-              {/* Location Card */}
               <Card>
                 <CardContent className="p-6">
                   <h3 className="text-xl font-semibold mb-4 flex items-center">
@@ -638,27 +548,6 @@ const MenuPage: React.FC = () => {
                       <span>01234 567892</span>
                     </div>
 
-                    {/* Embedded Google Map */}
-                    <div className="aspect-video bg-muted rounded-lg overflow-hidden relative">
-                      <iframe
-                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2488.123456789012!2d-0.2674!3d51.3326!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x4875d9b8b8b8b8b8%3A0x1234567890abcdef!2sClock%20Tower%2C%20Kings%20Shade%20Walk%2C%20Epsom%2C%20England%20KT19%208EB!5e0!3m2!1sen!2suk!4v1234567890123!5m2!1sen!2suk"
-                        width="100%"
-                        height="100%"
-                        style={{ border: 0 }}
-                        allowFullScreen
-                        loading="lazy"
-                        referrerPolicy="no-referrer-when-downgrade"
-                        title="OnFries Location"
-                      ></iframe>
-                      {/* Map Pin Overlay */}
-                      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-full -translate-x-24 -translate-y-20 z-10">
-                        <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center shadow-lg">
-                          <MapPin className="w-4 h-4 text-white" />
-                        </div>
-                        <div className="w-1 h-4 bg-red-500 mx-auto"></div>
-                      </div>
-                    </div>
-
                     <Button className="w-full" variant="outline">
                       <Navigation className="w-4 h-4 mr-2" />
                       Get Directions
@@ -666,6 +555,194 @@ const MenuPage: React.FC = () => {
                   </div>
                 </CardContent>
               </Card>
+            </div>
+          </div>
+        )}
+
+        {/* Customize Order Dialog */}
+        {showCustomizeDialog && selectedItem && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+            <div className="relative w-full max-w-2xl mx-4 bg-background rounded-lg shadow-lg">
+              <button
+                onClick={() => setShowCustomizeDialog(false)}
+                className="absolute -top-4 -right-4 z-[60] w-8 h-8 bg-background border border-border rounded-full flex items-center justify-center hover:bg-accent text-xl"
+              >
+                ×
+              </button>
+              
+              <div className="p-6">
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold text-foreground mb-2">{selectedItem.name}</h2>
+                  <p className="text-muted-foreground">{selectedItem.description}</p>
+                  <p className="text-lg font-semibold text-yellow-600 mt-2">Base price: £{selectedItem.price.toFixed(2)}</p>
+                </div>
+
+                <div className="max-h-96 overflow-y-auto">
+                  <h3 className="text-xl font-semibold mb-4 text-foreground">Add Extras</h3>
+                  
+                  {/* Meat Add-ons */}
+                  <div className="mb-6">
+                    <h4 className="text-lg font-semibold mb-3 text-foreground">Meat Add-ons</h4>
+                    <div className="grid gap-3">
+                      {menuItems.filter(item =>
+                        item.category === 'Add-ons' &&
+                        (item.name.includes('Steak') || item.name.includes('Lamb') || item.name.includes('Ribs'))
+                      ).map((addOn) => {
+                        const quantity = selectedAddOns[addOn.id]?.quantity || 0;
+                        return (
+                          <div key={addOn.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent">
+                            <div className="flex-1">
+                              <h5 className="font-medium text-foreground">{addOn.name}</h5>
+                              <p className="text-sm text-muted-foreground">{addOn.description}</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="font-semibold text-yellow-600">£{addOn.price.toFixed(2)}</span>
+                              <div className="flex items-center gap-2">
+                                {quantity > 0 && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => updateAddOnQuantity(addOn, quantity - 1)}
+                                    className="w-8 h-8 p-0"
+                                  >
+                                    -
+                                  </Button>
+                                )}
+                                {quantity > 0 && (
+                                  <span className="w-8 text-center font-medium">{quantity}</span>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant={quantity > 0 ? 'default' : 'outline'}
+                                  onClick={() => updateAddOnQuantity(addOn, quantity + 1)}
+                                  className="w-8 h-8 p-0"
+                                >
+                                  +
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Sauces */}
+                  <div className="mb-6">
+                    <h4 className="text-lg font-semibold mb-3 text-foreground">Sauces</h4>
+                    <div className="grid gap-3">
+                      {menuItems.filter(item => item.category === 'Add-ons' && item.name.includes('Sauce')).map((addOn) => {
+                        const quantity = selectedAddOns[addOn.id]?.quantity || 0;
+                        return (
+                          <div key={addOn.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent">
+                            <div className="flex-1">
+                              <h5 className="font-medium text-foreground">{addOn.name}</h5>
+                              <p className="text-sm text-muted-foreground">{addOn.description}</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="font-semibold text-yellow-600">£{addOn.price.toFixed(2)}</span>
+                              <div className="flex items-center gap-2">
+                                {quantity > 0 && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => updateAddOnQuantity(addOn, quantity - 1)}
+                                    className="w-8 h-8 p-0"
+                                  >
+                                    -
+                                  </Button>
+                                )}
+                                {quantity > 0 && (
+                                  <span className="w-8 text-center font-medium">{quantity}</span>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant={quantity > 0 ? 'default' : 'outline'}
+                                  onClick={() => updateAddOnQuantity(addOn, quantity + 1)}
+                                  className="w-8 h-8 p-0"
+                                >
+                                  +
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Drinks */}
+                  <div className="mb-6">
+                    <h4 className="text-lg font-semibold mb-3 text-foreground">Drinks</h4>
+                    <div className="grid gap-3">
+                      {menuItems.filter(item => item.category === 'Add-ons' && item.name.includes('Drink')).map((addOn) => {
+                        const quantity = selectedAddOns[addOn.id]?.quantity || 0;
+                        return (
+                          <div key={addOn.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent">
+                            <div className="flex-1">
+                              <h5 className="font-medium text-foreground">{addOn.name}</h5>
+                              <p className="text-sm text-muted-foreground">{addOn.description}</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="font-semibold text-yellow-600">£{addOn.price.toFixed(2)}</span>
+                              <div className="flex items-center gap-2">
+                                {quantity > 0 && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => updateAddOnQuantity(addOn, quantity - 1)}
+                                    className="w-8 h-8 p-0"
+                                  >
+                                    -
+                                  </Button>
+                                )}
+                                {quantity > 0 && (
+                                  <span className="w-8 text-center font-medium">{quantity}</span>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant={quantity > 0 ? 'default' : 'outline'}
+                                  onClick={() => updateAddOnQuantity(addOn, quantity + 1)}
+                                  className="w-8 h-8 p-0"
+                                >
+                                  +
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t pt-6 mt-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-lg font-semibold text-foreground">Total:</span>
+                    <span className="text-xl font-bold text-yellow-600">
+                      £{(selectedItem.price + Object.values(selectedAddOns).reduce((sum, { item, quantity }) => sum + (item.price * quantity), 0)).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setShowCustomizeDialog(false);
+                        setSelectedAddOns({});
+                      }}
+                      className="flex-1"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleConfirmCustomize}
+                      className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-black"
+                    >
+                      Add to Cart
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}

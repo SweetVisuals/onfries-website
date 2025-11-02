@@ -293,7 +293,18 @@ export const getMenuItems = async (): Promise<MenuItem[]> => {
     .order('name', { ascending: true });
 
   if (error) throw error;
-  return data || [];
+  
+  // Filter out any old steak variations that shouldn't be there
+  const filteredData = (data || []).filter(item => {
+    const isOldItem = item.name.includes('Centurion') ||
+                     item.name === 'Deluxe Steak & Fries' ||
+                     item.name === 'Premium Steak & Fries' ||
+                     item.name.includes('Quadzilla');
+    return !isOldItem;
+  });
+  
+  console.log('Database returned items after filtering:', filteredData);
+  return filteredData;
 };
 
 export const addMenuItem = async (menuItem: Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>): Promise<MenuItem> => {
@@ -338,4 +349,26 @@ export const toggleMenuItemAvailability = async (id: string, isAvailable: boolea
 
   if (error) throw error;
   return data;
+};
+
+// Store settings functions
+export const getStoreStatus = async (): Promise<boolean> => {
+  // Force store to always be open
+  console.log('Store status forced to: true');
+  return true;
+};
+
+export const setStoreStatus = async (isOpen: boolean): Promise<void> => {
+  const { error } = await supabase
+    .from('store_settings')
+    .upsert({
+      key: 'store_open',
+      value: isOpen.toString(),
+      updated_at: new Date().toISOString()
+    });
+
+  if (error) {
+    console.error('Error updating store status:', error);
+    throw error;
+  }
 };

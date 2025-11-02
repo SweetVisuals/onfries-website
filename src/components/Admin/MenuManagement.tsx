@@ -201,19 +201,6 @@ const MenuManagement: React.FC = () => {
                 </CardHeader>
                 <CardContent className="pt-0">
                   <div className="space-y-3">
-                    {item.description && (
-                      <div className="mb-4">
-                        <div className="flex items-center gap-2 mb-3">
-                          <FileText className="w-4 h-4 text-orange-600" />
-                          <span className="text-sm font-semibold text-foreground">Description</span>
-                        </div>
-                        <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3">
-                          <p className="text-sm text-foreground leading-relaxed">
-                            {item.description}
-                          </p>
-                        </div>
-                      </div>
-                    )}
                     
                     <div className="flex justify-between items-center">
                       <span className="text-lg font-semibold">${item.price.toFixed(2)}</span>
