@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Edit, Trash2, Menu as MenuIcon, FileText } from 'lucide-react';
+import { Plus, Edit, Trash2, Menu as MenuIcon } from 'lucide-react';
 import { getMenuItems, addMenuItem, updateMenuItem, deleteMenuItem, toggleMenuItemAvailability, MenuItem } from '../../lib/database';
 import { useToast } from '@/hooks/use-toast';
 

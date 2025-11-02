@@ -213,20 +213,7 @@ const MenuPage: React.FC = () => {
     setIsRefreshing(false);
   };
 
-  const handleAddAddOn = (addOn: any) => {
-    if (!user) {
-      setIsAuthModalOpen(true);
-      return;
-    }
-    
-    if (!orderingStatus.allowed) return;
-    
-    addItem(addOn);
-    toast({
-      title: 'Add-on added',
-      description: `${addOn.name} has been added to your cart.`,
-    });
-  };
+  
 
   const noItemsFound = (() => {
     let hasItems = false;

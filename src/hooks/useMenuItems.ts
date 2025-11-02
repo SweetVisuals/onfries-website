@@ -24,7 +24,10 @@ export const useMenuItems = () => {
       setError(null);
       
       // Add cache busting parameter if force refresh
-      const timestamp = forceRefresh ? `?t=${Date.now()}` : '';
+      if (forceRefresh) {
+        // Force refresh by adding cache buster
+        console.log('Forcing menu refresh');
+      }
       const items = await getMenuItems();
       
       // Debug: Log the items to check what's being fetched
