@@ -37,18 +37,18 @@ const CurrentOrderCard: React.FC<CurrentOrderCardProps> = ({ order, onComplete, 
   };
 
   return (
-    <div className={`rounded-lg shadow-md overflow-hidden h-full flex flex-col ${isPastOrder ? 'bg-green-600 text-white border border-green-700' : 'bg-card'}`}>
-      <div className={`p-5 border-b ${isPastOrder ? 'border-green-700' : 'border-border'}`}>
+    <div className={`rounded-lg shadow-md overflow-hidden h-full flex flex-col ${isPastOrder ? 'bg-gray-800 text-white border border-gray-900' : 'bg-card'}`}>
+      <div className={`p-5 border-b ${isPastOrder ? 'border-gray-900' : 'border-border'}`}>
         <div className="flex items-center justify-between">
           <div>
             <h2 className={`text-lg font-bold ${isPastOrder ? 'text-white' : 'text-card-foreground'}`}>{order.customerName}</h2>
-            <p className={`text-sm flex items-center mt-1 ${isPastOrder ? 'text-green-100' : 'text-muted-foreground'}`}>
+            <p className={`text-sm flex items-center mt-1 ${isPastOrder ? 'text-gray-200' : 'text-muted-foreground'}`}>
               <Receipt className="w-4 h-4 mr-1.5" />
               Order #{order.id}
             </p>
           </div>
           <div className="text-right">
-            <div className={`flex items-center justify-center w-8 h-8 rounded-full ${isPastOrder ? 'bg-green-700' : 'bg-yellow-100 dark:bg-yellow-900'}`}>
+            <div className={`flex items-center justify-center w-8 h-8 rounded-full ${isPastOrder ? 'bg-gray-900' : 'bg-yellow-100 dark:bg-yellow-900'}`}>
               {isPastOrder ? (
                 <Check className="w-4 h-4 text-white" />
               ) : isCompleting ? (
@@ -72,31 +72,28 @@ const CurrentOrderCard: React.FC<CurrentOrderCardProps> = ({ order, onComplete, 
             </div>
           </div>
         )}
-
-        <div className="space-y-4">
-          {order.items.map((orderItem) => (
-            <div className={`border-b pb-4 last:border-b-0 last:pb-0 ${isPastOrder ? 'border-green-700' : 'border-border'}`}>
+<div className="space-y-4">
+  {order.items.map((orderItem) => (
+    <div className={`border-b pb-4 last:border-b-0 last:pb-0 ${isPastOrder ? 'border-gray-900' : 'border-border'}`}>
 <div className="flex justify-between items-start mb-2">
-  <div className="flex-1 min-w-0 pr-4">
-    <div className="flex items-center gap-2">
-      <p className={`font-bold text-lg ${isPastOrder ? 'text-white' : 'text-card-foreground'} overflow-hidden text-ellipsis whitespace-nowrap`}>{orderItem.item.name}</p>
-      <span className={`text-sm ${isPastOrder ? 'text-green-100' : 'text-muted-foreground'} shrink-0`}>x{orderItem.quantity}</span>
-    </div>
-    {orderItem.item.description && (
-      <p className={`text-sm mt-1 ${isPastOrder ? 'text-green-100' : 'text-muted-foreground'} overflow-hidden text-ellipsis`} style={{display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'}}>{orderItem.item.description}</p>
-    )}
-  </div>
-  <p className={`font-semibold text-lg ${isPastOrder ? 'text-white' : 'text-card-foreground'} shrink-0`}>£{(orderItem.item.price * orderItem.quantity).toFixed(2)}</p>
+<div className="flex-1 min-w-0 pr-4">
+<div className="flex items-center gap-2">
+<p className={`font-bold text-lg ${isPastOrder ? 'text-white' : 'text-card-foreground'} overflow-hidden text-ellipsis whitespace-nowrap`}>{orderItem.item.name}</p>
+<span className={`text-sm ${isPastOrder ? 'text-gray-200' : 'text-muted-foreground'} shrink-0`}>x{orderItem.quantity}</span>
 </div>
-              {/* Hardcoded extras for now as per image, since orderData.ts doesn't support them */}
-              <div className="mt-2">
-                <p className={`text-sm italic ${isPastOrder ? 'text-green-100' : 'text-muted-foreground'}`}>Add-ons: Green Sauce</p>
-              </div>
-            </div>
-          ))}
-        </div>
+
+</div>
+<p className={`font-semibold text-lg ${isPastOrder ? 'text-white' : 'text-card-foreground'} shrink-0`}>£{(orderItem.item.price * orderItem.quantity).toFixed(2)}</p>
+</div>
+      {/* Hardcoded extras for now as per image, since orderData.ts doesn't support them */}
+      <div className="mt-2">
+        <p className={`text-sm italic ${isPastOrder ? 'text-gray-200' : 'text-muted-foreground'}`}>Add-ons: Green Sauce</p>
       </div>
-      <div className={`p-5 border-t ${isPastOrder ? 'bg-green-700 border-green-700' : 'bg-muted border-border'}`}>
+    </div>
+  ))}
+</div>
+      </div>
+      <div className={`p-5 border-t ${isPastOrder ? 'bg-gray-900 border-gray-900' : 'bg-muted border-border'}`}>
         <div className="flex justify-between items-center">
           <p className={`text-lg font-bold ${isPastOrder ? 'text-white' : 'text-card-foreground'}`}>Total</p>
           <p className={`text-lg font-bold ${isPastOrder ? 'text-white' : 'text-card-foreground'}`}>£{order.total.toFixed(2)}</p>
@@ -104,7 +101,7 @@ const CurrentOrderCard: React.FC<CurrentOrderCardProps> = ({ order, onComplete, 
       </div>
      {isPastOrder ? (
        <div className="p-5 border-t border-border">
-         <div className="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2">
+         <div className="w-full bg-gray-800 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2">
            <Check className="w-5 h-5" />
            Completed
          </div>
