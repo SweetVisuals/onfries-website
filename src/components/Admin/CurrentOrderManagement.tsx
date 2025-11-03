@@ -27,7 +27,7 @@ const CurrentOrderManagement: React.FC = () => {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [_, setLoading] = useState(false);
 
   if (!user) {
     return (
@@ -148,7 +148,7 @@ const CurrentOrderManagement: React.FC = () => {
     loadOrders();
   };
 
-  const handleAddOrder = (customerName: string, customerEmail: string, items: Array<{ item: MenuItem; quantity: number; addOns?: Array<{ item: MenuItem; quantity: number }> }>) => {
+  const handleAddOrder = (_customerName: string, _customerEmail: string, _items: Array<{ item: MenuItem; quantity: number; addOns?: Array<{ item: MenuItem; quantity: number }> }>) => {
     // This would typically create a new order in the database
     console.log('Add order functionality would be implemented here');
     // Reload orders to reflect the change

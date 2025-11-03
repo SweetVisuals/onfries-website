@@ -9,8 +9,7 @@ import { getCurrentSquareConfig } from '../../config/square';
 import { 
   createPaymentFromCart, 
   validatePaymentError, 
-  getPaymentErrorMessage,
-  squarePaymentService 
+  getPaymentErrorMessage
 } from '../../lib/squarePayment';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
@@ -44,7 +43,7 @@ const SquarePaymentForm: React.FC<SquarePaymentFormProps> = ({
   onSuccess,
   onError,
   orderReference,
-  customerEmail,
+  _customerEmail,
   disabled = false
 }) => {
   const { user } = useAuth();
@@ -85,7 +84,7 @@ const SquarePaymentForm: React.FC<SquarePaymentFormProps> = ({
       setPaymentStatus('Initializing payment form...');
       
       // Initialize Square Web Payments SDK
-      const payments = window.Square.payments(
+      window.Square.payments(
         squareConfig.applicationId,
         squareConfig.locationId
       );
