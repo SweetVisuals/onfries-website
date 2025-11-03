@@ -680,3 +680,128 @@ export const getCustomersWithStats = async (): Promise<Array<{
 
   return customersWithStats.sort((a, b) => b.totalSpent - a.totalSpent);
 };
+
+// Order management functions
+export interface CartItem {
+  id: string;
+  name: string;
+  description?: string;
+  price: number;
+  image?: string;
+  category: string;
+  isAvailable: boolean;
+  preparationTime?: number;
+  quantity: number;
+}
+
+export const createOrder = async (orderData: {
+  customerId: string;
+  customerName: string;
+  customerEmail: string;
+  items: CartItem[];
+  total: number;
+  notes?: string;
+  paymentId: string;
+  paymentStatus: string;
+}): Promise<Order> => {
+  try {
+    // Create the main order record
+    const orderDate = new Date().toISOString();
+    const estimatedDelivery = new Date(Date.now() + 30 * 60 * 1000).toISOString(); // 30 minutes from now
+
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .insert({
+        customer_id: orderData.customerId,
+        customer_name: orderData.customerName,
+        customer_email: orderData.customerEmail,
+        total: orderData.total,
+        status: 'pending',
+        order_date: orderDate,
+        estimated_delivery: estimatedDelivery,
+        notes: orderData.notes || null
+      })
+      .select()
+      .single();
+
+    if (orderError) throw orderError;
+
+    // Create order items
+    const orderItems = orderData.items.map(item => ({
+      order_id: order.id,
+      menu_item_id: item.id,
+      quantity: item.quantity,
+      price: item.price
+    }));
+
+    const { error: itemsError } = await supabase
+      .from('order_items')
+      .insert(orderItems);
+
+    if (itemsError) {
+      // If order items creation fails, delete the order
+      await supabase.from('orders').delete().eq('id', order.id);
+      throw itemsError;
+    }
+
+    // Trigger refresh event for admin panels
+    triggerOrderRefresh();
+
+    console.log('Order created successfully:', order.id);
+    return order;
+  } catch (error) {
+    console.error('Error creating order:', error);
+    throw error;
+  }
+};
+
+export const updateOrderStatus = async (orderId: string, status: Order['status'], completedAt?: string): Promise<Order> => {
+  const updateData: any = { status, updated_at: new Date().toISOString() };
+  if (completedAt) {
+    updateData.completed_at = completedAt;
+  }
+
+  const { data, error } = await supabase
+    .from('orders')
+    .update(updateData)
+    .eq('id', orderId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
+// Order refresh mechanism for admin panels
+const ORDER_REFRESH_EVENT = 'order_refresh_needed';
+
+export const triggerOrderRefresh = () => {
+  // Trigger a custom event to refresh admin panels
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('last_order_update', Date.now().toString());
+    window.dispatchEvent(new CustomEvent(ORDER_REFRESH_EVENT));
+  }
+};
+
+export const listenForOrderUpdates = (callback: () => void) => {
+  if (typeof window === 'undefined') return () => {};
+
+  const handleOrderUpdate = () => {
+    callback();
+  };
+
+  const handleStorageChange = (e: StorageEvent) => {
+    if (e.key === 'last_order_update') {
+      callback();
+    }
+  };
+
+  window.addEventListener(ORDER_REFRESH_EVENT, handleOrderUpdate);
+  window.addEventListener('storage', handleStorageChange);
+
+  // Return cleanup function
+  return () => {
+    window.removeEventListener(ORDER_REFRESH_EVENT, handleOrderUpdate);
+    window.removeEventListener('storage', handleStorageChange);
+  };
+};

@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import AddOrderDialog from './AddOrderDialog';
 import { MenuItem } from '../../data/menuData';
 import MeatCookingCards from './MeatCookingCards';
+import { listenForOrderUpdates } from '../../lib/database';
 
 interface OrderWithItems extends Order {
   order_items?: Array<{
@@ -39,6 +40,14 @@ const CurrentOrderManagement: React.FC = () => {
 
   useEffect(() => {
     loadOrders();
+    
+    // Listen for new order updates
+    const cleanup = listenForOrderUpdates(() => {
+      console.log('New order detected, refreshing...');
+      loadOrders();
+    });
+    
+    return cleanup;
   }, [user]);
 
   const loadOrders = async () => {
