@@ -1,7 +1,6 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { PAYMENT_MODE } from '../../config/square';
 
 interface PaymentModeSelectorProps {
   onModeChange: (mode: 'test' | 'live') => void;

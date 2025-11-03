@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, CreditCard, Lock, TestTube } from 'lucide-react';
 import PaymentModeSelector from './PaymentModeSelector';
-import { getCurrentSquareConfig, PAYMENT_MODE, PAYMENT_API_ENDPOINT } from '../../config/square';
+import { PAYMENT_MODE } from '../../config/square';
 import { 
   createPaymentFromCart, 
   validatePaymentError, 
