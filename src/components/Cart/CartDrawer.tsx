@@ -6,7 +6,6 @@ import { Plus, Minus, Trash2, ShoppingBag, CreditCard } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { dummyOrders } from '../../data/orderData';
 import { isOrderingAllowed } from '../../lib/utils';
 import SquarePaymentForm from '../Checkout/SquarePaymentForm';
 import PaymentSuccessScreen from '../Checkout/PaymentSuccessScreen';
