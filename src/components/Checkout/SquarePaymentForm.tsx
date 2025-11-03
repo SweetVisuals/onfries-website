@@ -43,7 +43,7 @@ const SquarePaymentForm: React.FC<SquarePaymentFormProps> = ({
   onSuccess,
   onError,
   orderReference,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // @ts-ignore - customerEmail parameter intentionally unused but required for interface
   customerEmail,
   disabled = false
 }) => {
