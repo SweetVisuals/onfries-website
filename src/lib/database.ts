@@ -705,14 +705,63 @@ export const createOrder = async (orderData: {
   paymentStatus: string;
 }): Promise<Order> => {
   try {
+    console.log('Database createOrder called with data:', orderData);
+    
+    // First, ensure customer exists in customers table
+    console.log('Checking if customer exists...');
+    const { data: existingCustomer } = await supabase
+      .from('customers')
+      .select('id')
+      .eq('id', orderData.customerId)
+      .single();
+
+    let customerId = orderData.customerId;
+
+    if (!existingCustomer) {
+      console.log('Customer does not exist, creating new customer record...');
+      // Create customer record if it doesn't exist
+      const { data: newCustomer, error: customerError } = await supabase
+        .from('customers')
+        .insert({
+          id: orderData.customerId,
+          name: orderData.customerName,
+          email: orderData.customerEmail,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select('id')
+        .single();
+
+      if (customerError) {
+        console.error('Customer creation error:', customerError);
+        throw customerError;
+      }
+
+      customerId = newCustomer.id;
+      console.log('Customer created successfully:', customerId);
+    } else {
+      console.log('Customer already exists:', customerId);
+    }
+    
     // Create the main order record
     const orderDate = new Date().toISOString();
     const estimatedDelivery = new Date(Date.now() + 30 * 60 * 1000).toISOString(); // 30 minutes from now
 
+    console.log('Inserting order record...', {
+      customer_id: customerId,
+      customer_name: orderData.customerName,
+      customer_email: orderData.customerEmail,
+      total: orderData.total,
+      status: 'pending',
+      order_date: orderDate,
+      estimated_delivery: estimatedDelivery,
+      notes: orderData.notes || null
+    });
+
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
-        customer_id: orderData.customerId,
+        customer_id: customerId,
         customer_name: orderData.customerName,
         customer_email: orderData.customerEmail,
         total: orderData.total,
@@ -724,7 +773,12 @@ export const createOrder = async (orderData: {
       .select()
       .single();
 
-    if (orderError) throw orderError;
+    if (orderError) {
+      console.error('Order creation error:', orderError);
+      throw orderError;
+    }
+
+    console.log('Order record created successfully:', order);
 
     // Create order items
     const orderItems = orderData.items.map(item => ({
@@ -734,23 +788,34 @@ export const createOrder = async (orderData: {
       price: item.price
     }));
 
+    console.log('Inserting order items...', orderItems);
+
     const { error: itemsError } = await supabase
       .from('order_items')
       .insert(orderItems);
 
     if (itemsError) {
+      console.error('Order items creation error:', itemsError);
       // If order items creation fails, delete the order
       await supabase.from('orders').delete().eq('id', order.id);
       throw itemsError;
     }
 
+    console.log('Order items created successfully');
+
     // Trigger refresh event for admin panels
     triggerOrderRefresh();
 
-    console.log('Order created successfully:', order.id);
+    console.log('Order creation completed successfully:', order.id);
     return order;
   } catch (error) {
     console.error('Error creating order:', error);
+    console.error('Database error details:', {
+      message: (error as any)?.message,
+      details: (error as any)?.details,
+      hint: (error as any)?.hint,
+      code: (error as any)?.code
+    });
     throw error;
   }
 };

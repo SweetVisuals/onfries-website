@@ -61,6 +61,15 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
 
   const handlePaymentSuccess = async (payment: any) => {
     try {
+      console.log('Starting order creation process...', {
+        customerId: user?.id || 'guest',
+        customerName: user?.name || 'Guest',
+        customerEmail: user?.email || '',
+        items: items,
+        total: getTotal(),
+        orderReference
+      });
+
       // Create order in database
       const newOrder = await createOrder({
         customerId: user?.id || 'guest',
@@ -72,6 +81,8 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
         paymentId: payment.id,
         paymentStatus: payment.status
       });
+
+      console.log('Order created successfully:', newOrder);
 
       // Store order data for success screen
       setCreatedOrder({
@@ -95,11 +106,17 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
 
     } catch (error: any) {
       console.error('Error creating order:', error);
+      console.error('Order creation failed with details:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
       setShowPayment(false);
       setOrderReference('');
       toast({
         title: 'Order Creation Failed',
-        description: 'Payment was successful but order creation failed. Please contact support.',
+        description: `Payment was successful but order creation failed: ${error.message}`,
         variant: 'destructive',
       });
     }
