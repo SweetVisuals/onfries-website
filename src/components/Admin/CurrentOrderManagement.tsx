@@ -9,7 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import AddOrderDialog from './AddOrderDialog';
 import { MenuItem } from '../../data/menuData';
 import MeatCookingCards from './MeatCookingCards';
-import { listenForOrderUpdates } from '../../lib/database';
+import { listenForOrderUpdates, updateOrderStatus } from '../../lib/database';
 
 interface OrderWithItems extends Order {
   order_items?: Array<{
@@ -150,11 +150,21 @@ const CurrentOrderManagement: React.FC = () => {
     };
   };
 
-  const handleOrderComplete = (updatedOrder: any) => {
-    // Handle order completion - this would typically update the database
-    console.log(`Order ${updatedOrder.id} completed. Time taken: ${updatedOrder.totalTimeTaken} minutes`);
-    // Reload orders to reflect the change
-    loadOrders();
+  const handleOrderComplete = async (updatedOrder: any) => {
+    try {
+      console.log(`Marking order ${updatedOrder.id} as completed. Time taken: ${updatedOrder.totalTimeTaken} minutes`);
+      
+      // Update order status to 'delivered' in the database
+      await updateOrderStatus(updatedOrder.id, 'delivered');
+      
+      console.log('Order marked as delivered successfully');
+      
+      // Reload orders to reflect the change
+      loadOrders();
+      
+    } catch (error) {
+      console.error('Error marking order as completed:', error);
+    }
   };
 
   const handleAddOrder = (_customerName: string, _customerEmail: string, _items: Array<{ item: MenuItem; quantity: number; addOns?: Array<{ item: MenuItem; quantity: number }> }>) => {

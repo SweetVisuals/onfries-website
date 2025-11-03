@@ -834,6 +834,10 @@ export const updateOrderStatus = async (orderId: string, status: Order['status']
     .single();
 
   if (error) throw error;
+
+  // Trigger refresh event for admin panels
+  triggerOrderRefresh();
+
   return data;
 };
 
