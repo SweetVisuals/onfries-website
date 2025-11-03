@@ -64,11 +64,29 @@ const SquarePaymentForm: React.FC<SquarePaymentFormProps> = ({
   const squareConfig = getCurrentSquareConfig();
 
   useEffect(() => {
+    // Debug logging to check environment
+    console.log('Square Config:', {
+      applicationId: squareConfig.applicationId,
+      environment: squareConfig.environment,
+      scriptUrl: squareConfig.scriptUrl,
+      hostname: typeof window !== 'undefined' ? window.location.hostname : 'N/A'
+    });
+
+    // Force sandbox for development to avoid environment mismatch
+    const config = {
+      ...squareConfig,
+      applicationId: 'sandbox-sq0idb-oggrMwUwXBTTDHGC8sZHTQ',
+      environment: 'sandbox',
+      scriptUrl: 'https://sandbox.web.squarecdn.com/v1/square.js'
+    };
+
+    console.log('Using config:', config);
+
     // Load Square Web Payments SDK
     const script = document.createElement('script');
-    script.src = squareConfig.scriptUrl || 'https://sandbox.web.squarecdn.com/v1/square.js';
+    script.src = config.scriptUrl;
     script.async = true;
-    script.onload = initializeSquare;
+    script.onload = () => initializeSquare(config);
     script.onerror = () => {
       onError('Failed to load Square Web Payments SDK');
     };
@@ -77,9 +95,9 @@ const SquarePaymentForm: React.FC<SquarePaymentFormProps> = ({
     return () => {
       document.body.removeChild(script);
     };
-  }, [squareConfig.scriptUrl]);
+  }, []);
 
-  const initializeSquare = async () => {
+  const initializeSquare = async (config?: typeof squareConfig) => {
     try {
       if (!window.Square) {
         throw new Error('Square Web Payments SDK not loaded');
@@ -87,10 +105,16 @@ const SquarePaymentForm: React.FC<SquarePaymentFormProps> = ({
 
       setPaymentStatus('Initializing payment form...');
       
+      const activeConfig = config || squareConfig;
+      console.log('Initializing Square with:', {
+        applicationId: activeConfig.applicationId,
+        locationId: activeConfig.locationId
+      });
+      
       // Initialize Square Web Payments SDK
       window.Square.payments(
-        squareConfig.applicationId,
-        squareConfig.locationId
+        activeConfig.applicationId,
+        activeConfig.locationId
       );
 
       setPaymentStatus('');

@@ -24,17 +24,29 @@ export const squareConfig: SquareConfig = {
   }
 };
 
-export const isDevelopment = process.env.NODE_ENV === 'development';
-export const isTestEnvironment = process.env.NODE_ENV === 'test';
+// Force sandbox environment for development
+export const isDevelopment = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+export const isTestEnvironment = false;
 
+// Always use sandbox for development to avoid environment mismatch
 export const getSquareConfig = () => {
-  // Always use sandbox for development and test environments
-  // Only use production in actual production builds
-  if (isDevelopment || isTestEnvironment || typeof window === 'undefined') {
+  // Force sandbox for development to prevent environment mismatch errors
+  if (isDevelopment || typeof window === 'undefined') {
     return squareConfig.sandbox;
   }
-  // In browser production environment
-  return squareConfig.production;
+  
+  // Check if we're in production by looking for specific patterns
+  const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+  const isProductionDomain = hostname.includes('netlify.app') || 
+                            hostname.includes('vercel.app') || 
+                            hostname.includes('onfries.com');
+  
+  if (isProductionDomain) {
+    return squareConfig.production;
+  }
+  
+  // Default to sandbox for any other domain
+  return squareConfig.sandbox;
 };
 
 export const getCurrentSquareConfig = () => {
