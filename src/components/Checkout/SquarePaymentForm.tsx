@@ -61,32 +61,22 @@ const SquarePaymentForm: React.FC<SquarePaymentFormProps> = ({
   });
   const [errors, setErrors] = useState<{[key: string]: string}>({});
 
-  const squareConfig = getCurrentSquareConfig();
+  // Hardcode sandbox configuration to eliminate environment mismatch
+  const SQUARE_CONFIG = {
+    applicationId: 'sandbox-sq0idb-oggrMwUwXBTTDHGC8sZHTQ',
+    locationId: 'L14KB0DPJ20SD',
+    environment: 'sandbox' as const,
+    scriptUrl: 'https://sandbox.web.squarecdn.com/v1/square.js'
+  };
 
   useEffect(() => {
-    // Debug logging to check environment
-    console.log('Square Config:', {
-      applicationId: squareConfig.applicationId,
-      environment: squareConfig.environment,
-      scriptUrl: squareConfig.scriptUrl,
-      hostname: typeof window !== 'undefined' ? window.location.hostname : 'N/A'
-    });
-
-    // Force sandbox for development to avoid environment mismatch
-    const config = {
-      ...squareConfig,
-      applicationId: 'sandbox-sq0idb-oggrMwUwXBTTDHGC8sZHTQ',
-      environment: 'sandbox',
-      scriptUrl: 'https://sandbox.web.squarecdn.com/v1/square.js'
-    };
-
-    console.log('Using config:', config);
+    console.log('Initializing Square with hardcoded sandbox config:', SQUARE_CONFIG);
 
     // Load Square Web Payments SDK
     const script = document.createElement('script');
-    script.src = config.scriptUrl;
+    script.src = SQUARE_CONFIG.scriptUrl;
     script.async = true;
-    script.onload = () => initializeSquare(config);
+    script.onload = () => initializeSquare(SQUARE_CONFIG);
     script.onerror = () => {
       onError('Failed to load Square Web Payments SDK');
     };
@@ -97,7 +87,7 @@ const SquarePaymentForm: React.FC<SquarePaymentFormProps> = ({
     };
   }, []);
 
-  const initializeSquare = async (config?: typeof squareConfig) => {
+  const initializeSquare = async (config?: typeof SQUARE_CONFIG) => {
     try {
       if (!window.Square) {
         throw new Error('Square Web Payments SDK not loaded');
@@ -105,7 +95,7 @@ const SquarePaymentForm: React.FC<SquarePaymentFormProps> = ({
 
       setPaymentStatus('Initializing payment form...');
       
-      const activeConfig = config || squareConfig;
+      const activeConfig = config || SQUARE_CONFIG;
       console.log('Initializing Square with:', {
         applicationId: activeConfig.applicationId,
         locationId: activeConfig.locationId
