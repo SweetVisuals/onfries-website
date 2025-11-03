@@ -6,6 +6,7 @@ import { Order } from '../../lib/database';
 import { useAuth } from '../../contexts/AuthContext';
 import PastOrderCard from '../Orders/PastOrderCard';
 import { Card, CardContent } from '@/components/ui/card';
+import { listenForOrderUpdates } from '../../lib/database';
 
 interface OrderWithItems extends Order {
   order_items?: Array<{
@@ -36,6 +37,14 @@ const OrderHistory: React.FC = () => {
 
   useEffect(() => {
     loadOrders();
+    
+    // Listen for order updates (new orders and completed orders)
+    const cleanup = listenForOrderUpdates(() => {
+      console.log('Order update detected in history, refreshing...');
+      loadOrders();
+    });
+    
+    return cleanup;
   }, [user]);
 
   const loadOrders = async () => {
