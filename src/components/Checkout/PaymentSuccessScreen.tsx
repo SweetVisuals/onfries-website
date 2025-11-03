@@ -33,7 +33,14 @@ const PaymentSuccessScreen: React.FC<PaymentSuccessScreenProps> = ({
   useEffect(() => {
     // Trigger entrance animation
     setTimeout(() => setIsVisible(true), 100);
-  }, []);
+    
+    // Auto-navigate to orders after 3 seconds
+    setTimeout(() => {
+      if (onViewOrders) {
+        onViewOrders();
+      }
+    }, 3000);
+  }, [onViewOrders]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center p-4">
@@ -107,13 +114,9 @@ const PaymentSuccessScreen: React.FC<PaymentSuccessScreenProps> = ({
 
           {/* Action Buttons */}
           <div className="space-y-3">
-            <Button
-              onClick={onViewOrders}
-              className="w-full bg-yellow-500 hover:bg-yellow-600 text-black"
-            >
-              <Receipt className="w-4 h-4 mr-2" />
-              View My Orders
-            </Button>
+            <p className="text-sm text-green-600 text-center mb-4">
+              Automatically navigating to your orders...
+            </p>
             
             <Button
               variant="outline"

@@ -14,9 +14,10 @@ import { createOrder } from '../../lib/database';
 interface CartDrawerProps {
   isOpen: boolean;
   onClose: () => void;
+  onNavigateToOrders?: () => void;
 }
 
-const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
+const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, onNavigateToOrders }) => {
   const { items, updateQuantity, removeItem, clearCart, getTotal, getItemCount } = useCart();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -145,9 +146,12 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
   const handleViewOrders = () => {
     setShowSuccess(false);
     setCreatedOrder(null);
-    // Navigate to orders page or show customer dashboard
-    // For now, just close the success screen
     onClose();
+    
+    // Navigate to orders tab
+    if (onNavigateToOrders) {
+      onNavigateToOrders();
+    }
   };
 
   if (items.length === 0) {

@@ -56,6 +56,10 @@ const CustomerDashboard: React.FC = () => {
     logout();
   };
 
+  const handleNavigateToOrders = () => {
+    setSelectedTab('orders');
+  };
+
   useEffect(() => {
     if (user && selectedTab === 'profile') {
       loadCustomerData();
@@ -422,6 +426,7 @@ const CustomerDashboard: React.FC = () => {
       <CartDrawer
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
+        onNavigateToOrders={handleNavigateToOrders}
       />
 
       {/* Floating Auth Modal */}

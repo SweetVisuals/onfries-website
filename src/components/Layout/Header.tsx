@@ -150,6 +150,7 @@ const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
       <CartDrawer
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
+        onNavigateToOrders={() => onNavigate('customer')}
       />
     </>
   );
