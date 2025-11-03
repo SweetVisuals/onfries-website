@@ -10,7 +10,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import {
   Users,
-  ShoppingCart,
   DollarSign,
   Search,
   Mail,
@@ -20,7 +19,6 @@ import {
   Filter,
   Download,
   MessageSquare,
-  Calendar,
   Trophy,
   UserCheck,
   UserX,
@@ -60,8 +58,7 @@ const CustomerOverview: React.FC<CustomerOverviewProps> = ({ onNavigate }) => {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [isBulkEmailDialogOpen, setIsBulkEmailDialogOpen] = useState(false);
   const [selectedCustomers, setSelectedCustomers] = useState<string[]>([]);
-  const [customerNotes, setCustomerNotes] = useState<CustomerNote[]>([]);
-  const [editingNote, setEditingNote] = useState<string | null>(null);
+  
 
   useEffect(() => {
     loadCustomers();
@@ -113,7 +110,7 @@ const CustomerOverview: React.FC<CustomerOverviewProps> = ({ onNavigate }) => {
   const totalCustomers = customers.length;
   const totalRevenue = customers.reduce((sum, customer) => sum + customer.totalSpent, 0);
   const averageOrderValue = totalCustomers > 0 ? totalRevenue / customers.reduce((sum, c) => sum + c.totalOrders, 0) : 0;
-  const repeatCustomers = customers.filter(customer => customer.totalOrders > 1).length;
+  
   
   const segmentStats = {
     vip: customers.filter(c => c.customerSegment === 'vip').length,

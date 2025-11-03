@@ -5,13 +5,12 @@ import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '../../contexts/AuthContext';
 import { setStoreStatus, getStoreStatus } from '../../lib/database';
-import { ArrowLeft, Store, Bell, MessageSquare, Clock, DollarSign, Users, AlertCircle, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Store, Bell, MessageSquare, DollarSign, AlertCircle, CheckCircle } from 'lucide-react';
 
 interface AdminSettingsProps {
   onNavigate: (page: string) => void;
