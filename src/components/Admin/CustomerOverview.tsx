@@ -18,7 +18,6 @@ import {
   TrendingUp,
   Filter,
   Download,
-  MessageSquare,
   Trophy,
   UserCheck,
   UserX,
@@ -44,11 +43,7 @@ interface CustomerWithStats {
   customerSegment?: 'new' | 'regular' | 'vip' | 'inactive';
 }
 
-interface CustomerNote {
-  customerId: string;
-  note: string;
-  timestamp: string;
-}
+
 
 const CustomerOverview: React.FC<CustomerOverviewProps> = ({ onNavigate }) => {
   const [customers, setCustomers] = useState<CustomerWithStats[]>([]);
@@ -161,7 +156,7 @@ const CustomerOverview: React.FC<CustomerOverviewProps> = ({ onNavigate }) => {
   const toggleCustomerStatus = async (customerId: string, newStatus: string) => {
     try {
       // Mock API call
-      setCustomers(prev => prev.map(customer =>
+      setCustomers((prev: CustomerWithStats[]) => prev.map(customer =>
         customer.id === customerId ? { ...customer, status: newStatus } : customer
       ));
     } catch (error) {
@@ -169,14 +164,7 @@ const CustomerOverview: React.FC<CustomerOverviewProps> = ({ onNavigate }) => {
     }
   };
 
-  const addCustomerNote = (customerId: string, note: string) => {
-    const newNote: CustomerNote = {
-      customerId,
-      note,
-      timestamp: new Date().toISOString()
-    };
-    setCustomerNotes(prev => [...prev, newNote]);
-  };
+  
 
   const getSegmentColor = (segment: string) => {
     switch (segment) {
@@ -465,10 +453,7 @@ const CustomerOverview: React.FC<CustomerOverviewProps> = ({ onNavigate }) => {
 
                     <div className="flex flex-col items-start lg:items-end gap-3">
                       <div className="flex gap-2">
-                        <Button size="sm" variant="outline" onClick={() => addCustomerNote(customer.id, 'Sample note')}>
-                          <MessageSquare className="w-4 h-4 mr-1" />
-                          Note
-                        </Button>
+                        
                         <Button size="sm" variant="outline">
                           <Mail className="w-4 h-4 mr-1" />
                           Email
