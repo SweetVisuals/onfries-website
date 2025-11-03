@@ -24,6 +24,15 @@ export const squareConfig: SquareConfig = {
   }
 };
 
+// Payment modes: 'test' for simulation, 'live' for real API calls
+export type PaymentMode = 'test' | 'live';
+
+// Enable test mode by default for demo purposes
+export const PAYMENT_MODE: PaymentMode = (process.env.REACT_APP_PAYMENT_MODE as PaymentMode) || 'test';
+
+// Backend API endpoint for real payments (if you have a backend)
+export const PAYMENT_API_ENDPOINT = process.env.REACT_APP_PAYMENT_API_ENDPOINT || '/api/square-payment';
+
 // Force sandbox environment for development
 export const isDevelopment = typeof window !== 'undefined' && window.location.hostname === 'localhost';
 export const isTestEnvironment = false;

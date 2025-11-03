@@ -4,8 +4,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, CreditCard, Lock } from 'lucide-react';
-import { getCurrentSquareConfig } from '../../config/square';
+import { Loader2, CreditCard, Lock, TestTube } from 'lucide-react';
+import PaymentModeSelector from './PaymentModeSelector';
+import { getCurrentSquareConfig, PAYMENT_MODE, PAYMENT_API_ENDPOINT } from '../../config/square';
 import { 
   createPaymentFromCart, 
   validatePaymentError, 
@@ -60,6 +61,7 @@ const SquarePaymentForm: React.FC<SquarePaymentFormProps> = ({
     postalCode: ''
   });
   const [errors, setErrors] = useState<{[key: string]: string}>({});
+  const [paymentMode, setPaymentMode] = useState<'test' | 'live'>(PAYMENT_MODE);
 
   // Hardcode sandbox configuration to eliminate environment mismatch
   const SQUARE_CONFIG = {
@@ -67,6 +69,11 @@ const SquarePaymentForm: React.FC<SquarePaymentFormProps> = ({
     locationId: 'L14KB0DPJ20SD',
     environment: 'sandbox' as const,
     scriptUrl: 'https://sandbox.web.squarecdn.com/v1/square.js'
+  };
+
+  // Handle payment mode change
+  const handleModeChange = (mode: 'test' | 'live') => {
+    setPaymentMode(mode);
   };
 
   useEffect(() => {
@@ -189,11 +196,10 @@ const SquarePaymentForm: React.FC<SquarePaymentFormProps> = ({
     }
 
     setIsLoading(true);
-    setPaymentStatus('Processing payment...');
+    setPaymentStatus(paymentMode === 'test' ? 'Processing test payment...' : 'Processing payment...');
 
     try {
-      // In a real implementation, you would tokenize the card data
-      // For demo purposes, we'll simulate this
+      // Tokenize card data
       const tokenResult = await simulateTokenization();
       
       if (tokenResult.errors) {
@@ -202,25 +208,57 @@ const SquarePaymentForm: React.FC<SquarePaymentFormProps> = ({
 
       const token = tokenResult.token || 'simulated_token_' + Date.now();
       
-      // Create payment with Square API
-      const paymentResponse = await createPaymentFromCart(
-        amount,
-        token,
-        user?.id,
-        orderReference || `order_${Date.now()}`
-      );
+      let paymentResponse;
+      
+      if (paymentMode === 'test') {
+        // Test mode: simulate payment processing
+        const simulatedPayment = {
+          id: 'test_payment_' + Date.now(),
+          status: 'COMPLETED',
+          amount: amount,
+          currency: 'GBP',
+          orderReference: orderReference || `order_${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          cardDetails: {
+            last4: cardForm.cardNumber.slice(-4),
+            brand: 'VISA'
+          }
+        };
 
-      if (paymentResponse.errors) {
-        const error = validatePaymentError(paymentResponse);
-        if (error) {
-          throw new Error(getPaymentErrorMessage(error));
+        // Simulate processing delay
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        paymentResponse = { payment: simulatedPayment, errors: null };
+        
+      } else {
+        // Live mode: attempt real payment processing
+        // This would normally require a backend API call
+        try {
+          paymentResponse = await createPaymentFromCart(
+            amount,
+            token,
+            user?.id,
+            orderReference || `order_${Date.now()}`
+          );
+
+          if (paymentResponse.errors) {
+            const error = validatePaymentError(paymentResponse);
+            if (error) {
+              throw new Error(getPaymentErrorMessage(error));
+            }
+          }
+        } catch (apiError: any) {
+          // Handle CORS and other API-related errors
+          if (apiError.message.includes('CORS') || apiError.message.includes('Failed to fetch')) {
+            throw new Error('Live payment processing requires a backend server. Please use test mode or contact support.');
+          }
+          throw apiError;
         }
       }
 
       // Payment successful
       toast({
         title: 'Payment Successful',
-        description: `Your payment of £${amount.toFixed(2)} has been processed.`,
+        description: `Your payment of £${amount.toFixed(2)} has been processed successfully. (${paymentMode.toUpperCase()} Mode)`,
       });
 
       // Clear cart after successful payment
@@ -269,8 +307,22 @@ const SquarePaymentForm: React.FC<SquarePaymentFormProps> = ({
         <div className="flex items-center gap-2 mb-6">
           <CreditCard className="w-5 h-5 text-yellow-600" />
           <h3 className="text-lg font-semibold">Payment Details</h3>
-          <Lock className="w-4 h-4 text-green-600 ml-auto" />
+          <div className="flex items-center gap-2 ml-auto">
+            {paymentMode === 'test' && (
+              <div className="flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900 rounded text-xs">
+                <TestTube className="w-3 h-3" />
+                TEST
+              </div>
+            )}
+            <Lock className="w-4 h-4 text-green-600" />
+          </div>
         </div>
+
+        {/* Payment Mode Selector */}
+        <PaymentModeSelector 
+          currentMode={paymentMode}
+          onModeChange={handleModeChange}
+        />
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Card Number */}
@@ -384,12 +436,19 @@ const SquarePaymentForm: React.FC<SquarePaymentFormProps> = ({
           </Button>
         </form>
 
-        {/* Test Card Information */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="mt-4 p-3 bg-gray-100 rounded-lg text-sm">
-            <p className="font-medium mb-2">Test Cards:</p>
-            <p>Success: 4111 1111 1111 1111</p>
-            <p>Decline: 4000 0000 0000 0002</p>
+        {/* Card Information */}
+        {paymentMode === 'test' && (
+          <div className="mt-4 p-3 bg-blue-100 dark:bg-blue-900 rounded-lg text-sm">
+            <p className="font-medium mb-2 text-blue-800 dark:text-blue-200">Test Cards (Demo Mode):</p>
+            <p className="text-blue-700 dark:text-blue-300">Success: 4111 1111 1111 1111</p>
+            <p className="text-blue-700 dark:text-blue-300">Decline: 4000 0000 0000 0002</p>
+          </div>
+        )}
+        {paymentMode === 'live' && (
+          <div className="mt-4 p-3 bg-red-100 dark:bg-red-900 rounded-lg text-sm">
+            <p className="font-medium mb-2 text-red-800 dark:text-red-200">⚠️ Live Mode Warning:</p>
+            <p className="text-red-700 dark:text-red-300">Real money will be charged to your card.</p>
+            <p className="text-red-700 dark:text-red-300">Use test mode for demonstration purposes.</p>
           </div>
         )}
       </CardContent>
