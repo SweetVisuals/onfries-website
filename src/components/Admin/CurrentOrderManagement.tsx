@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, Trash2, Clock } from 'lucide-react';
-import { Order } from '../../lib/database';
+import { Order, deleteOrder } from '../../lib/database';
 import { useAuth } from '../../contexts/AuthContext';
 import CurrentOrderCard from '../Orders/CurrentOrderCard';
 import { Card, CardContent } from '@/components/ui/card';
@@ -174,6 +174,16 @@ const CurrentOrderManagement: React.FC = () => {
     loadOrders();
   };
 
+  const handleDeleteOrder = async (orderId: string) => {
+    try {
+      await deleteOrder(orderId);
+      // Refresh the orders list after deletion
+      loadOrders();
+    } catch (error) {
+      console.error('Error deleting order:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background py-8">
       <div className="container mx-auto px-4 max-w-7xl">
@@ -218,6 +228,7 @@ const CurrentOrderManagement: React.FC = () => {
                 key={order.id}
                 order={transformOrderForCard(order)}
                 onComplete={handleOrderComplete}
+                onDelete={handleDeleteOrder}
               />
             ))}
           </div>

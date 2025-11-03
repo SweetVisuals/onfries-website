@@ -544,14 +544,14 @@ const MenuPage: React.FC = () => {
                     <div className="space-y-4">
                       <div className="border-b border-border pb-4">
                         <button
-                          className="w-full text-left flex items-center justify-between py-2 hover:text-yellow-600 transition-colors"
+                          className="w-full text-left flex items-center justify-between py-2 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors text-foreground"
                           onClick={() => setExpandedFAQ(expandedFAQ === 1 ? null : 1)}
                         >
                           <span className="font-medium">What type of steak do you serve?</span>
                           {expandedFAQ === 1 ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                         </button>
                         {expandedFAQ === 1 && (
-                          <p className="text-sm text-muted-foreground mt-2">
+                          <p className="text-sm text-muted-foreground dark:text-gray-300 mt-2 leading-relaxed">
                             We serve premium quality beef steaks, including ribeye, sirloin, and tenderloin cuts.
                             All our steaks are sourced from local suppliers and cooked to your preferred doneness.
                           </p>
@@ -560,14 +560,14 @@ const MenuPage: React.FC = () => {
 
                       <div className="border-b border-border pb-4">
                         <button
-                          className="w-full text-left flex items-center justify-between py-2 hover:text-yellow-600 transition-colors"
+                          className="w-full text-left flex items-center justify-between py-2 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors text-foreground"
                           onClick={() => setExpandedFAQ(expandedFAQ === 2 ? null : 2)}
                         >
                           <span className="font-medium">How does the ordering process work?</span>
                           {expandedFAQ === 2 ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                         </button>
                         {expandedFAQ === 2 && (
-                          <p className="text-sm text-muted-foreground mt-2">
+                          <p className="text-sm text-muted-foreground dark:text-gray-300 mt-2 leading-relaxed">
                             Simply browse our menu, add items to your cart, and proceed to checkout.
                             You'll need to create an account or sign in to place an order. Orders can be placed
                             for immediate pickup or scheduled for later collection.
@@ -577,14 +577,14 @@ const MenuPage: React.FC = () => {
 
                       <div>
                         <button
-                          className="w-full text-left flex items-center justify-between py-2 hover:text-yellow-600 transition-colors"
+                          className="w-full text-left flex items-center justify-between py-2 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors text-foreground"
                           onClick={() => setExpandedFAQ(expandedFAQ === 3 ? null : 3)}
                         >
                           <span className="font-medium">Do you accommodate dietary restrictions?</span>
                           {expandedFAQ === 3 ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                         </button>
                         {expandedFAQ === 3 && (
-                          <p className="text-sm text-muted-foreground mt-2">
+                          <p className="text-sm text-muted-foreground dark:text-gray-300 mt-2 leading-relaxed">
                             We can accommodate most dietary needs. Please contact us directly for allergies,
                             gluten-free options, or other special requirements. Our team will work with you
                             to ensure a safe and enjoyable dining experience.

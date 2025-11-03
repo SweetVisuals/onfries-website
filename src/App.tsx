@@ -6,6 +6,7 @@ import LandingPage from './components/Landing/LandingPage';
 import MenuPage from './components/Menu/MenuPage';
 import OrderHistory from './components/Orders/OrderHistory';
 import AdminDashboard from './components/Admin/AdminDashboard';
+import AdminSettings from './components/Admin/AdminSettings';
 import CustomerDashboard from './components/Customer/CustomerDashboard';
 import CustomerDetailPage from './components/Admin/CustomerDetailPage';
 import './App.css';
@@ -59,8 +60,12 @@ function AppContent() {
       case 'admin-customers':
         // Return admin dashboard with customers tab active
         return <AdminDashboard onNavigate={setCurrentPage} initialTab="customers" />;
+      case 'admin-settings':
+        return <AdminSettings onNavigate={setCurrentPage} />;
       case 'customer':
         return <CustomerDashboard />;
+      case 'profile':
+        return <CustomerDashboard initialTab="profile" />;
       default:
         if (currentPage.startsWith('customer-detail:')) {
           const customerId = currentPage.split(':')[1];

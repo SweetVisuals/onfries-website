@@ -841,6 +841,27 @@ export const updateOrderStatus = async (orderId: string, status: Order['status']
   return data;
 };
 
+export const deleteOrder = async (orderId: string): Promise<void> => {
+  // First delete all order items associated with this order
+  const { error: itemsError } = await supabase
+    .from('order_items')
+    .delete()
+    .eq('order_id', orderId);
+
+  if (itemsError) throw itemsError;
+
+  // Then delete the order itself
+  const { error: orderError } = await supabase
+    .from('orders')
+    .delete()
+    .eq('id', orderId);
+
+  if (orderError) throw orderError;
+
+  // Trigger refresh event for admin panels
+  triggerOrderRefresh();
+};
+
 // Order refresh mechanism for admin panels
 const ORDER_REFRESH_EVENT = 'order_refresh_needed';
 

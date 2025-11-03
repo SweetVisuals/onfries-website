@@ -1,19 +1,21 @@
 import React, { useState } from 'react';
-import { Receipt, Check, Loader2, Clock } from 'lucide-react';
+import { Receipt, Check, Loader2, Clock, Trash2 } from 'lucide-react';
 import { Order } from '../../data/orderData';
 import { useOrderTimer } from '../../hooks/useOrderTimer';
 
 interface CurrentOrderCardProps {
   order: Order;
   onComplete?: (updatedOrder: Order) => void;
+  onDelete?: (orderId: string) => void;
   isPastOrder?: boolean;
 }
 
-const CurrentOrderCard: React.FC<CurrentOrderCardProps> = ({ order, onComplete, isPastOrder = false }) => {
+const CurrentOrderCard: React.FC<CurrentOrderCardProps> = ({ order, onComplete, onDelete, isPastOrder = false }) => {
   const [isCompleting, setIsCompleting] = useState(false);
-  const { formattedTime, totalTimeInMinutes } = useOrderTimer({ 
-    startTime: order.orderDate, 
-    endTime: order.completedAt 
+  const [isDeleting, setIsDeleting] = useState(false);
+  const { formattedTime, totalTimeInMinutes } = useOrderTimer({
+    startTime: order.orderDate,
+    endTime: order.completedAt
   });
 
   const handleComplete = async () => {
@@ -36,6 +38,18 @@ const CurrentOrderCard: React.FC<CurrentOrderCardProps> = ({ order, onComplete, 
     }
   };
 
+  const handleDelete = async () => {
+    if (onDelete && !isDeleting) {
+      setIsDeleting(true);
+      
+      // Add a small delay to show the delete animation
+      setTimeout(() => {
+        onDelete(order.id);
+        setIsDeleting(false);
+      }, 500);
+    }
+  };
+
   // Group items: main courses and their associated add-ons
   const mainCourses = order.items.filter(item => item.item.category !== 'Add-ons');
   const addOns = order.items.filter(item => item.item.category === 'Add-ons');
@@ -51,7 +65,24 @@ const CurrentOrderCard: React.FC<CurrentOrderCardProps> = ({ order, onComplete, 
               Order #{order.id}
             </p>
           </div>
-          <div className="text-right">
+          <div className="flex items-center gap-2">
+            {/* Delete Button */}
+            {onDelete && (
+              <button
+                onClick={handleDelete}
+                disabled={isDeleting || isCompleting}
+                className={`p-2 rounded-lg transition-colors duration-200 ${
+                  isDeleting
+                    ? 'bg-red-500 text-white animate-pulse'
+                    : 'bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 text-red-600 dark:text-red-400'
+                }`}
+                title="Delete Order"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+            
+            {/* Status Icon */}
             <div className={`flex items-center justify-center w-8 h-8 rounded-full ${isPastOrder ? 'bg-gray-900' : 'bg-yellow-100 dark:bg-yellow-900'}`}>
               {isPastOrder ? (
                 <Check className="w-4 h-4 text-white" />
@@ -130,13 +161,18 @@ const CurrentOrderCard: React.FC<CurrentOrderCardProps> = ({ order, onComplete, 
         <div className="p-5 border-t border-border">
           <button
             onClick={handleComplete}
-            disabled={isCompleting}
+            disabled={isCompleting || isDeleting}
             className="w-full bg-yellow-500 hover:bg-yellow-600 disabled:bg-yellow-300 text-black font-bold py-3 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 focus:ring-offset-background transition-colors duration-200 flex items-center justify-center gap-2"
           >
             {isCompleting ? (
               <>
                 <Check className="w-5 h-5 animate-pulse" />
                 Completing...
+              </>
+            ) : isDeleting ? (
+              <>
+                <Trash2 className="w-5 h-5 animate-pulse" />
+                Deleting...
               </>
             ) : (
               <>

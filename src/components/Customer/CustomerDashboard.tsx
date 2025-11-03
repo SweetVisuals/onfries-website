@@ -21,13 +21,32 @@ import CartDrawer from '../Cart/CartDrawer';
 import { Component as FloatingAuthModal } from '../ui/sign-in-flo';
 import { getCustomerDetails } from '../../lib/database';
 
-const CustomerDashboard: React.FC = () => {
-  const [selectedTab, setSelectedTab] = React.useState('menu');
+interface PromotionalBanner {
+  enabled: boolean;
+  title: string;
+  message: string;
+  backgroundColor: string;
+  textColor: string;
+}
+
+interface CustomerDashboardProps {
+  initialTab?: string;
+}
+
+const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ initialTab = 'menu' }) => {
+  const [selectedTab, setSelectedTab] = React.useState(initialTab);
   const { user, logout } = useAuth();
   const { getItemCount } = useCart();
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [promotionalBanner, setPromotionalBanner] = useState<PromotionalBanner>({
+    enabled: false,
+    title: '',
+    message: '',
+    backgroundColor: '#ff6b35',
+    textColor: '#ffffff'
+  });
   const [customerStats, setCustomerStats] = useState({
     totalSpent: 0,
     totalOrders: 0,
@@ -44,6 +63,24 @@ const CustomerDashboard: React.FC = () => {
     setIsDarkMode(theme === 'dark');
     document.documentElement.classList.toggle('dark', theme === 'dark');
   }, []);
+
+  useEffect(() => {
+    loadPromotionalBanner();
+  }, []);
+
+  const loadPromotionalBanner = () => {
+    try {
+      const settings = localStorage.getItem('adminSettings');
+      if (settings) {
+        const parsedSettings = JSON.parse(settings);
+        if (parsedSettings.promotionalBanner) {
+          setPromotionalBanner(parsedSettings.promotionalBanner);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading promotional banner settings:', error);
+    }
+  };
 
   const toggleTheme = () => {
     const newTheme = !isDarkMode;
@@ -110,11 +147,20 @@ const CustomerDashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-background relative">
       {/* Promotional Banner */}
-      <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white py-3 px-4 text-center">
-        <div className="container mx-auto">
-          <p className="text-lg font-bold">TODAY'S DEAL: £1 STEAK AND CHIPS - USE CODE STEAK AT CHECKOUT</p>
+      {promotionalBanner.enabled && (
+        <div
+          className="py-3 px-4 text-center"
+          style={{
+            backgroundColor: promotionalBanner.backgroundColor,
+            color: promotionalBanner.textColor
+          }}
+        >
+          <div className="container mx-auto">
+            <h3 className="text-lg font-bold">{promotionalBanner.title}</h3>
+            <p className="text-sm">{promotionalBanner.message}</p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Logo Section */}
       <div className="bg-background py-4">

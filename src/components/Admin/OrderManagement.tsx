@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, Trash2, Clock } from 'lucide-react';
-import { Order } from '../../lib/database';
+import { Order, deleteOrder } from '../../lib/database';
 import { useAuth } from '../../contexts/AuthContext';
 import CurrentOrderCard from '../Orders/CurrentOrderCard';
 import { Card, CardContent } from '@/components/ui/card';
@@ -118,6 +118,16 @@ const OrderManagement: React.FC = () => {
     console.log('Clear history functionality would be implemented here.');
   };
 
+  const handleDeleteOrder = async (orderId: string) => {
+    try {
+      await deleteOrder(orderId);
+      // Refresh the orders list after deletion
+      loadOrders();
+    } catch (error) {
+      console.error('Error deleting order:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#1C1C1C] py-8 text-white">
       <div className="container mx-auto px-4">
@@ -163,7 +173,12 @@ const OrderManagement: React.FC = () => {
         ) : (
           <div className="grid grid-cols-4 gap-6">
             {filteredOrders.map((order) => (
-              <CurrentOrderCard key={order.id} order={transformOrderForCard(order)} />
+              <CurrentOrderCard
+                key={order.id}
+                order={transformOrderForCard(order)}
+                onDelete={handleDeleteOrder}
+                isPastOrder={true}
+              />
             ))}
           </div>
         )}

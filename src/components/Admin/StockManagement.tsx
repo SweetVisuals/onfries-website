@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, TriangleAlert as AlertTriangle, Package } from 'lucide-react';
+import { Plus, Minus, TriangleAlert as AlertTriangle, Package, RotateCcw } from 'lucide-react';
 import { menuCategories } from '../../data/menuData';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -52,19 +52,60 @@ const StockManagement: React.FC = () => {
 
   const updateItemStock = async (itemId: string, newStock: number) => {
     try {
-      await dbUpdateItemStock(itemId, newStock);
+      // Validate stock input
+      if (newStock < 0) {
+        toast({
+          title: 'Invalid Stock Level',
+          description: 'Stock cannot be negative',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      const item = items.find(i => i.id === itemId);
+      if (!item) return;
+
+      const oldStock = item.currentStock;
+      
+      // Optimistically update UI
       setItems(prevItems =>
         prevItems.map(item =>
           item.id === itemId ? { ...item, currentStock: newStock } : item
         )
       );
+
+      await dbUpdateItemStock(itemId, newStock);
       
-      toast({
-        title: 'Stock updated',
-        description: `Stock level updated successfully`,
-      });
+      // Show appropriate toast message
+      if (newStock === 0) {
+        toast({
+          title: 'Item marked as sold out',
+          description: `${item.name} stock set to 0`,
+          variant: 'destructive'
+        });
+      } else if (newStock < item.lowStockThreshold) {
+        toast({
+          title: 'Low stock alert',
+          description: `${item.name} stock is now low (${newStock} remaining)`,
+          variant: 'destructive'
+        });
+      } else {
+        toast({
+          title: 'Stock updated',
+          description: `${item.name} stock updated from ${oldStock} to ${newStock}`,
+        });
+      }
     } catch (error) {
       console.error('Error updating stock:', error);
+      // Revert optimistic update on error
+      const item = items.find(i => i.id === itemId);
+      if (item) {
+        setItems(prevItems =>
+          prevItems.map(i =>
+            i.id === itemId ? { ...i, currentStock: item.currentStock } : i
+          )
+        );
+      }
       toast({
         title: 'Error',
         description: 'Failed to update stock level',
@@ -263,13 +304,55 @@ const StockManagement: React.FC = () => {
                         </div>
                         <div className="flex items-center gap-2">
                           <Label className="text-sm">Stock:</Label>
-                          <Input
-                            type="number"
-                            value={item.currentStock}
-                            onChange={(e) => updateItemStock(item.id, parseInt(e.target.value) || 0)}
-                            className="w-16 h-8"
-                            min="0"
-                          />
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-8 h-8 p-0"
+                              onClick={() => updateItemStock(item.id, Math.max(0, item.currentStock - 1))}
+                            >
+                              <Minus className="w-3 h-3" />
+                            </Button>
+                            <Input
+                              type="number"
+                              value={item.currentStock}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                // Allow empty string while typing, treat as 0 on blur
+                                const stockValue = value === '' ? 0 : parseInt(value);
+                                if (!isNaN(stockValue) && stockValue >= 0) {
+                                  updateItemStock(item.id, stockValue);
+                                }
+                              }}
+                              onBlur={(e) => {
+                                // Ensure non-negative number on blur
+                                const value = parseInt(e.target.value);
+                                if (isNaN(value) || value < 0) {
+                                  updateItemStock(item.id, 0);
+                                }
+                              }}
+                              className="w-16 h-8 text-center"
+                              min="0"
+                              placeholder="0"
+                            />
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-8 h-8 p-0"
+                              onClick={() => updateItemStock(item.id, item.currentStock + 1)}
+                            >
+                              <Plus className="w-3 h-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-8 h-8 p-0"
+                              onClick={() => updateItemStock(item.id, 0)}
+                              title="Set to sold out"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </div>
