@@ -66,15 +66,18 @@ const SquarePaymentForm: React.FC<SquarePaymentFormProps> = ({
   useEffect(() => {
     // Load Square Web Payments SDK
     const script = document.createElement('script');
-    script.src = 'https://sandbox.web.squarecdn.com/v1/square.js';
+    script.src = squareConfig.scriptUrl || 'https://sandbox.web.squarecdn.com/v1/square.js';
     script.async = true;
     script.onload = initializeSquare;
+    script.onerror = () => {
+      onError('Failed to load Square Web Payments SDK');
+    };
     document.body.appendChild(script);
 
     return () => {
       document.body.removeChild(script);
     };
-  }, []);
+  }, [squareConfig.scriptUrl]);
 
   const initializeSquare = async () => {
     try {

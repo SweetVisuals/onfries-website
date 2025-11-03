@@ -28,18 +28,23 @@ export const isDevelopment = process.env.NODE_ENV === 'development';
 export const isTestEnvironment = process.env.NODE_ENV === 'test';
 
 export const getSquareConfig = () => {
-  if (isTestEnvironment) {
+  // Always use sandbox for development and test environments
+  // Only use production in actual production builds
+  if (isDevelopment || isTestEnvironment || typeof window === 'undefined') {
     return squareConfig.sandbox;
   }
-  return isDevelopment ? squareConfig.sandbox : squareConfig.production;
+  // In browser production environment
+  return squareConfig.production;
 };
 
 export const getCurrentSquareConfig = () => {
   const config = getSquareConfig();
+  const isSandbox = config.applicationId.startsWith('sandbox-');
   return {
     applicationId: config.applicationId,
     accessToken: config.accessToken,
     locationId: config.locationId,
-    environment: isDevelopment ? 'sandbox' : 'production'
+    environment: isSandbox ? 'sandbox' : 'production',
+    scriptUrl: isSandbox ? 'https://sandbox.web.squarecdn.com/v1/square.js' : 'https://web.squarecdn.com/v1/square.js'
   };
 };
