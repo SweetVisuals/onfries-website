@@ -2,208 +2,297 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Mail, ShoppingCart, DollarSign, Calendar, Clock } from 'lucide-react';
-import { dummyOrders } from '../../data/orderData';
+import { ArrowLeft, Star, Calendar, DollarSign, ShoppingCart, Mail } from 'lucide-react';
+import { 
+  getCustomerDetails, 
+  Customer, 
+  Order 
+} from '../../lib/database';
+import Header from '../Layout/Header';
 
 interface CustomerDetailPageProps {
   customerId: string;
-  onBack: () => void;
+  onNavigate: (page: string) => void;
 }
 
-const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({ customerId, onBack }) => {
-  const [customer, setCustomer] = useState<any>(null);
-  const [customerOrders, setCustomerOrders] = useState<any[]>([]);
+const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({ customerId, onNavigate }) => {
+  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loyaltyPoints, setLoyaltyPoints] = useState(0);
+  const [totalSpent, setTotalSpent] = useState(0);
+  const [favoriteOrder, setFavoriteOrder] = useState<string>('');
+  const [recentOrder, setRecentOrder] = useState<Order | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Find customer data from orders
-    const customerOrders = dummyOrders.filter(order => order.customerId === customerId);
-    if (customerOrders.length > 0) {
-      const firstOrder = customerOrders[0];
-      const totalSpent = customerOrders.reduce((sum, order) => sum + order.total, 0);
-      const totalOrders = customerOrders.length;
-
-      setCustomer({
-        id: customerId,
-        name: firstOrder.customerName,
-        email: firstOrder.customerEmail,
-        totalOrders,
-        totalSpent,
-        lastOrderDate: customerOrders.sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime())[0].orderDate,
-        status: 'active'
-      });
-
-      setCustomerOrders(customerOrders.sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime()));
-    }
+    loadCustomerDetails();
   }, [customerId]);
 
-  const getCustomerTier = (totalSpent: number) => {
-    if (totalSpent > 100) return { label: 'VIP', color: 'bg-purple-100 text-purple-800' };
-    if (totalSpent > 50) return { label: 'Gold', color: 'bg-yellow-100 text-yellow-800' };
-    return { label: 'Silver', color: 'bg-gray-100 text-gray-800' };
+  const loadCustomerDetails = async () => {
+    try {
+      setLoading(true);
+      const details = await getCustomerDetails(customerId);
+      setCustomer(details.customer);
+      setOrders(details.orders);
+      setLoyaltyPoints(details.loyaltyPoints);
+      setTotalSpent(details.totalSpent);
+      setFavoriteOrder(details.favoriteOrder || 'No favorite order yet');
+      setRecentOrder(details.recentOrder || null);
+    } catch (error) {
+      console.error('Error loading customer details:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleNavigate = (page: string) => {
+    onNavigate(page);
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'delivered': return 'bg-green-100 text-green-800';
-      case 'preparing': return 'bg-yellow-100 text-yellow-800';
-      case 'pending': return 'bg-blue-100 text-blue-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'pending': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+      case 'preparing': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      case 'ready': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'delivered': return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200';
+      case 'cancelled': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200';
     }
   };
 
-  if (!customer) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-background py-8 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading customer details...</p>
+      <div className="min-h-screen bg-background">
+        <Header onNavigate={handleNavigate} />
+        <div className="container mx-auto px-4 py-8 max-w-7xl">
+          <div className="text-center py-12">
+            <div className="text-lg">Loading customer details...</div>
+          </div>
         </div>
       </div>
     );
   }
 
-  const tier = getCustomerTier(customer.totalSpent);
+  if (!customer) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header onNavigate={handleNavigate} />
+        <div className="container mx-auto px-4 py-8 max-w-7xl">
+          <div className="text-center py-12">
+            <div className="text-lg text-red-600">Customer not found</div>
+            <Button onClick={() => onNavigate('admin-customers')} className="mt-4">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Customers
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-background py-8">
-      <div className="container mx-auto px-4 max-w-6xl">
+    <div className="min-h-screen bg-background">
+      <Header onNavigate={handleNavigate} />
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
         {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <Button variant="outline" size="sm" onClick={onBack}>
+        <div className="flex items-center gap-4 mb-6">
+          <Button
+            onClick={() => onNavigate('admin-customers')}
+            variant="outline"
+            size="sm"
+          >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Customers
           </Button>
-          <div>
-            <h1 className="text-3xl font-bold">{customer.name}</h1>
-            <p className="text-muted-foreground">{customer.email}</p>
-          </div>
+          <div className="flex-1" />
+          <Button onClick={loadCustomerDetails} variant="outline" size="sm">
+            Refresh
+          </Button>
         </div>
 
-        {/* Customer Summary */}
-        <div className="grid md:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
-              <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{customer.totalOrders}</div>
-              <p className="text-xs text-muted-foreground">All time</p>
-            </CardContent>
-          </Card>
+        {/* Customer Header */}
+        <Card className="mb-6 shadow-sm border-border/40 bg-card/50 backdrop-blur-sm">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-6">
+              <div className="w-20 h-20 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center shadow-inner">
+                <span className="font-semibold text-2xl text-orange-600 dark:text-orange-300">
+                  {customer.name.charAt(0).toUpperCase()}
+                </span>
+              </div>
+              
+              <div className="flex-1">
+                <h1 className="text-3xl font-bold mb-2">{customer.name}</h1>
+                <div className="flex items-center gap-2 text-muted-foreground mb-3">
+                  <Mail className="w-4 h-4" />
+                  <span>{customer.email}</span>
+                  {customer.phone && (
+                    <>
+                      <span>•</span>
+                      <span>{customer.phone}</span>
+                    </>
+                  )}
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-1">
+                    <Star className="w-4 h-4 text-yellow-500" />
+                    <span className="font-medium">{loyaltyPoints} Loyalty Points</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-          <Card>
+        {/* Customer Stats */}
+        <div className="grid md:grid-cols-4 gap-6 mb-6">
+          <Card className="shadow-sm border-border/40 bg-card/50 backdrop-blur-sm hover:bg-card/70 transition-colors">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Spent</CardTitle>
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${customer.totalSpent.toFixed(2)}</div>
-              <p className="text-xs text-muted-foreground">Lifetime value</p>
+              <div className="text-2xl font-bold">£{totalSpent.toFixed(2)}</div>
+              <p className="text-xs text-muted-foreground">
+                Lifetime value
+              </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shadow-sm border-border/40 bg-card/50 backdrop-blur-sm hover:bg-card/70 transition-colors">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Average Order</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+              <ShoppingCart className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${(customer.totalSpent / customer.totalOrders).toFixed(2)}</div>
-              <p className="text-xs text-muted-foreground">Per order</p>
+              <div className="text-2xl font-bold">{orders.length}</div>
+              <p className="text-xs text-muted-foreground">
+                All time orders
+              </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shadow-sm border-border/40 bg-card/50 backdrop-blur-sm hover:bg-card/70 transition-colors">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Customer Tier</CardTitle>
+              <CardTitle className="text-sm font-medium">Loyalty Points</CardTitle>
+              <Star className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <Badge className={tier.color}>
-                {tier.label}
-              </Badge>
-              <p className="text-xs text-muted-foreground mt-1">Based on spending</p>
+              <div className="text-2xl font-bold">{loyaltyPoints}</div>
+              <p className="text-xs text-muted-foreground">
+                1 point per £10 spent
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm border-border/40 bg-card/50 backdrop-blur-sm hover:bg-card/70 transition-colors">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Member Since</CardTitle>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {new Date(customer.created_at).toLocaleDateString('en-GB', { 
+                  month: 'short', 
+                  day: 'numeric',
+                  year: 'numeric'
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Customer since
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Recent and Favorite Orders */}
+        <div className="grid md:grid-cols-2 gap-6 mb-6">
+          {/* Recent Order */}
+          <Card className="shadow-sm border-border/40 bg-card/50 backdrop-blur-sm hover:bg-card/70 transition-colors">
+            <CardHeader>
+              <CardTitle>Most Recent Order</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {recentOrder ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">Order #{recentOrder.id.slice(-8)}</span>
+                    <Badge className={getStatusColor(recentOrder.status)}>
+                      {recentOrder.status}
+                    </Badge>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    <div>{new Date(recentOrder.order_date).toLocaleDateString()}</div>
+                    <div>Total: £{recentOrder.total.toFixed(2)}</div>
+                  </div>
+                  {recentOrder.notes && (
+                    <div className="text-sm">
+                      <span className="font-medium">Notes:</span> {recentOrder.notes}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-4 text-muted-foreground">
+                  No recent orders
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Favorite Order */}
+          <Card className="shadow-sm border-border/40 bg-card/50 backdrop-blur-sm hover:bg-card/70 transition-colors">
+            <CardHeader>
+              <CardTitle>Favorite Order</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-3">
+                <Star className="w-5 h-5 text-yellow-500" />
+                <div>
+                  <div className="font-medium">{favoriteOrder}</div>
+                  <div className="text-sm text-muted-foreground">
+                    Most frequently ordered item
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
 
         {/* Order History */}
-        <Card>
+        <Card className="shadow-sm border-border/40 bg-card/50 backdrop-blur-sm hover:bg-card/70 transition-colors">
           <CardHeader>
             <CardTitle>Order History</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Last order: {new Date(customer.lastOrderDate).toLocaleDateString()}
-            </p>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {customerOrders.map((order) => (
-                <div key={order.id} className="border rounded-lg p-4">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-semibold">Order #{order.id.slice(-8)}</span>
+            {orders.length > 0 ? (
+              <div className="space-y-4">
+                {orders.slice(0, 10).map((order) => (
+                  <div key={order.id} className="flex items-center justify-between p-4 border border-border/50 rounded-lg hover:border-border/80 transition-colors bg-background/30">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className="font-medium">Order #{order.id.slice(-8)}</span>
                         <Badge className={getStatusColor(order.status)}>
                           {order.status}
                         </Badge>
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-4 h-4" />
-                          {new Date(order.orderDate).toLocaleDateString()}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Clock className="w-4 h-4" />
-                          {new Date(order.orderDate).toLocaleTimeString()}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-lg font-bold">${order.total.toFixed(2)}</div>
                       <div className="text-sm text-muted-foreground">
-                        {order.items.length} item{order.items.length !== 1 ? 's' : ''}
+                        <div>{new Date(order.order_date).toLocaleDateString()}</div>
+                        <div className="flex items-center gap-2">
+                          <span>Total:</span>
+                          <span className="font-medium">£{order.total.toFixed(2)}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-
-                  {/* Order Items */}
-                  <div className="space-y-2">
-                    {order.items.map((item: any, index: number) => (
-                      <div key={index} className="flex justify-between items-center py-2 px-3 bg-muted/50 rounded">
-                        <div className="flex-1">
-                          <span className="font-medium">{item.item.name}</span>
-                          {item.item.description && (
-                            <p className="text-sm text-muted-foreground">{item.item.description}</p>
-                          )}
-                        </div>
-                        <div className="text-right">
-                          <div className="font-medium">${(item.item.price * item.quantity).toFixed(2)}</div>
-                          <div className="text-sm text-muted-foreground">Qty: {item.quantity}</div>
-                        </div>
-                      </div>
-                    ))}
+                ))}
+                {orders.length > 10 && (
+                  <div className="text-center text-sm text-muted-foreground pt-4">
+                    Showing 10 of {orders.length} orders
                   </div>
-
-                  {/* Order Actions */}
-                  <div className="flex gap-2 mt-4 pt-3 border-t">
-                    <Button size="sm" variant="outline">
-                      <Mail className="w-4 h-4 mr-1" />
-                      Contact Customer
-                    </Button>
-                    <Button size="sm" variant="outline">
-                      Reorder
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {customerOrders.length === 0 && (
-              <div className="text-center py-8">
-                <ShoppingCart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No orders found</h3>
-                <p className="text-gray-500">This customer hasn't placed any orders yet.</p>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                No orders found for this customer
               </div>
             )}
           </CardContent>

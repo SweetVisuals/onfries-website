@@ -45,7 +45,8 @@
         "list_projects",
         "get_project",
         "execute_sql",
-        "get_anon_key"
+        "get_anon_key",
+        "list_organizations"
       ]
     }
   }

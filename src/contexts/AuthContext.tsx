@@ -7,6 +7,7 @@ export interface User {
   email: string;
   role: 'customer' | 'admin';
   isAdmin?: boolean;
+  created_at?: string;
 }
 
 interface AuthContextType {
@@ -34,7 +35,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           name: session.user.user_metadata?.name || session.user.email || '',
           email: session.user.email || '',
           role: isAdmin ? 'admin' : 'customer',
-          isAdmin
+          isAdmin,
+          created_at: session.user.created_at
         });
       }
       setIsLoading(false);
@@ -46,12 +48,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (session?.user) {
           // Check if user is admin based on email
           const isAdmin = session.user.email === 'admin@admin.com';
-          const userData = {
+const userData = {
             id: session.user.id,
             name: session.user.user_metadata?.name || session.user.email || '',
             email: session.user.email || '',
             role: isAdmin ? 'admin' as const : 'customer' as const,
-            isAdmin
+            isAdmin,
+            created_at: session.user.created_at
           };
           setUser(userData);
           // Store admin status in localStorage for app initialization

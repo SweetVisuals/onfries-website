@@ -5,6 +5,7 @@ import OrderHistory from '../Orders/OrderHistory';
 import OnFriesLogo from '@/images/OnFriesLogo.webp';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -13,11 +14,12 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { ShoppingCart, User, LogOut, Settings, Sun, Moon } from 'lucide-react';
+import { ShoppingCart, User, LogOut, Settings, Sun, Moon, Star, DollarSign, ShoppingBag, Calendar } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import CartDrawer from '../Cart/CartDrawer';
 import { Component as FloatingAuthModal } from '../ui/sign-in-flo';
+import { getCustomerDetails } from '../../lib/database';
 
 const CustomerDashboard: React.FC = () => {
   const [selectedTab, setSelectedTab] = React.useState('menu');
@@ -26,6 +28,14 @@ const CustomerDashboard: React.FC = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [customerStats, setCustomerStats] = useState({
+    totalSpent: 0,
+    totalOrders: 0,
+    loyaltyPoints: 0,
+    favoriteOrder: '',
+    recentOrder: null as any
+  });
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
@@ -44,6 +54,53 @@ const CustomerDashboard: React.FC = () => {
 
   const handleLogout = () => {
     logout();
+  };
+
+  useEffect(() => {
+    if (user && selectedTab === 'profile') {
+      loadCustomerData();
+    }
+  }, [user, selectedTab]);
+
+  const loadCustomerData = async () => {
+    if (!user) return;
+    
+    try {
+      setLoading(true);
+      // Try to get customer details, but fall back to auth user data if no customer record exists
+      try {
+        const details = await getCustomerDetails(user.id);
+        setCustomerStats({
+          totalSpent: details.totalSpent,
+          totalOrders: details.orders.length,
+          loyaltyPoints: details.loyaltyPoints,
+          favoriteOrder: details.favoriteOrder || 'No favorite order yet',
+          recentOrder: details.recentOrder
+        });
+      } catch (customerError) {
+        // If customer details fail, use auth user data with empty stats
+        console.log('No customer record found, using auth user data');
+        setCustomerStats({
+          totalSpent: 0,
+          totalOrders: 0,
+          loyaltyPoints: 0,
+          favoriteOrder: 'No orders yet',
+          recentOrder: null
+        });
+      }
+    } catch (error) {
+      console.error('Error loading customer data:', error);
+      // Set default values on error
+      setCustomerStats({
+        totalSpent: 0,
+        totalOrders: 0,
+        loyaltyPoints: 0,
+        favoriteOrder: 'No orders yet',
+        recentOrder: null
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -69,7 +126,8 @@ const CustomerDashboard: React.FC = () => {
                 <Tabs
                   tabs={[
                     { id: "menu", label: "Menu" },
-                    { id: "orders", label: "Orders" }
+                    { id: "orders", label: "Orders" },
+                    { id: "profile", label: "Profile" }
                   ]}
                   onTabChange={(tabId) => setSelectedTab(tabId)}
                 />
@@ -169,6 +227,194 @@ const CustomerDashboard: React.FC = () => {
         <div className="container mx-auto px-4">
           {selectedTab === 'menu' && <MenuPage />}
           {selectedTab === 'orders' && <OrderHistory />}
+          {selectedTab === 'profile' && (
+            <div className="max-w-7xl mx-auto px-6">
+              {loading ? (
+                <div className="text-center py-12">
+                  <div className="text-lg">Loading customer data...</div>
+                </div>
+              ) : (
+                <div className="space-y-8">
+                  {/* Customer Profile Header */}
+                  <Card>
+                    <CardContent className="p-8">
+                      <div className="flex items-center gap-8">
+                        <div className="w-24 h-24 bg-orange-100 rounded-full flex items-center justify-center dark:bg-orange-900">
+                          <span className="font-semibold text-3xl text-orange-600 dark:text-orange-300">
+                            {user?.name.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        
+                        <div className="flex-1">
+                          <h1 className="text-4xl font-bold mb-3">{user?.name}</h1>
+                          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-4">
+                            <span className="text-lg">{user?.email}</span>
+                          </div>
+                          <div className="flex items-center gap-6">
+                            <div className="flex items-center gap-2">
+                              <Star className="w-5 h-5 text-yellow-500" />
+                              <span className="font-medium text-lg">{customerStats.loyaltyPoints} Loyalty Points</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Customer Stats Cards - Made Wider */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8">
+                    <Card className="xl:col-span-1">
+                      <CardHeader className="pb-4">
+                        <CardTitle className="text-base font-medium flex items-center gap-2">
+                          <DollarSign className="h-5 w-5 text-muted-foreground" />
+                          Total Spent
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-3xl font-bold">£{customerStats.totalSpent.toFixed(2)}</div>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Lifetime value
+                        </p>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="xl:col-span-1">
+                      <CardHeader className="pb-4">
+                        <CardTitle className="text-base font-medium flex items-center gap-2">
+                          <ShoppingBag className="h-5 w-5 text-muted-foreground" />
+                          Total Orders
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-3xl font-bold">{customerStats.totalOrders}</div>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          All time orders
+                        </p>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="xl:col-span-1">
+                      <CardHeader className="pb-4">
+                        <CardTitle className="text-base font-medium flex items-center gap-2">
+                          <Star className="h-5 w-5 text-muted-foreground" />
+                          Loyalty Points
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-3xl font-bold">{customerStats.loyaltyPoints}</div>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          1 point per £10 spent
+                        </p>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="xl:col-span-1">
+                      <CardHeader className="pb-4">
+                        <CardTitle className="text-base font-medium flex items-center gap-2">
+                          <Calendar className="h-5 w-5 text-muted-foreground" />
+                          Member Since
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-3xl font-bold">
+                          {user ? new Date(user.created_at || Date.now()).toLocaleDateString('en-GB', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          }) : 'N/A'}
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Customer since
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Recent and Favorite Orders */}
+                  <div className="grid md:grid-cols-2 gap-8">
+                    {/* Recent Order */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-xl">Most Recent Order</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {customerStats.recentOrder ? (
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold text-lg">Order #{customerStats.recentOrder.id.slice(-8)}</span>
+                              <Badge variant="outline" className="text-sm">
+                                {customerStats.recentOrder.status}
+                              </Badge>
+                            </div>
+                            <div className="text-gray-600 dark:text-gray-400">
+                              <div className="mb-1">{new Date(customerStats.recentOrder.order_date).toLocaleDateString()}</div>
+                              <div className="font-medium">Total: £{customerStats.recentOrder.total.toFixed(2)}</div>
+                            </div>
+                            {customerStats.recentOrder.notes && (
+                              <div className="text-sm">
+                                <span className="font-medium">Notes:</span> {customerStats.recentOrder.notes}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                            <ShoppingBag className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                            <p className="text-lg">No recent orders</p>
+                            <p className="text-sm">Start ordering to see your order history here</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Favorite Order */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-xl">Favorite Order</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex items-center gap-4">
+                          <Star className="w-8 h-8 text-yellow-500" />
+                          <div>
+                            <div className="font-semibold text-lg">{customerStats.favoriteOrder}</div>
+                            <div className="text-gray-600 dark:text-gray-400 text-sm">
+                              Most frequently ordered item
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Account Information */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-xl">Account Information</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="text-sm font-medium text-gray-500">Name</label>
+                          <div className="text-lg font-medium">{user?.name}</div>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-500">Email</label>
+                          <div className="text-lg font-medium">{user?.email}</div>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-500">Account Type</label>
+                          <div className="text-lg font-medium">{user?.role || 'Customer'}</div>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-500">Customer ID</label>
+                          <div className="text-lg font-medium font-mono text-sm">{user?.id.slice(0, 8)}...</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

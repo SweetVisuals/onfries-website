@@ -1,16 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, Trash2, Clock } from 'lucide-react';
-import { getOrdersByCustomer, dummyOrders, Order } from '../../data/orderData';
+import { Order } from '../../lib/database';
 import { useAuth } from '../../contexts/AuthContext';
-import PastOrderCard from '../Orders/PastOrderCard'; // Adjusted path
-import { Card, CardContent } from '@/components/ui/card'; // Keep Card and CardContent for the "No orders found" message
+import PastOrderCard from '../Orders/PastOrderCard';
+import { Card, CardContent } from '@/components/ui/card';
+
+interface OrderWithItems extends Order {
+  order_items?: Array<{
+    quantity: number;
+    price: number;
+    menu_items?: {
+      name: string;
+      description: string;
+      category: string;
+      price: number;
+    };
+  }>;
+}
 
 const OrderHistory: React.FC = () => {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
-  const [orders] = useState<Order[]>(dummyOrders);
+  const [orders, setOrders] = useState<OrderWithItems[]>([]);
+  const [loading, setLoading] = useState(true);
 
   if (!user) {
     return (
@@ -20,19 +34,78 @@ const OrderHistory: React.FC = () => {
     );
   }
 
-  // For admin users, show all past orders; for customers, show their past orders
-  const allOrders = user.role === 'admin' ? orders : getOrdersByCustomer(user.id);
-  const pastOrders = allOrders.filter(order => order.status === 'delivered' || order.status === 'ready');
+  useEffect(() => {
+    loadOrders();
+  }, [user]);
 
-  const filteredOrders = pastOrders.filter(order =>
-    order.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  const loadOrders = async () => {
+    try {
+      setLoading(true);
+      // Import dynamically to avoid circular dependencies
+      const { supabase } = await import('../../lib/supabase');
+      
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items (
+            quantity,
+            price,
+            menu_items (
+              name,
+              description,
+              category,
+              price
+            )
+          )
+        `)
+        .in('status', ['delivered', 'ready'])
+        .order('order_date', { ascending: false });
+
+      if (error) throw error;
+      setOrders(data || []);
+    } catch (error) {
+      console.error('Error loading past orders:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredOrders = orders.filter(order =>
+    order.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     order.id.toString().includes(searchTerm) ||
-    order.items.some(item => item.item.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    order.order_items?.some((item) => item.menu_items?.name?.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
+  const transformOrderForCard = (order: OrderWithItems) => {
+    // Transform database order format to match PastOrderCard expectations
+    return {
+      id: order.id,
+      customerId: order.customer_id,
+      customerName: order.customer_name,
+      customerEmail: order.customer_email,
+      items: order.order_items?.map((item) => ({
+        item: {
+          id: '', // We don't have this in the query result
+          name: item.menu_items?.name || 'Unknown Item',
+          description: item.menu_items?.description || '',
+          price: item.price,
+          image: '',
+          category: item.menu_items?.category || '',
+          isAvailable: true,
+          preparationTime: 0
+        },
+        quantity: item.quantity
+      })) || [],
+      total: order.total,
+      status: order.status,
+      orderDate: order.order_date,
+      estimatedDelivery: order.estimated_delivery,
+      notes: order.notes
+    };
+  };
+
   const handleClearHistory = () => {
-    // This would typically involve an API call to clear the user's order history
-    // For now, we'll just clear the filtered results.
     setSearchTerm('');
     console.log('Clear history functionality would be implemented here.');
   };
@@ -65,18 +138,24 @@ const OrderHistory: React.FC = () => {
           </Button>
         </div>
 
-        {filteredOrders.length === 0 ? (
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="text-lg">Loading order history...</div>
+          </div>
+        ) : filteredOrders.length === 0 ? (
           <Card>
             <CardContent className="text-center py-12">
               <Clock className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium text-foreground mb-2">No orders found</h3>
-              <p className="text-muted-foreground">Your order history will appear here once you place your first order or match your search.</p>
+              <p className="text-muted-foreground">
+                {searchTerm ? 'No orders match your search criteria.' : 'Your order history will appear here once you place your first order or match your search.'}
+              </p>
             </CardContent>
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredOrders.map((order) => (
-              <PastOrderCard key={order.id} order={order} />
+              <PastOrderCard key={order.id} order={transformOrderForCard(order)} />
             ))}
           </div>
         )}

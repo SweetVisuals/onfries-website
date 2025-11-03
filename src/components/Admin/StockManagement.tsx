@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,69 +8,141 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, TriangleAlert as AlertTriangle, Package } from 'lucide-react';
-import { menuItems, menuCategories } from '../../data/menuData';
+import { menuCategories } from '../../data/menuData';
 import { useToast } from '@/hooks/use-toast';
+import {
+  getStockItems,
+  updateItemStock as dbUpdateItemStock,
+  toggleSoldOutOverride as dbToggleSoldOutOverride,
+  addMenuItem,
+  StockItem
+} from '../../lib/database';
 
 const StockManagement: React.FC = () => {
   const { toast } = useToast();
-  const [items, setItems] = useState(menuItems.map(item => ({
-    ...item,
-    stock: Math.floor(Math.random() * 50) + 10, // Random stock for demo
-    soldOutOverride: false // New property for sold out override
-  })));
+  const [items, setItems] = useState<StockItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
-  const filteredItems = items.filter(item => 
+  useEffect(() => {
+    loadStockItems();
+  }, []);
+
+  const loadStockItems = async () => {
+    try {
+      setLoading(true);
+      const stockItems = await getStockItems();
+      setItems(stockItems);
+    } catch (error) {
+      console.error('Error loading stock items:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load stock items',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredItems = items.filter(item =>
     selectedCategory === 'All' || item.category === selectedCategory
   );
 
-  const updateItemStock = (itemId: string, newStock: number) => {
-    setItems(prevItems => 
-      prevItems.map(item => 
-        item.id === itemId ? { ...item, stock: newStock } : item
-      )
-    );
-    
-    toast({
-      title: 'Stock updated',
-      description: `Stock level updated successfully`,
-    });
+  const updateItemStock = async (itemId: string, newStock: number) => {
+    try {
+      await dbUpdateItemStock(itemId, newStock);
+      setItems(prevItems =>
+        prevItems.map(item =>
+          item.id === itemId ? { ...item, currentStock: newStock } : item
+        )
+      );
+      
+      toast({
+        title: 'Stock updated',
+        description: `Stock level updated successfully`,
+      });
+    } catch (error) {
+      console.error('Error updating stock:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update stock level',
+        variant: 'destructive'
+      });
+    }
   };
 
+  const toggleSoldOutOverride = async (itemId: string) => {
+    try {
+      const item = items.find(i => i.id === itemId);
+      if (!item) return;
+      
+      const newOverride = !item.soldOutOverride;
+      await dbToggleSoldOutOverride(itemId, newOverride);
+      
+      setItems(prevItems =>
+        prevItems.map(item =>
+          item.id === itemId ? { ...item, soldOutOverride: newOverride } : item
+        )
+      );
 
-  const toggleSoldOutOverride = (itemId: string) => {
-    setItems(prevItems =>
-      prevItems.map(item =>
-        item.id === itemId ? { ...item, soldOutOverride: !item.soldOutOverride } : item
-      )
-    );
-
-    const item = items.find(i => i.id === itemId);
-    toast({
-      title: item?.soldOutOverride ? 'Sold out override enabled' : 'Sold out override disabled',
-      description: `${item?.name} is now ${item?.soldOutOverride ? 'marked as sold out' : 'available'}`,
-    });
+      toast({
+        title: newOverride ? 'Sold out override enabled' : 'Sold out override disabled',
+        description: `${item.name} is now ${newOverride ? 'marked as sold out' : 'available'}`,
+      });
+    } catch (error) {
+      console.error('Error toggling sold out override:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update availability',
+        variant: 'destructive'
+      });
+    }
   };
 
-
-  const addNewItem = (newItem: any) => {
-    const item = {
-      ...newItem,
-      id: Date.now().toString(),
-      stock: 0
-    };
-    
-    setItems(prevItems => [...prevItems, item]);
-    setIsAddDialogOpen(false);
-    
-    toast({
-      title: 'Item added',
-      description: `${newItem.name} has been added to the menu`,
-    });
+  const addNewItem = async (newItem: any) => {
+    try {
+      const addedItem = await addMenuItem({
+        name: newItem.name,
+        description: newItem.description,
+        price: newItem.price,
+        category: newItem.category,
+        image: newItem.image,
+        is_available: true,
+        preparation_time: newItem.preparationTime
+      });
+      
+      // Add to local state with initial stock
+      const stockItem: StockItem = {
+        id: addedItem.id,
+        name: addedItem.name,
+        category: addedItem.category,
+        currentStock: 0,
+        lowStockThreshold: 5,
+        isAvailable: addedItem.is_available,
+        soldOutOverride: false,
+        price: addedItem.price
+      };
+      
+      setItems(prevItems => [...prevItems, stockItem]);
+      setIsAddDialogOpen(false);
+      
+      toast({
+        title: 'Item added',
+        description: `${newItem.name} has been added to the menu`,
+      });
+    } catch (error) {
+      console.error('Error adding item:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to add menu item',
+        variant: 'destructive'
+      });
+    }
   };
 
-  const getLowStockItems = () => items.filter(item => item.stock >= 0 && item.stock < 5);
+  const getLowStockItems = () => items.filter(item => item.currentStock >= 0 && item.currentStock < 5);
 
   return (
     <div className="space-y-6">
@@ -92,6 +164,9 @@ const StockManagement: React.FC = () => {
         <CardHeader>
           <div className="flex justify-between items-center">
             <CardTitle>Stock Management</CardTitle>
+            <Button onClick={loadStockItems} variant="outline" size="sm">
+              Refresh
+            </Button>
 
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
               <DialogTrigger asChild>
@@ -132,27 +207,31 @@ const StockManagement: React.FC = () => {
               <CardTitle>Stock Overview</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                {filteredItems.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between py-2 px-3 border-b">
-                    <div className="flex-1">
-                      <h4 className="font-medium">{item.name}</h4>
-                      <p className="text-sm text-gray-600">{item.category}</p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <div className="text-lg font-bold">{item.stock}</div>
-                        <div className="text-xs text-gray-500">in stock</div>
+              {loading ? (
+                <div className="text-center py-4">Loading...</div>
+              ) : (
+                <div className="space-y-2">
+                  {filteredItems.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between py-2 px-3 border-b">
+                      <div className="flex-1">
+                        <h4 className="font-medium">{item.name}</h4>
+                        <p className="text-sm text-gray-600">{item.category}</p>
                       </div>
-                      {item.stock >= 0 && item.stock < 5 && (
-                        <Badge variant="destructive" className="text-xs">
-                          Low
-                        </Badge>
-                      )}
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <div className="text-lg font-bold">{item.currentStock}</div>
+                          <div className="text-xs text-gray-500">in stock</div>
+                        </div>
+                        {item.currentStock >= 0 && item.currentStock < 5 && (
+                          <Badge variant="destructive" className="text-xs">
+                            Low
+                          </Badge>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -164,41 +243,45 @@ const StockManagement: React.FC = () => {
               <CardTitle>Sold Out Management</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                {filteredItems.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between py-2 px-3 border-b">
-                    <div className="flex-1">
-                      <h4 className="font-medium">{item.name}</h4>
-                      <p className="text-sm text-gray-600">{item.category}</p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-2">
-                        <Label className="text-sm">Sold Out:</Label>
-                        <Switch
-                          checked={item.soldOutOverride}
-                          onCheckedChange={() => toggleSoldOutOverride(item.id)}
-                        />
+              {loading ? (
+                <div className="text-center py-4">Loading...</div>
+              ) : (
+                <div className="space-y-2">
+                  {filteredItems.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between py-2 px-3 border-b">
+                      <div className="flex-1">
+                        <h4 className="font-medium">{item.name}</h4>
+                        <p className="text-sm text-gray-600">{item.category}</p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Label className="text-sm">Stock:</Label>
-                        <Input
-                          type="number"
-                          value={item.stock}
-                          onChange={(e) => updateItemStock(item.id, parseInt(e.target.value) || 0)}
-                          className="w-16 h-8"
-                          min="0"
-                        />
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                          <Label className="text-sm">Sold Out:</Label>
+                          <Switch
+                            checked={item.soldOutOverride}
+                            onCheckedChange={() => toggleSoldOutOverride(item.id)}
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Label className="text-sm">Stock:</Label>
+                          <Input
+                            type="number"
+                            value={item.currentStock}
+                            onChange={(e) => updateItemStock(item.id, parseInt(e.target.value) || 0)}
+                            className="w-16 h-8"
+                            min="0"
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {filteredItems.length === 0 && (
+      {filteredItems.length === 0 && !loading && (
         <Card>
           <CardContent className="text-center py-12">
             <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />

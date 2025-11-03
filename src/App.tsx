@@ -56,23 +56,16 @@ function AppContent() {
         return <OrderHistory />;
       case 'admin':
         return <AdminDashboard onNavigate={setCurrentPage} />;
+      case 'admin-customers':
+        // Return admin dashboard with customers tab active
+        return <AdminDashboard onNavigate={setCurrentPage} initialTab="customers" />;
       case 'customer':
         return <CustomerDashboard />;
-      case 'customer-detail':
-        return <CustomerDetailPage customerId={currentPage.split(':')[1]} onBack={() => setCurrentPage('admin')} />;
-      case 'profile':
-        return (
-          <div className="min-h-screen bg-background py-8 flex items-center justify-center">
-            <p className="text-xl text-muted-foreground">Profile page - Coming soon!</p>
-          </div>
-        );
-      case 'settings':
-        return (
-          <div className="min-h-screen bg-background py-8 flex items-center justify-center">
-            <p className="text-xl text-muted-foreground">Settings page - Coming soon!</p>
-          </div>
-        );
       default:
+        if (currentPage.startsWith('customer-detail:')) {
+          const customerId = currentPage.split(':')[1];
+          return <CustomerDetailPage customerId={customerId} onNavigate={setCurrentPage} />;
+        }
         return <LandingPage />;
     }
   };

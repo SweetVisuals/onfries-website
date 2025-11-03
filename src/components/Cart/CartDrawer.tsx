@@ -1,13 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Minus, Trash2, ShoppingBag } from 'lucide-react';
+import { Plus, Minus, Trash2, ShoppingBag, CreditCard } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { dummyOrders } from '../../data/orderData';
 import { isOrderingAllowed } from '../../lib/utils';
+import SquarePaymentForm from '../Checkout/SquarePaymentForm';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -18,8 +19,10 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
   const { items, updateQuantity, removeItem, clearCart, getTotal, getItemCount } = useCart();
   const { user } = useAuth();
   const { toast } = useToast();
+  const [showPayment, setShowPayment] = useState(false);
+  const [orderReference, setOrderReference] = useState('');
 
-  const handleCheckout = () => {
+  const handleStartPayment = () => {
     if (!user) {
       toast({
         title: 'Please login',
@@ -47,14 +50,19 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
       return;
     }
 
-    // Create a new order (in real app, this would be an API call)
-    // Generate sequential order ID starting from 005
-    const nextOrderId = String(dummyOrders.length + 1).padStart(3, '0');
+    // Generate order reference
+    const orderRef = `ONF-${Date.now()}`;
+    setOrderReference(orderRef);
+    setShowPayment(true);
+  };
+
+  const handlePaymentSuccess = (payment: any) => {
+    // Create order after successful payment
     const newOrder = {
-      id: nextOrderId,
-      customerId: user.id,
-      customerName: user.name,
-      customerEmail: user.email,
+      id: orderReference,
+      customerId: user?.id || 'guest',
+      customerName: user?.name || 'Guest',
+      customerEmail: user?.email || '',
       items: items.map(item => ({
         item: {
           id: item.id,
@@ -71,19 +79,39 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
       total: getTotal(),
       status: 'pending' as const,
       orderDate: new Date().toISOString(),
-      estimatedDelivery: new Date(Date.now() + 30 * 60 * 1000).toISOString()
+      estimatedDelivery: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+      paymentId: payment.id,
+      paymentStatus: payment.status
     };
 
     // Add to dummy orders (in real app, this would be a database operation)
     dummyOrders.unshift(newOrder);
 
+    // Reset state and close drawer
+    setShowPayment(false);
+    setOrderReference('');
     clearCart();
     onClose();
     
     toast({
       title: 'Order placed successfully!',
-      description: `Your order #${newOrder.id} has been placed and will be ready in 30 minutes.`,
+      description: `Your order #${newOrder.id} has been placed and will be ready in 30 minutes. Payment ID: ${payment.id}`,
     });
+  };
+
+  const handlePaymentError = (error: string) => {
+    setShowPayment(false);
+    setOrderReference('');
+    toast({
+      title: 'Payment Failed',
+      description: error,
+      variant: 'destructive',
+    });
+  };
+
+  const handleBackToCart = () => {
+    setShowPayment(false);
+    setOrderReference('');
   };
 
   if (items.length === 0) {
@@ -114,83 +142,114 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
         <SheetHeader className="pr-12 pt-5">
           <SheetTitle className="flex items-center gap-3">
             <span className="flex items-center gap-3">
-              <ShoppingBag className="w-5 h-5" />
-              Your Orders
+              {showPayment ? <CreditCard className="w-5 h-5" /> : <ShoppingBag className="w-5 h-5" />}
+              {showPayment ? 'Secure Payment' : 'Your Orders'}
             </span>
-            <Badge variant="secondary" className="ml-auto">
-              {getItemCount()} items
-            </Badge>
+            {!showPayment && (
+              <Badge variant="secondary" className="ml-auto">
+                {getItemCount()} items
+              </Badge>
+            )}
           </SheetTitle>
         </SheetHeader>
         
         <div className="flex-1 overflow-y-auto py-4">
-          <div className="px-2.5 space-y-4">
-            {items.map((item) => (
-              <div key={item.id} className="flex items-center gap-3 bg-muted rounded-lg p-3">
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-foreground truncate">{item.name}</h4>
-                  <p className="text-sm text-muted-foreground">£{item.price.toFixed(2)}</p>
-                  
-                  <div className="flex items-center justify-between mt-2">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="cursor-pointer p-1 hover:bg-accent rounded-md transition-colors"
-                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                      >
-                        <Minus className="w-3 h-3 text-foreground" />
-                      </div>
-                      
-                      <span className="text-sm font-medium w-8 text-center text-foreground">
-                        {item.quantity}
-                      </span>
-                      
-                      <div
-                        className="cursor-pointer p-1 hover:bg-accent rounded-md transition-colors"
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                      >
-                        <Plus className="w-3 h-3 text-foreground" />
-                      </div>
-                    </div>
+          {showPayment ? (
+            // Payment Form
+            <div className="px-2.5">
+              <SquarePaymentForm
+                amount={getTotal()}
+                onSuccess={handlePaymentSuccess}
+                onError={handlePaymentError}
+                orderReference={orderReference}
+                customerEmail={user?.email}
+                disabled={false}
+              />
+              
+              <div className="mt-4">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleBackToCart}
+                  disabled={false}
+                >
+                  Back to Cart
+                </Button>
+              </div>
+            </div>
+          ) : (
+            // Cart Contents
+            <div className="px-2.5 space-y-4">
+              {items.map((item) => (
+                <div key={item.id} className="flex items-center gap-3 bg-muted rounded-lg p-3">
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-foreground truncate">{item.name}</h4>
+                    <p className="text-sm text-muted-foreground">£{item.price.toFixed(2)}</p>
                     
-                    <div
-                      className="cursor-pointer p-1 hover:bg-accent rounded-md transition-colors"
-                      onClick={() => removeItem(item.id)}
-                    >
-                      <Trash2 className="w-3 h-3 text-destructive hover:text-destructive" />
+                    <div className="flex items-center justify-between mt-2">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="cursor-pointer p-1 hover:bg-accent rounded-md transition-colors"
+                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                        >
+                          <Minus className="w-3 h-3 text-foreground" />
+                        </div>
+                        
+                        <span className="text-sm font-medium w-8 text-center text-foreground">
+                          {item.quantity}
+                        </span>
+                        
+                        <div
+                          className="cursor-pointer p-1 hover:bg-accent rounded-md transition-colors"
+                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                        >
+                          <Plus className="w-3 h-3 text-foreground" />
+                        </div>
+                      </div>
+                      
+                      <div
+                        className="cursor-pointer p-1 hover:bg-accent rounded-md transition-colors"
+                        onClick={() => removeItem(item.id)}
+                      >
+                        <Trash2 className="w-3 h-3 text-destructive hover:text-destructive" />
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
         
-        <div className="border-t pt-4 mt-4 px-2.5">
-          <div className="flex justify-between items-center mb-4">
-            <span className="text-lg font-semibold">Total:</span>
-            <span className="text-xl font-bold text-yellow-600">
-              £{getTotal().toFixed(2)}
-            </span>
-          </div>
-          
-          <div className="space-y-2">
-            <Button
-              className="w-full"
-              size="lg"
-              onClick={handleCheckout}
-            >
-              Checkout
-            </Button>
+        {!showPayment && (
+          <div className="border-t pt-4 mt-4 px-2.5">
+            <div className="flex justify-between items-center mb-4">
+              <span className="text-lg font-semibold">Total:</span>
+              <span className="text-xl font-bold text-yellow-600">
+                £{getTotal().toFixed(2)}
+              </span>
+            </div>
             
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={clearCart}
-            >
-              Clear Cart
-            </Button>
+            <div className="space-y-2">
+              <Button
+                className="w-full bg-yellow-500 hover:bg-yellow-600 text-black"
+                size="lg"
+                onClick={handleStartPayment}
+              >
+                <CreditCard className="w-4 h-4 mr-2" />
+                Pay Securely
+              </Button>
+              
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={clearCart}
+              >
+                Clear Cart
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
       </SheetContent>
     </Sheet>
   );

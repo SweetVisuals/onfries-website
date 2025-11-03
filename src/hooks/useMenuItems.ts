@@ -38,7 +38,6 @@ export const useMenuItems = () => {
       // Filter out any old steak variations that shouldn't be there
       const filteredItems = items.filter(item => {
         const isOldItem = item.name.includes('Centurion') ||
-                         item.name === 'Deluxe Steak & Fries' ||
                          item.name === 'Premium Steak & Fries' ||
                          item.name.includes('Quadzilla');
         return !isOldItem;

@@ -1,19 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, Trash2, Clock } from 'lucide-react';
-import { getOrdersByCustomer, dummyOrders, addOrder, Order } from '../../data/orderData';
+import { Order } from '../../lib/database';
 import { useAuth } from '../../contexts/AuthContext';
-import CurrentOrderCard from '../Orders/CurrentOrderCard'; // Adjusted path
-import { Card, CardContent } from '@/components/ui/card'; // Keep Card and CardContent for the "No orders found" message
+import CurrentOrderCard from '../Orders/CurrentOrderCard';
+import { Card, CardContent } from '@/components/ui/card';
 import AddOrderDialog from './AddOrderDialog';
 import { MenuItem } from '../../data/menuData';
 import MeatCookingCards from './MeatCookingCards';
 
+interface OrderWithItems extends Order {
+  order_items?: Array<{
+    quantity: number;
+    price: number;
+    menu_items?: {
+      name: string;
+      description: string;
+      category: string;
+      price: number;
+    };
+  }>;
+}
+
 const CurrentOrderManagement: React.FC = () => {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
-  const [orders, setOrders] = useState<Order[]>(dummyOrders);
+  const [orders, setOrders] = useState<OrderWithItems[]>([]);
+  const [loading, setLoading] = useState(true);
 
   if (!user) {
     return (
@@ -23,59 +37,129 @@ const CurrentOrderManagement: React.FC = () => {
     );
   }
 
-  // For admin users, show all current orders; for customers, show their current orders
-  const allOrders = user.role === 'admin' ? orders : getOrdersByCustomer(user.id);
-  const currentOrders = allOrders.filter(order => order.status === 'preparing' || order.status === 'pending');
+  useEffect(() => {
+    loadOrders();
+  }, [user]);
 
-  const filteredOrders = currentOrders.filter(order =>
-    order.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  const loadOrders = async () => {
+    try {
+      setLoading(true);
+      // Import dynamically to avoid circular dependencies
+      const { supabase } = await import('../../lib/supabase');
+      
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items (
+            quantity,
+            price,
+            menu_items (
+              name,
+              description,
+              category,
+              price
+            )
+          )
+        `)
+        .in('status', ['pending', 'preparing'])
+        .order('order_date', { ascending: false });
+
+      if (error) throw error;
+      setOrders(data || []);
+    } catch (error) {
+      console.error('Error loading current orders:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredOrders = orders.filter(order =>
+    order.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     order.id.toString().includes(searchTerm) ||
-    order.items.some(item => item.item.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    order.order_items?.some((item) => item.menu_items?.name?.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const handleClearHistory = () => {
-    // This would typically involve an API call to clear the user's order history
-    // For now, we'll just clear the filtered results.
     setSearchTerm('');
     console.log('Clear history functionality would be implemented here.');
   };
 
-  const handleOrderComplete = (updatedOrder: Order) => {
-    // Update the order in the state with completion information
-    setOrders(prevOrders =>
-      prevOrders.map(order =>
-        order.id === updatedOrder.id ? updatedOrder : order
-      )
-    );
-    
+  const transformOrderForCard = (order: OrderWithItems) => {
+    // Transform database order format to match CurrentOrderCard expectations
+    return {
+      id: order.id,
+      customerId: order.customer_id,
+      customerName: order.customer_name,
+      customerEmail: order.customer_email,
+      items: order.order_items?.map((item) => ({
+        item: {
+          id: '', // We don't have this in the query result
+          name: item.menu_items?.name || 'Unknown Item',
+          description: item.menu_items?.description || '',
+          price: item.price,
+          image: '',
+          category: item.menu_items?.category || '',
+          isAvailable: true,
+          preparationTime: 0
+        },
+        quantity: item.quantity
+      })) || [],
+      total: order.total,
+      status: order.status,
+      orderDate: order.order_date,
+      estimatedDelivery: order.estimated_delivery,
+      notes: order.notes
+    };
+  };
+
+  const transformOrderForMeatCards = (order: OrderWithItems) => {
+    // Transform database order format to match MeatCookingCards expectations
+    return {
+      id: order.id,
+      customerId: order.customer_id,
+      customerName: order.customer_name,
+      customerEmail: order.customer_email,
+      items: order.order_items?.map((item) => ({
+        item: {
+          id: '', // Not needed for meat cards
+          name: item.menu_items?.name || 'Unknown Item',
+          description: item.menu_items?.description || '',
+          price: item.price,
+          image: '',
+          category: item.menu_items?.category || '',
+          isAvailable: true,
+          preparationTime: 0
+        },
+        quantity: item.quantity
+      })) || [],
+      total: order.total,
+      status: order.status,
+      orderDate: order.order_date,
+      estimatedDelivery: order.estimated_delivery,
+      notes: order.notes
+    };
+  };
+
+  const handleOrderComplete = (updatedOrder: any) => {
+    // Handle order completion - this would typically update the database
     console.log(`Order ${updatedOrder.id} completed. Time taken: ${updatedOrder.totalTimeTaken} minutes`);
+    // Reload orders to reflect the change
+    loadOrders();
   };
 
   const handleAddOrder = (customerName: string, customerEmail: string, items: Array<{ item: MenuItem; quantity: number; addOns?: Array<{ item: MenuItem; quantity: number }> }>) => {
-    const newOrder = {
-      id: (dummyOrders.length + 1).toString().padStart(3, '0'),
-      customerId: 'admin-created', // Placeholder for admin-created orders
-      customerName,
-      customerEmail,
-      items,
-      total: items.reduce((sum, item) => {
-        const itemTotal = item.item.price * item.quantity;
-        const addOnsTotal = (item.addOns || []).reduce((addOnSum, addOn) => addOnSum + (addOn.item.price * addOn.quantity), 0) * item.quantity;
-        return sum + itemTotal + addOnsTotal;
-      }, 0),
-      status: 'pending' as const,
-      orderDate: new Date().toISOString(),
-      estimatedDelivery: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes from now
-    };
-    addOrder(newOrder);
-    setOrders([...orders, newOrder]);
+    // This would typically create a new order in the database
+    console.log('Add order functionality would be implemented here');
+    // Reload orders to reflect the change
+    loadOrders();
   };
 
   return (
     <div className="min-h-screen bg-background py-8">
       <div className="container mx-auto px-4 max-w-7xl">
         <div className="mb-8">
-          <MeatCookingCards orders={orders} />
+          <MeatCookingCards orders={orders.map(transformOrderForMeatCards)} />
         </div>
 
         <div className="flex items-center space-x-4 mb-8">
@@ -113,7 +197,7 @@ const CurrentOrderManagement: React.FC = () => {
             {filteredOrders.map((order) => (
               <CurrentOrderCard
                 key={order.id}
-                order={order}
+                order={transformOrderForCard(order)}
                 onComplete={handleOrderComplete}
               />
             ))}

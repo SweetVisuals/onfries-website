@@ -27,11 +27,12 @@ import {
 
 interface AdminDashboardProps {
   onNavigate: (page: string) => void;
+  initialTab?: string;
 }
 
-const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, initialTab = 'overview' }) => {
   const { user } = useAuth();
-  const [selectedTab, setSelectedTab] = useState('overview');
+  const [selectedTab, setSelectedTab] = useState(initialTab);
   const [timeframe, setTimeframe] = useState('7d');
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [revenueByItem, setRevenueByItem] = useState<RevenueByItem[]>([]);

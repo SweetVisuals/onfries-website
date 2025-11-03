@@ -12,14 +12,15 @@ export interface MenuItem {
 export const menuCategories = [
   'All',
   'Main Courses',
-  'Add-ons'
+  'Kids',
+  'Drinks'
 ];
 
 export const menuItems: MenuItem[] = [
-  // Main Courses
+  // Main Menu
   {
     id: '1',
-    name: 'Premium Steak & Fries',
+    name: 'Steak & Fries',
     description: 'Premium steak served with crispy fries and signature seasoning',
     price: 12.00,
     image: '',
@@ -28,74 +29,66 @@ export const menuItems: MenuItem[] = [
     preparationTime: 20
   },
   {
-    id: '8',
-    name: 'Fries',
-    description: 'Crispy fries with signature seasoning',
-    price: 5.00,
+    id: '2',
+    name: 'Deluxe Steak & Fries',
+    description: 'Premium quality steak with our signature fries and special seasoning',
+    price: 20.00,
+    image: '',
+    category: 'Main Courses',
+    isAvailable: true,
+    preparationTime: 25
+  },
+  {
+    id: '3',
+    name: 'Fries Only',
+    description: 'Crispy fries with our signature seasoning',
+    price: 4.00,
     image: '',
     category: 'Main Courses',
     isAvailable: true,
     preparationTime: 10
   },
 
-  // Add-ons
-  {
-    id: '2',
-    name: 'Steak',
-    description: 'Add an extra steak to your meal',
-    price: 10.00,
-    image: '',
-    category: 'Add-ons',
-    isAvailable: true,
-    preparationTime: 0
-  },
-  {
-    id: '3',
-    name: 'Short Ribs x2',
-    description: 'Two tender short ribs - perfect with your steak and fries',
-    price: 6.00,
-    image: '',
-    category: 'Add-ons',
-    isAvailable: true,
-    preparationTime: 0
-  },
+  // Kids Menu
   {
     id: '4',
-    name: 'Lamb Chops x2',
-    description: 'Two premium lamb chops - premium add-on for your steak and fries',
-    price: 11.00,
+    name: 'Kids Meal',
+    description: 'Specially curated meal for kids',
+    price: 10.00,
     image: '',
-    category: 'Add-ons',
+    category: 'Kids',
     isAvailable: true,
-    preparationTime: 0
+    preparationTime: 15
   },
   {
     id: '5',
-    name: 'Green Sauce',
-    description: 'Extra green sauce add-on',
+    name: 'Kids Fries',
+    description: 'Perfect portion of crispy fries made just for kids',
     price: 2.00,
     image: '',
-    category: 'Add-ons',
+    category: 'Kids',
     isAvailable: true,
-    preparationTime: 0
+    preparationTime: 8
   },
   {
     id: '6',
-    name: 'Red Sauce',
-    description: 'Extra red sauce add-on',
-    price: 2.00,
+    name: '£1 Steak Cone',
+    description: 'Small portion of steak in a convenient cone',
+    price: 1.00,
     image: '',
-    category: 'Add-ons',
+    category: 'Kids',
     isAvailable: true,
-    preparationTime: 0
+    preparationTime: 12
   },
+
+  // Drinks
   {
     id: '7',
-    name: 'Can of Drink',
+    name: 'Can Of Drink',
     description: 'Assorted soft drinks',
     price: 1.50,
     image: '',
-    category: 'Add-ons',
+    category: 'Drinks',
     isAvailable: true,
     preparationTime: 0
   }

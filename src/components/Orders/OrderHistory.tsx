@@ -1,15 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, Trash2, Clock } from 'lucide-react';
-import { getOrdersByCustomer } from '../../data/orderData';
 import { useAuth } from '../../contexts/AuthContext';
+import { getCustomerOrders, Order } from '../../lib/database';
 import CurrentOrderCard from './CurrentOrderCard';
-import { Card, CardContent } from '@/components/ui/card'; // Keep Card and CardContent for the "No orders found" message
+import { Card, CardContent } from '@/components/ui/card';
+
+interface OrderWithItems extends Order {
+  order_items?: Array<{
+    quantity: number;
+    price: number;
+    menu_items?: {
+      name: string;
+      description: string;
+      category: string;
+    };
+  }>;
+}
 
 const OrderHistory: React.FC = () => {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
+  const [orders, setOrders] = useState<OrderWithItems[]>([]);
+  const [loading, setLoading] = useState(true);
 
   if (!user) {
     return (
@@ -19,26 +33,67 @@ const OrderHistory: React.FC = () => {
     );
   }
 
-  const orders = getOrdersByCustomer(user.id);
+  useEffect(() => {
+    loadOrders();
+  }, [user]);
+
+  const loadOrders = async () => {
+    try {
+      setLoading(true);
+      const customerOrders = await getCustomerOrders(user.id);
+      setOrders(customerOrders);
+    } catch (error) {
+      console.error('Error loading orders:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredOrders = orders.filter(order =>
-    order.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    order.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     order.id.toString().includes(searchTerm) ||
-    order.items.some(item => item.item.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    order.order_items?.some((item) => item.menu_items?.name?.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const handleClearHistory = () => {
-    // This would typically involve an API call to clear the user's order history
-    // For now, we'll just clear the filtered results.
     setSearchTerm('');
     console.log('Clear history functionality would be implemented here.');
   };
 
+  const transformOrderForCard = (order: OrderWithItems) => {
+    // Transform database order format to match CurrentOrderCard expectations
+    return {
+      id: order.id,
+      customerId: order.customer_id,
+      customerName: order.customer_name,
+      customerEmail: order.customer_email,
+      items: order.order_items?.map((item) => ({
+        item: {
+          id: '', // We don't have this in the query result
+          name: item.menu_items?.name || 'Unknown Item',
+          description: item.menu_items?.description || '',
+          price: item.price,
+          image: '',
+          category: item.menu_items?.category || '',
+          isAvailable: true,
+          preparationTime: 0
+        },
+        quantity: item.quantity
+      })) || [],
+      total: order.total,
+      status: order.status,
+      orderDate: order.order_date,
+      estimatedDelivery: order.estimated_delivery,
+      notes: order.notes
+    };
+  };
+
   return (
     <div className="min-h-screen bg-background py-8">
-      <div className="container mx-auto px-4">
+      <div className="max-w-7xl mx-auto px-6">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Order History</h1>
+          <h1 className="text-4xl font-bold text-foreground mb-2">Order History</h1>
+          <p className="text-gray-600 dark:text-gray-400">View and manage your past orders</p>
         </div>
 
         <div className="flex items-center space-x-4 mb-8">
@@ -47,14 +102,14 @@ const OrderHistory: React.FC = () => {
             <Input
               type="text"
               placeholder="Search name, order #, or item"
-              className="pl-10 pr-4 py-2 rounded-md"
+              className="pl-10 pr-4 py-3 rounded-md text-base"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           <Button
             variant="ghost"
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 px-6"
             onClick={handleClearHistory}
           >
             <Trash2 className="w-4 h-4" />
@@ -62,18 +117,24 @@ const OrderHistory: React.FC = () => {
           </Button>
         </div>
 
-        {filteredOrders.length === 0 ? (
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="text-lg">Loading order history...</div>
+          </div>
+        ) : filteredOrders.length === 0 ? (
           <Card>
-            <CardContent className="text-center py-12">
-              <Clock className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">No orders found</h3>
-              <p className="text-muted-foreground">Your order history will appear here once you place your first order or match your search.</p>
+            <CardContent className="text-center py-16">
+              <Clock className="w-20 h-20 text-muted-foreground mx-auto mb-6" />
+              <h3 className="text-xl font-medium text-foreground mb-3">No orders found</h3>
+              <p className="text-muted-foreground text-lg">
+                {searchTerm ? 'No orders match your search criteria.' : 'Your order history will appear here once you place your first order.'}
+              </p>
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
             {filteredOrders.map((order) => (
-              <CurrentOrderCard key={order.id} order={order} isPastOrder={true} />
+              <CurrentOrderCard key={order.id} order={transformOrderForCard(order)} isPastOrder={true} />
             ))}
           </div>
         )}

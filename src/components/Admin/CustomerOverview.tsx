@@ -1,48 +1,46 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Users, ShoppingCart, DollarSign, Search, Mail } from 'lucide-react';
-import { dummyOrders } from '../../data/orderData';
+import { Users, ShoppingCart, DollarSign, Search, Mail, Star } from 'lucide-react';
+import { getCustomersWithStats } from '../../lib/database';
 
 interface CustomerOverviewProps {
   onNavigate: (page: string) => void;
 }
 
+interface CustomerWithStats {
+  id: string;
+  name: string;
+  email: string;
+  totalOrders: number;
+  totalSpent: number;
+  lastOrderDate: string;
+  loyaltyPoints: number;
+  status: string;
+}
+
 const CustomerOverview: React.FC<CustomerOverviewProps> = ({ onNavigate }) => {
+  const [customers, setCustomers] = useState<CustomerWithStats[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Generate customer data from orders
-  const customers = React.useMemo(() => {
-    const customerMap = new Map();
-    
-    dummyOrders.forEach(order => {
-      const customerId = order.customerId;
-      
-      if (!customerMap.has(customerId)) {
-        customerMap.set(customerId, {
-          id: customerId,
-          name: order.customerName,
-          email: order.customerEmail,
-          totalOrders: 0,
-          totalSpent: 0,
-          lastOrderDate: order.orderDate,
-          status: 'active'
-        });
-      }
-      
-      const customer = customerMap.get(customerId);
-      customer.totalOrders += 1;
-      customer.totalSpent += order.total;
-      
-      if (new Date(order.orderDate) > new Date(customer.lastOrderDate)) {
-        customer.lastOrderDate = order.orderDate;
-      }
-    });
-    
-    return Array.from(customerMap.values()).sort((a, b) => b.totalSpent - a.totalSpent);
+  useEffect(() => {
+    loadCustomers();
   }, []);
+
+  const loadCustomers = async () => {
+    try {
+      setLoading(true);
+      const customersData = await getCustomersWithStats();
+      setCustomers(customersData);
+    } catch (error) {
+      console.error('Error loading customers:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredCustomers = customers.filter(customer =>
     customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -51,162 +49,185 @@ const CustomerOverview: React.FC<CustomerOverviewProps> = ({ onNavigate }) => {
 
   const totalCustomers = customers.length;
   const totalRevenue = customers.reduce((sum, customer) => sum + customer.totalSpent, 0);
-  const averageOrderValue = totalRevenue / dummyOrders.length;
+  const averageOrderValue = totalCustomers > 0 ? totalRevenue / customers.reduce((sum, c) => sum + c.totalOrders, 0) : 0;
   const repeatCustomers = customers.filter(customer => customer.totalOrders > 1).length;
 
-  const getCustomerTier = (totalSpent: number) => {
-    if (totalSpent > 100) return { label: 'VIP', color: 'bg-purple-100 text-purple-800' };
-    if (totalSpent > 50) return { label: 'Gold', color: 'bg-yellow-100 text-yellow-800' };
-    return { label: 'Silver', color: 'bg-gray-100 text-gray-800' };
-  };
+  
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto">
+    <div className="space-y-8 max-w-7xl mx-auto px-6">
       {/* Customer Statistics */}
-      <div className="grid md:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Customers</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+      <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-8">
+        <Card className="shadow-sm border-border/40 bg-card/50 backdrop-blur-sm hover:bg-card/70 transition-colors">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-base font-medium flex items-center gap-2">
+              <Users className="h-5 w-5 text-muted-foreground" />
+              Total Customers
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalCustomers}</div>
-            <p className="text-xs text-muted-foreground">
+            <div className="text-3xl font-bold">{totalCustomers}</div>
+            <p className="text-sm text-muted-foreground mt-1">
               Active customers
             </p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+        <Card className="shadow-sm border-border/40 bg-card/50 backdrop-blur-sm hover:bg-card/70 transition-colors">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-base font-medium flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-muted-foreground" />
+              Total Revenue
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalRevenue.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">
+            <div className="text-3xl font-bold">£{totalRevenue.toFixed(2)}</div>
+            <p className="text-sm text-muted-foreground mt-1">
               From all customers
             </p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Average Order</CardTitle>
-            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+        <Card className="shadow-sm border-border/40 bg-card/50 backdrop-blur-sm hover:bg-card/70 transition-colors">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-base font-medium flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5 text-muted-foreground" />
+              Average Order
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${averageOrderValue.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">
+            <div className="text-3xl font-bold">£{averageOrderValue.toFixed(2)}</div>
+            <p className="text-sm text-muted-foreground mt-1">
               Per order value
             </p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Repeat Customers</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+        <Card className="shadow-sm border-border/40 bg-card/50 backdrop-blur-sm hover:bg-card/70 transition-colors">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-base font-medium flex items-center gap-2">
+              <Users className="h-5 w-5 text-muted-foreground" />
+              Repeat Customers
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{repeatCustomers}</div>
-            <p className="text-xs text-muted-foreground">
-              {((repeatCustomers / totalCustomers) * 100).toFixed(1)}% retention rate
+            <div className="text-3xl font-bold">{repeatCustomers}</div>
+            <p className="text-sm text-muted-foreground mt-1">
+              {totalCustomers > 0 ? ((repeatCustomers / totalCustomers) * 100).toFixed(1) : 0}% retention rate
             </p>
           </CardContent>
         </Card>
       </div>
 
       {/* Customer Management */}
-      <Card>
+      <Card className="shadow-sm border-border/40 bg-card/50 backdrop-blur-sm">
         <CardHeader>
-          <CardTitle className="text-left md:text-center">Customer Management</CardTitle>
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input
-              placeholder="Search customers..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+          <CardTitle className="text-2xl">Customer Management</CardTitle>
+          <div className="flex justify-between items-center">
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+              <Input
+                placeholder="Search customers..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Button onClick={loadCustomers} variant="outline" size="sm">
+              Refresh
+            </Button>
           </div>
         </CardHeader>
       </Card>
 
       {/* Customer List */}
-       <div className="grid gap-4">
-         {filteredCustomers.map((customer) => {
-           const tier = getCustomerTier(customer.totalSpent);
+      {loading ? (
+        <div className="text-center py-12">
+          <div className="text-lg">Loading customers...</div>
+        </div>
+      ) : (
+        <div className="grid gap-6">
+          {filteredCustomers.map((customer) => {
+            return (
+              <Card key={customer.id} className="shadow-sm border-border/40 bg-card/50 backdrop-blur-sm hover:bg-card/70 transition-colors">
+                <CardContent className="p-6">
+                  <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-6">
+                    <div className="space-y-3 flex-1">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center flex-shrink-0 shadow-inner">
+                          <span className="font-semibold text-xl text-orange-600 dark:text-orange-300">
+                            {customer.name.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
 
-           return (
-             <Card key={customer.id}>
-               <CardContent className="p-4 md:p-6">
-                 <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
-                   <div className="space-y-2 flex-1">
-                     <div className="flex items-center gap-3">
-                       <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                         <span className="font-semibold text-orange-600">
-                           {customer.name.charAt(0).toUpperCase()}
-                         </span>
-                       </div>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-semibold text-xl truncate">{customer.name}</h3>
+                          <div className="flex items-center gap-1 text-muted-foreground">
+                            <Mail className="w-4 h-4 flex-shrink-0" />
+                            <span className="truncate">{customer.email}</span>
+                          </div>
+                        </div>
+                      </div>
 
-                       <div className="min-w-0 flex-1">
-                         <h3 className="font-semibold text-lg truncate">{customer.name}</h3>
-                         <div className="flex items-center gap-4 text-sm text-gray-600">
-                           <div className="flex items-center gap-1 min-w-0">
-                             <Mail className="w-4 h-4 flex-shrink-0" />
-                             <span className="truncate">{customer.email}</span>
-                           </div>
-                         </div>
-                       </div>
-                     </div>
+                      <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-4 text-sm">
+                        <div className="bg-background/30 border border-border/30 p-3 rounded-lg">
+                          <div className="font-medium text-lg">{customer.totalOrders}</div>
+                          <div className="text-muted-foreground">Total Orders</div>
+                        </div>
+                        <div className="bg-background/30 border border-border/30 p-3 rounded-lg">
+                          <div className="font-medium text-lg">£{customer.totalSpent.toFixed(2)}</div>
+                          <div className="text-muted-foreground">Total Spent</div>
+                        </div>
+                        <div className="bg-background/30 border border-border/30 p-3 rounded-lg">
+                          <div className="font-medium text-lg flex items-center gap-1">
+                            <Star className="w-4 h-4 text-yellow-500" />
+                            {customer.loyaltyPoints}
+                          </div>
+                          <div className="text-muted-foreground">Loyalty Points</div>
+                        </div>
+                        <div className="bg-background/30 border border-border/30 p-3 rounded-lg">
+                          <div className="font-medium text-lg">
+                            {customer.lastOrderDate ? new Date(customer.lastOrderDate).toLocaleDateString() : 'Never'}
+                          </div>
+                          <div className="text-muted-foreground">Last Order</div>
+                        </div>
+                      </div>
+                    </div>
 
-                     <div className="flex flex-wrap gap-4 text-sm">
-                       <div>
-                         <span className="font-medium">Total Orders:</span> {customer.totalOrders}
-                       </div>
-                       <div>
-                         <span className="font-medium">Total Spent:</span> ${customer.totalSpent.toFixed(2)}
-                       </div>
-                       <div>
-                         <span className="font-medium">Last Order:</span> {new Date(customer.lastOrderDate).toLocaleDateString()}
-                       </div>
-                     </div>
-                   </div>
+                    <div className="flex flex-col items-start lg:items-end gap-3">
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline">
+                          <Mail className="w-4 h-4 mr-1" />
+                          Email
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => onNavigate(`customer-detail:${customer.id}`)}
+                        >
+                          View Orders
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
-                   <div className="flex flex-col items-start md:items-end gap-2">
-                     <Badge className={tier.color}>
-                       {tier.label}
-                     </Badge>
-
-                     <div className="flex gap-2">
-                       <Button size="sm" variant="outline">
-                         <Mail className="w-4 h-4 mr-1" />
-                         Email
-                       </Button>
-                       <Button size="sm" variant="outline" onClick={() => onNavigate(`customer-detail:${customer.id}`)}>
-                         View Orders
-                       </Button>
-                     </div>
-                   </div>
-                 </div>
-               </CardContent>
-             </Card>
-           );
-         })}
-       </div>
-
-      {filteredCustomers.length === 0 && (
-        <Card>
-          <CardContent className="text-center py-12">
-            <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No customers found</h3>
-            <p className="text-gray-500">No customers match your search criteria.</p>
+      {filteredCustomers.length === 0 && !loading && (
+        <Card className="shadow-sm border-border/40 bg-card/50 backdrop-blur-sm">
+          <CardContent className="text-center py-16">
+            <Users className="w-20 h-20 text-muted-foreground mx-auto mb-6" />
+            <h3 className="text-xl font-medium mb-3">No customers found</h3>
+            <p className="text-muted-foreground text-lg">No customers match your search criteria.</p>
           </CardContent>
         </Card>
       )}
-    </div>
-  );
+  </div>
+);
 };
 
 export default CustomerOverview;

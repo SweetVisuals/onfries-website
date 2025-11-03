@@ -288,23 +288,44 @@ export const getTotalCustomers = async (): Promise<number> => {
 export const getMenuItems = async (): Promise<MenuItem[]> => {
   const { data, error } = await supabase
     .from('menu_items')
-    .select('*')
-    .order('category', { ascending: true })
-    .order('name', { ascending: true });
+    .select('*');
 
   if (error) throw error;
   
   // Filter out any old steak variations that shouldn't be there
   const filteredData = (data || []).filter(item => {
     const isOldItem = item.name.includes('Centurion') ||
-                     item.name === 'Deluxe Steak & Fries' ||
                      item.name === 'Premium Steak & Fries' ||
                      item.name.includes('Quadzilla');
     return !isOldItem;
   });
   
-  console.log('Database returned items after filtering:', filteredData);
-  return filteredData;
+  // Custom ordering: sort by category, then by priority within Main Courses
+  const sortedData = filteredData.sort((a, b) => {
+    // First sort by category
+    if (a.category !== b.category) {
+      return a.category.localeCompare(b.category);
+    }
+    
+    // Within the same category, use custom ordering
+    if (a.category === 'Main Courses') {
+      // Prioritize steak items over fries items
+      const aIsSteak = a.name.toLowerCase().includes('steak');
+      const bIsSteak = b.name.toLowerCase().includes('steak');
+      
+      if (aIsSteak && !bIsSteak) return -1;
+      if (!aIsSteak && bIsSteak) return 1;
+      
+      // Both are steak items or both are fries, sort by name
+      return a.name.localeCompare(b.name);
+    }
+    
+    // For other categories, sort by name
+    return a.name.localeCompare(b.name);
+  });
+  
+  console.log('Database returned items after filtering and sorting:', sortedData);
+  return sortedData;
 };
 
 export const addMenuItem = async (menuItem: Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>): Promise<MenuItem> => {
@@ -371,4 +392,291 @@ export const setStoreStatus = async (isOpen: boolean): Promise<void> => {
     console.error('Error updating store status:', error);
     throw error;
   }
+};
+
+// Customer management functions
+export const getAllCustomers = async (): Promise<Customer[]> => {
+  const { data, error } = await supabase
+    .from('customers')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+};
+
+export const getCustomerDetails = async (customerId: string): Promise<{
+  customer: Customer;
+  orders: Order[];
+  loyaltyPoints: number;
+  totalSpent: number;
+  favoriteOrder?: string;
+  recentOrder?: Order;
+}> => {
+  // Get customer details from customers table
+  const { data: customer, error: customerError } = await supabase
+    .from('customers')
+    .select('*')
+    .eq('id', customerId)
+    .single();
+
+  if (customerError) {
+    // If customer doesn't exist in customers table, try to get from users table
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', customerId)
+      .single();
+
+    if (userError) throw userError;
+
+    // Create a customer object from user data
+    const customerFromUser: Customer = {
+      id: user.id,
+      name: user.full_name || user.email || 'Unknown',
+      email: user.email,
+      phone: undefined,
+      created_at: user.created_at || new Date().toISOString(),
+      updated_at: user.created_at || new Date().toISOString()
+    };
+
+    return {
+      customer: customerFromUser,
+      orders: [],
+      loyaltyPoints: 0,
+      totalSpent: 0,
+      favoriteOrder: 'No orders yet',
+      recentOrder: undefined
+    };
+  }
+
+  // Get customer's orders with order items
+  const { data: orders, error: ordersError } = await supabase
+    .from('orders')
+    .select(`
+      *,
+      order_items (
+        quantity,
+        price,
+        menu_items (
+          name,
+          price
+        )
+      )
+    `)
+    .eq('customer_id', customerId)
+    .order('order_date', { ascending: false });
+
+  if (ordersError) throw ordersError;
+
+  // Calculate stats for delivered orders only
+  const completedOrders = orders?.filter(order => order.status === 'delivered') || [];
+  const totalSpent = completedOrders.reduce((sum, order) => sum + parseFloat(order.total.toString()), 0);
+  const loyaltyPoints = Math.floor(totalSpent / 10); // 1 point per £10
+
+  // Find favorite order (most frequently ordered item)
+  const orderItemCounts: { [key: string]: number } = {};
+  completedOrders.forEach(order => {
+    order.order_items?.forEach((item: any) => {
+      const itemName = item.menu_items?.name || 'Unknown';
+      orderItemCounts[itemName] = (orderItemCounts[itemName] || 0) + item.quantity;
+    });
+  });
+
+  const favoriteOrder = Object.entries(orderItemCounts)
+    .sort(([,a], [,b]) => b - a)[0]?.[0] || 'No favorite order yet';
+
+  const recentOrder = orders?.[0] || null;
+
+  return {
+    customer,
+    orders: orders || [],
+    loyaltyPoints,
+    totalSpent,
+    favoriteOrder,
+    recentOrder
+  };
+};
+
+export const getCustomerOrders = async (customerId: string): Promise<Order[]> => {
+  const { data, error } = await supabase
+    .from('orders')
+    .select(`
+      *,
+      order_items (
+        quantity,
+        price,
+        menu_items (
+          name,
+          price,
+          category
+        )
+      )
+    `)
+    .eq('customer_id', customerId)
+    .order('order_date', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+};
+
+// Stock management functions
+export interface StockItem {
+  id: string;
+  name: string;
+  category: string;
+  currentStock: number;
+  lowStockThreshold: number;
+  isAvailable: boolean;
+  soldOutOverride: boolean;
+  price: number;
+}
+
+export const getStockItems = async (): Promise<StockItem[]> => {
+  const { data: menuItems, error } = await supabase
+    .from('menu_items')
+    .select('*')
+    .order('name');
+
+  if (error) throw error;
+
+  // Get stock levels
+  const { data: stockLevels, error: stockError } = await supabase
+    .from('menu_item_stock')
+    .select('*');
+
+  if (stockError && stockError.code !== 'PGRST116') { // Table might not exist yet
+    console.warn('Stock table error:', stockError);
+  }
+
+  // Create stock map for quick lookup
+  const stockMap = new Map();
+  if (stockLevels) {
+    stockLevels.forEach(stock => {
+      stockMap.set(stock.menu_item_id, stock.current_stock);
+    });
+  }
+
+  return (menuItems || []).map(item => ({
+    id: item.id,
+    name: item.name,
+    category: item.category,
+    currentStock: stockMap.get(item.id) || 0,
+    lowStockThreshold: 5,
+    isAvailable: item.is_available,
+    soldOutOverride: false,
+    price: item.price
+  }));
+};
+
+export const updateItemStock = async (itemId: string, newStock: number): Promise<void> => {
+  const { error } = await supabase
+    .from('menu_item_stock')
+    .upsert({
+      menu_item_id: itemId,
+      current_stock: newStock,
+      updated_at: new Date().toISOString()
+    });
+
+  if (error) throw error;
+};
+
+export const toggleSoldOutOverride = async (itemId: string, override: boolean): Promise<void> => {
+  const { error } = await supabase
+    .from('menu_items')
+    .update({ is_available: !override })
+    .eq('id', itemId);
+
+  if (error) throw error;
+};
+
+// Get customers with their stats for overview
+export const getCustomersWithStats = async (): Promise<Array<{
+  id: string;
+  name: string;
+  email: string;
+  totalOrders: number;
+  totalSpent: number;
+  lastOrderDate: string;
+  loyaltyPoints: number;
+  status: string;
+}>> => {
+  // First, get all customers from the customers table
+  const { data: customers, error: customersError } = await supabase
+    .from('customers')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (customersError) throw customersError;
+
+  // Also get all users who might not have customer records
+  const { data: users, error: usersError } = await supabase
+    .from('users')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (usersError) throw usersError;
+
+  // Create a map to combine customers and users (no duplicates)
+  const userMap = new Map();
+  
+  // Add all users first
+  (users || []).forEach(user => {
+    userMap.set(user.id, {
+      id: user.id,
+      name: user.full_name || user.email || 'Unknown',
+      email: user.email,
+      created_at: user.created_at
+    });
+  });
+  
+  // Override with customer data if available (customers take precedence)
+  (customers || []).forEach(customer => {
+    userMap.set(customer.id, {
+      id: customer.id,
+      name: customer.name,
+      email: customer.email,
+      phone: customer.phone,
+      created_at: customer.created_at
+    });
+  });
+
+  const allUsers = Array.from(userMap.values());
+
+  const customersWithStats = await Promise.all(
+    allUsers.map(async (user) => {
+      const { data: orders, error: ordersError } = await supabase
+        .from('orders')
+        .select('total, order_date, status')
+        .eq('customer_id', user.id)
+        .eq('status', 'delivered');
+
+      if (ordersError) throw ordersError;
+
+      // Also get all orders (regardless of status) for total count
+      const { data: allOrders, error: allOrdersError } = await supabase
+        .from('orders')
+        .select('total, order_date, status')
+        .eq('customer_id', user.id);
+
+      if (allOrdersError) throw allOrdersError;
+
+      const totalSpent = orders?.reduce((sum, order) => sum + order.total, 0) || 0;
+      const loyaltyPoints = Math.floor(totalSpent / 10);
+      const lastOrderDate = orders?.[0]?.order_date || user.created_at;
+
+      return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        totalOrders: allOrders?.length || 0,
+        totalSpent,
+        lastOrderDate,
+        loyaltyPoints,
+        status: 'active'
+      };
+    })
+  );
+
+  return customersWithStats.sort((a, b) => b.totalSpent - a.totalSpent);
 };
