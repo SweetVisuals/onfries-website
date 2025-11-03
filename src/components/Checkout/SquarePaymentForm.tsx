@@ -43,7 +43,8 @@ const SquarePaymentForm: React.FC<SquarePaymentFormProps> = ({
   onSuccess,
   onError,
   orderReference,
-  _customerEmail,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  customerEmail,
   disabled = false
 }) => {
   const { user } = useAuth();
