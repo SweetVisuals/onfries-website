@@ -240,17 +240,7 @@ const CurrentOrderManagement: React.FC = () => {
       // Import supabase directly
       const { supabase } = await import('../../lib/supabase');
 
-      // Get the next order number (sequential based on all orders)
-      const { data: allOrders, error: countError } = await supabase
-        .from('orders')
-        .select('id')
-        .order('created_at', { ascending: false });
-
-      if (countError) {
-        console.error('Error getting order count:', countError);
-      }
-
-      // const nextOrderNumber = (allOrders?.length || 0) + 1; // Not used
+      // Get the next order number (sequential based on all orders) - removed as not used
       const orderId = crypto.randomUUID(); // Use UUID instead of ORDER-XXXX format
 
       // Create the order directly using the admin's user ID (skip customer creation entirely)

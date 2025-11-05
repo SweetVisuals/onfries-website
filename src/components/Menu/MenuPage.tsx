@@ -132,25 +132,10 @@ const MenuPage: React.FC = () => {
       }
     };
 
-    const fetchBusinessHours = async () => {
-      try {
-        // Load business hours from localStorage or default
-        const savedSettings = localStorage.getItem('adminSettings');
-        if (savedSettings) {
-          const settings = JSON.parse(savedSettings);
-          setBusinessHours({
-            openingTime: settings.business?.openingTime || '09:00',
-            closingTime: settings.business?.closingTime || '22:00'
-          });
-        }
-      } catch (error) {
-        console.error('Error fetching business hours:', error);
-      }
-    };
+    // Business hours fetching removed as not used
 
     // Fetch immediately
     fetchOrderingStatus();
-    fetchBusinessHours();
 
     // Poll every 5 seconds to check for admin status changes (reduced for testing)
     const interval = setInterval(fetchOrderingStatus, 5000);
