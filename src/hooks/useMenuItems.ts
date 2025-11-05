@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getMenuItems } from '../lib/database';
 import { menuItems as localMenuItems } from '../data/menuData';
 
 export interface MenuItem {

@@ -261,7 +261,7 @@ const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
                                 <Button
                                   type="button"
                                   size="sm"
-                                  onClick={(e) => {
+                                  onClick={() => {
                                     console.log('Add button clicked for:', item.name);
                                     handleAddItem(item);
                                   }}

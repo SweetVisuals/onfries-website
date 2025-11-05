@@ -100,7 +100,6 @@ const MenuPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('Steak');
   const [showAddOns, setShowAddOns] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [showFAQ, setShowFAQ] = useState(false);
   const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
   const [showCustomizeDialog, setShowCustomizeDialog] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
