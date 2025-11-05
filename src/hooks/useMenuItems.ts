@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getMenuItems } from '../lib/database';
+import { menuItems as localMenuItems } from '../data/menuData';
 
 export interface MenuItem {
   id: string;
@@ -22,39 +23,25 @@ export const useMenuItems = () => {
     try {
       setLoading(true);
       setError(null);
-      
-      // Add cache busting parameter if force refresh
-      if (forceRefresh) {
-        // Force refresh by adding cache buster
-        console.log('Forcing menu refresh');
-      }
-      const items = await getMenuItems();
-      
+
+      // Use local menu data instead of database for immediate changes
+      let items = localMenuItems;
+
       // Debug: Log the items to check what's being fetched
-      console.log('Fetched menu items:', items);
+      console.log('Using local menu items:', items);
       console.log('Number of add-ons items:', items.filter(item => item.category === 'Add-ons').length);
       console.log('Add-ons items:', items.filter(item => item.category === 'Add-ons'));
-      
-      // Filter out any old steak variations that shouldn't be there
-      const filteredItems = items.filter(item => {
-        const isOldItem = item.name.includes('Centurion') ||
-                         item.name === 'Premium Steak & Fries' ||
-                         item.name.includes('Quadzilla');
-        return !isOldItem;
-      });
-      
-      console.log('Filtered menu items (removed old steak variants):', filteredItems);
-      
+
       // Transform the data to match the expected interface
-      const transformedItems: MenuItem[] = filteredItems.map(item => ({
+      const transformedItems: MenuItem[] = items.map(item => ({
         id: item.id,
         name: item.name,
         description: item.description || '',
-        price: parseFloat(item.price.toString()),
+        price: item.price,
         image: item.image || '',
         category: item.category,
-        isAvailable: item.is_available,
-        preparationTime: item.preparation_time || 0,
+        isAvailable: item.isAvailable,
+        preparationTime: item.preparationTime || 0,
       }));
 
       setMenuItems(transformedItems);
@@ -62,9 +49,9 @@ export const useMenuItems = () => {
       // Extract unique categories
       const uniqueCategories = Array.from(new Set(transformedItems.map(item => item.category)));
       setCategories(['All', ...uniqueCategories]);
-      
+
       console.log('Final transformed menu items:', transformedItems);
-      
+
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch menu items');
     } finally {

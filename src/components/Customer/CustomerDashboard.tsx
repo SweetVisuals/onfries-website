@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Tabs } from '../ui/vercel-tabs';
 import MenuPage from '../Menu/MenuPage';
 import OrderHistory from '../Orders/OrderHistory';
-import OnFriesLogo from '@/images/OnFriesLogo.webp';
+import OnFriesLogo from '@/images/OnFries-Logo.png';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -145,7 +145,7 @@ const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ initialTab = 'men
   };
 
   return (
-    <div className="min-h-screen bg-background relative">
+    <div className={`${selectedTab === 'menu' ? 'h-screen overflow-hidden' : 'min-h-screen'} bg-background relative`}>
       {/* Promotional Banner */}
       {promotionalBanner.enabled && (
         <div
@@ -215,14 +215,12 @@ const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ initialTab = 'men
                 // Show user avatar and dropdown when authenticated
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src="" alt={user?.name} />
-                        <AvatarFallback className="bg-primary/10 text-primary">
-                          {user?.name.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                    </Button>
+                    <Avatar className="h-8 w-8 cursor-pointer">
+                      <AvatarImage src="" alt={user?.name} />
+                      <AvatarFallback className="bg-primary/10 text-primary dark:bg-gray-700 dark:text-white">
+                        {user?.name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-56" align="end" forceMount>
                     <div className="flex items-center justify-start gap-2 p-2">

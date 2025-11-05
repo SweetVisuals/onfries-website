@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,69 +7,86 @@ import { Search, Plus, Clock, MapPin, Phone, Navigation, Loader2, HelpCircle, Ch
 import { useMenuItems } from '../../hooks/useMenuItems';
 import { useCart } from '../../contexts/CartContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { getOrderingStatus } from '../../lib/utils';
 import { Component as FloatingAuthModal } from '../ui/sign-in-flo';
 
 // Menu Item Card Component
-const MenuItemCard: React.FC<{ item: any; orderingStatus: any; onAddToCart: (item: any) => void }> = ({ item, orderingStatus, onAddToCart }) => {
+const MenuItemCard: React.FC<{ item: any; orderingStatus: any; onAddToCart: (item: any, event?: React.MouseEvent) => void; isSingleCard?: boolean }> = ({ item, orderingStatus, onAddToCart, isSingleCard = false }) => {
   return (
-    <Card className="hover:shadow-lg transition-all duration-200 hover:border-yellow-400 group border-yellow-200">
-      <CardContent className="p-6">
-        <div className="flex flex-col h-full">
-          <div className="mb-3">
-            <h3 className="text-lg font-semibold text-foreground group-hover:text-yellow-600 transition-colors">
-              {item.name}
-            </h3>
-            <span className="text-xl font-bold text-yellow-600 px-2 py-1 inline-block mt-2">
-              £{item.price.toFixed(2)}
-            </span>
-          </div>
-          
-          <p className="text-sm text-muted-foreground leading-relaxed mb-4 flex-grow">
-            {item.description}
-          </p>
-          
-          <div className="flex items-center justify-between mt-auto">
-            <div className="flex items-center text-xs text-muted-foreground">
-              <Clock className="w-3 h-3 mr-1" />
-              <span>{item.preparationTime} min</span>
+    <Card className={`hover:shadow-lg transition-all duration-200 hover:border-yellow-400 group border-yellow-200 h-full flex flex-col ${isSingleCard ? 'min-w-[400px]' : ''}`}>
+      <CardContent className="p-6 flex flex-col h-full">
+        <div className="flex-1 space-y-4">
+          {/* Header - Name, Price, Image */}
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-foreground group-hover:text-yellow-600 transition-colors">
+                {item.name}
+              </h3>
+              <span className="text-xl font-bold text-yellow-600 px-2 py-1 inline-block mt-1">
+                £{item.price.toFixed(2)}
+              </span>
             </div>
-            
-            <Button
-              size="sm"
-              onClick={() => onAddToCart(item)}
-              disabled={!item.isAvailable || !orderingStatus.allowed}
-              variant={!orderingStatus.allowed ? 'secondary' : 'default'}
-              className="bg-yellow-500 hover:bg-yellow-600 text-black font-medium px-4"
-            >
-              {!orderingStatus.allowed ? (
-                <>
-                  <Clock className="w-4 h-4 mr-1" />
-                  Closed
-                </>
-              ) : orderingStatus.isPreOrder ? (
-                <>
-                  <Plus className="w-4 h-4 mr-1" />
-                  Pre-Order
-                </>
-              ) : (
-                <>
-                  <Plus className="w-4 h-4 mr-1" />
-                  Add
-                </>
-              )}
-            </Button>
+
+            {/* Image */}
+            {item.image && (
+              <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 ml-4">
+                <img
+                  src={item.image}
+                  alt={item.name}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              </div>
+            )}
           </div>
-          
-          {!item.isAvailable && (
-            <div className="mt-2">
-              <Badge variant="destructive" className="text-xs">
-                Currently Unavailable
-              </Badge>
-            </div>
-          )}
+
+          {/* Description Section */}
+          <div>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {item.description}
+            </p>
+          </div>
         </div>
+
+        {/* Bottom Section - Preparation Time and Order Button - Always at bottom */}
+        <div className="flex items-center justify-between mt-6">
+          <div className="flex items-center text-xs text-muted-foreground">
+            <Clock className="w-3 h-3 mr-1" />
+            <span>{item.preparationTime} min</span>
+          </div>
+
+          <Button
+            size="sm"
+            onClick={(e) => onAddToCart(item, e)}
+            disabled={!item.isAvailable || !orderingStatus.allowed}
+            variant={!orderingStatus.allowed ? 'secondary' : 'default'}
+            className="bg-yellow-500 hover:bg-yellow-600 text-black font-medium px-4"
+          >
+            {!orderingStatus.allowed ? (
+              <>
+                <Clock className="w-4 h-4 mr-1" />
+                Closed
+              </>
+            ) : orderingStatus.isPreOrder ? (
+              <>
+                <Plus className="w-4 h-4 mr-1" />
+                Pre-Order
+              </>
+            ) : (
+              <>
+                <Plus className="w-4 h-4 mr-1" />
+                Order
+              </>
+            )}
+          </Button>
+        </div>
+
+        {!item.isAvailable && (
+          <Badge variant="destructive" className="text-xs w-fit mt-2">
+            Currently Unavailable
+          </Badge>
+        )}
       </CardContent>
     </Card>
   );
@@ -78,7 +95,6 @@ const MenuItemCard: React.FC<{ item: any; orderingStatus: any; onAddToCart: (ite
 const MenuPage: React.FC = () => {
   const { addItem } = useCart();
   const { user } = useAuth();
-  const { toast } = useToast();
   const { menuItems, loading, error, refreshMenu } = useMenuItems();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Steak');
@@ -92,6 +108,19 @@ const MenuPage: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [orderingStatus, setOrderingStatus] = useState({ allowed: true, isPreOrder: false });
   const [selectedSauce, setSelectedSauce] = useState<string>('');
+  const [businessHours, setBusinessHours] = useState({ openingTime: '09:00', closingTime: '22:00' });
+  const [animatingItem, setAnimatingItem] = useState<string | null>(null);
+  const [animationStartPos, setAnimationStartPos] = useState<{ x: number; y: number } | null>(null);
+  const [animationEndPos, setAnimationEndPos] = useState<{ x: number; y: number } | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Function to get responsive grid class based on item count
+  const getGridClass = (itemCount: number) => {
+    if (itemCount === 1) return 'flex justify-center max-w-lg mx-auto';
+    if (itemCount === 2) return 'grid gap-6 md:grid-cols-2';
+    if (itemCount === 3) return 'grid gap-6 md:grid-cols-2 lg:grid-cols-3';
+    return 'grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4';
+  };
 
   useEffect(() => {
     const fetchOrderingStatus = async () => {
@@ -104,8 +133,25 @@ const MenuPage: React.FC = () => {
       }
     };
 
+    const fetchBusinessHours = async () => {
+      try {
+        // Load business hours from localStorage or default
+        const savedSettings = localStorage.getItem('adminSettings');
+        if (savedSettings) {
+          const settings = JSON.parse(savedSettings);
+          setBusinessHours({
+            openingTime: settings.business?.openingTime || '09:00',
+            closingTime: settings.business?.closingTime || '22:00'
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching business hours:', error);
+      }
+    };
+
     // Fetch immediately
     fetchOrderingStatus();
+    fetchBusinessHours();
 
     // Poll every 5 seconds to check for admin status changes (reduced for testing)
     const interval = setInterval(fetchOrderingStatus, 5000);
@@ -119,10 +165,10 @@ const MenuPage: React.FC = () => {
 
     let matchesCategory = true;
     if (selectedCategory === 'Steak') {
-      matchesCategory = item.category === 'Main Courses' && item.name !== 'Fries Only';
+      matchesCategory = item.category === 'Main Courses' && item.name !== 'Signature Fries';
     } else if (selectedCategory === 'Fries') {
       // For fries filter, show fries items
-      matchesCategory = item.name === 'Fries Only';
+      matchesCategory = item.name === 'Signature Fries';
     } else if (selectedCategory === 'Kids') {
       matchesCategory = item.category === 'Kids';
     } else if (selectedCategory === 'Drinks') {
@@ -136,19 +182,59 @@ const MenuPage: React.FC = () => {
     return matchesSearch && matchesCategory && item.isAvailable && item.name !== 'Custom Item';
   });
 
-  const handleAddToCart = (item: any) => {
+  const handleAddToCart = (item: any, event?: React.MouseEvent) => {
     if (!user) {
       setIsAuthModalOpen(true);
       return;
     }
 
     if (!orderingStatus.allowed) {
-      toast({
-        title: 'Ordering not available',
-        description: 'The food truck is currently closed. Please check our hours.',
-        variant: 'destructive',
-      });
+      toast.error('Ordering not available: The food truck is currently closed. Please check our hours.');
       return;
+    }
+
+    // Always trigger animation for cart additions
+    const menuRect = menuRef.current?.getBoundingClientRect();
+
+    if (menuRect) {
+      if (event) {
+        // Start from button position
+        const button = event.currentTarget as HTMLElement;
+        const rect = button.getBoundingClientRect();
+        setAnimationStartPos({
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2
+        });
+      } else {
+        // Start from center of screen for dialogs
+        setAnimationStartPos({
+          x: window.innerWidth / 2,
+          y: window.innerHeight / 2
+        });
+      }
+
+      // Get cart icon position - try multiple selectors
+      let cartIcon = document.querySelector('[data-cart-icon]');
+      if (!cartIcon) {
+        cartIcon = document.querySelector('.lucide-shopping-cart')?.parentElement || document.querySelector('button:has(.lucide-shopping-cart)');
+      }
+
+      if (cartIcon) {
+        const cartRect = cartIcon.getBoundingClientRect();
+        setAnimationEndPos({
+          x: cartRect.left + cartRect.width / 2,
+          y: cartRect.top + cartRect.height / 2
+        });
+      } else {
+        // Last resort: fixed position in header area
+        setAnimationEndPos({
+          x: window.innerWidth - 80,
+          y: 40
+        });
+      }
+
+      setAnimatingItem(item.id);
+      setTimeout(() => setAnimatingItem(null), 600);
     }
 
     // Handle different item types
@@ -156,25 +242,22 @@ const MenuPage: React.FC = () => {
       // For main courses, show customization dialog
       setSelectedItem(item);
       setShowCustomizeDialog(true);
-    } else if (item.category === 'Kids') {
-      if (item.name === 'Kids Meal') {
-        // For Kids Meal, show sauce selection dialog
-        setSelectedItem(item);
-        setShowCustomizeDialog(true);
-      } else {
-        // For Kids Fries and £1 Steak Cone, add directly to cart
-        addItem(item);
-        toast({
-          title: orderingStatus.isPreOrder ? 'Pre-order added to cart' : 'Added to cart',
-          description: `${item.name} has been added to your cart.`,
-        });
-      }
     } else {
-      // For drinks and other items, add directly to cart
+      // For all other items (drinks, kids items), add directly to cart
       addItem(item);
-      toast({
-        title: orderingStatus.isPreOrder ? 'Pre-order added to cart' : 'Added to cart',
+      toast.success(orderingStatus.isPreOrder ? 'Pre-order added to cart' : 'Added to cart', {
         description: `${item.name} has been added to your cart.`,
+        duration: 3000,
+        action: {
+          label: 'View Cart',
+          onClick: () => {
+            // Trigger cart opening - we'll need to pass this down or use a global state
+            const cartButton = document.querySelector('[data-cart-icon]');
+            if (cartButton) {
+              (cartButton as HTMLElement).click();
+            }
+          },
+        },
       });
     }
   };
@@ -182,7 +265,7 @@ const MenuPage: React.FC = () => {
   const handleConfirmCustomize = () => {
     let addOnsWithQuantities = [];
     let itemName = selectedItem.name;
-    
+
     // Handle Kids Meal sauce selection
     if (selectedItem.category === 'Kids' && selectedItem.name === 'Kids Meal') {
       if (selectedSauce) {
@@ -201,15 +284,15 @@ const MenuPage: React.FC = () => {
         ...item,
         quantity
       }));
-      
+
       if (addOnsWithQuantities.length > 0) {
         itemName = selectedItem.name + ' + Add-ons';
       }
     }
-    
+
     // Calculate total price with add-ons quantities
     const totalPrice = selectedItem.price + addOnsWithQuantities.reduce((sum, addOn) => sum + (addOn.price * addOn.quantity), 0);
-    
+
     // Create customized item
     const customizedItem = {
       ...selectedItem,
@@ -218,10 +301,43 @@ const MenuPage: React.FC = () => {
       name: itemName
     };
 
+    // Trigger animation before adding to cart
+    if (menuRef.current) {
+      // Get cart icon position
+      const cartIcon = document.querySelector('[data-cart-icon]');
+      if (cartIcon) {
+        const cartRect = cartIcon.getBoundingClientRect();
+        const menuRect = menuRef.current.getBoundingClientRect();
+        setAnimationEndPos({
+          x: cartRect.left + cartRect.width / 2 - menuRect.left,
+          y: cartRect.top + cartRect.height / 2 - menuRect.top
+        });
+
+        // Start animation from center of screen (since dialog is modal)
+        setAnimationStartPos({
+          x: window.innerWidth / 2 - menuRect.left,
+          y: window.innerHeight / 2 - menuRect.top
+        });
+
+        setAnimatingItem(customizedItem.id);
+        setTimeout(() => setAnimatingItem(null), 800);
+      }
+    }
+
     addItem(customizedItem);
-    toast({
-      title: orderingStatus.isPreOrder ? 'Custom order added to cart' : 'Order added to cart',
+    toast.success(orderingStatus.isPreOrder ? 'Custom order added to cart' : 'Order added to cart', {
       description: `${customizedItem.name} has been added to your cart.`,
+      duration: 3000,
+      action: {
+        label: 'View Cart',
+        onClick: () => {
+          // Trigger cart opening - we'll need to pass this down or use a global state
+          const cartButton = document.querySelector('[data-cart-icon]');
+          if (cartButton) {
+            (cartButton as HTMLElement).click();
+          }
+        },
+      },
     });
 
     // Reset state
@@ -284,9 +400,31 @@ const MenuPage: React.FC = () => {
   })();
 
   return (
-    <div className="min-h-screen bg-background py-4">
-      <div className="container mx-auto px-4">
-        <div className="text-center mb-4">
+    <div ref={menuRef} className="min-h-screen bg-background py-4 px-4 relative">
+        {/* Flying Animation */}
+        {animatingItem && animationStartPos && animationEndPos && (
+          <div
+            className="fixed pointer-events-none z-50"
+            style={{
+              left: animationStartPos.x,
+              top: animationStartPos.y,
+              transform: 'translate(-50%, -50%)',
+            }}
+          >
+            <div
+              className="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center shadow-lg"
+              style={{
+                animation: 'fly-to-cart 0.6s ease-out forwards',
+                '--target-x': `${animationEndPos.x - animationStartPos.x}px`,
+                '--target-y': `${animationEndPos.y - animationStartPos.y}px`,
+              } as any}
+            >
+              <Plus className="w-3 h-3 text-black font-bold" />
+            </div>
+          </div>
+        )}
+
+        <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-foreground mb-2">Our Menu</h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Fresh steak and fries with premium add-ons
@@ -320,7 +458,7 @@ const MenuPage: React.FC = () => {
                   {filter}
                 </Button>
               ))}
-              
+
               <Button
                 variant="outline"
                 onClick={handleRefresh}
@@ -363,127 +501,123 @@ const MenuPage: React.FC = () => {
 
         {/* Menu Items */}
         {!loading && !error && (
-          <div className="grid lg:grid-cols-3 gap-8">
-            {/* Left Column - Menu Items */}
-            <div className="lg:col-span-2">
-              {/* Menu Items Section */}
-              {selectedCategory === 'All' && (
-                <div className="space-y-12">
-                  {/* Main Menu Section */}
-                  <div>
-                    <h2 className="text-3xl font-bold text-center mb-8 text-yellow-600 border-b-2 border-yellow-200 pb-2">
-                      Main Menu
-                    </h2>
-                    <div className="grid gap-6 md:grid-cols-1 max-w-md mx-auto">
-                      {filteredItems.filter(item => item.category === 'Main Courses').map((item) => (
-                        <MenuItemCard key={item.id} item={item} orderingStatus={orderingStatus} onAddToCart={handleAddToCart} />
+          <>
+            {/* Menu Items Section */}
+            {selectedCategory === 'All' && (
+              <div className="space-y-12">
+                {/* Main Menu Section */}
+                {(() => {
+                  const mainItems = filteredItems.filter(item => item.category === 'Main Courses');
+                  return (
+                    <div>
+                      <div className={getGridClass(mainItems.length)}>
+                        {mainItems.map((item) => (
+                          <MenuItemCard key={item.id} item={item} orderingStatus={orderingStatus} onAddToCart={handleAddToCart} isSingleCard={mainItems.length === 1} />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Kids Menu Section */}
+                {(() => {
+                  const kidsItems = filteredItems.filter(item => item.category === 'Kids');
+                  return (
+                    <div>
+                      <div className={getGridClass(kidsItems.length)}>
+                        {kidsItems.map((item) => (
+                          <MenuItemCard key={item.id} item={item} orderingStatus={orderingStatus} onAddToCart={handleAddToCart} isSingleCard={kidsItems.length === 1} />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Drinks Section */}
+                {(() => {
+                  const drinksItems = filteredItems.filter(item => item.category === 'Drinks');
+                  return (
+                    <div>
+                      <div className={getGridClass(drinksItems.length)}>
+                        {drinksItems.map((item) => (
+                          <MenuItemCard key={item.id} item={item} orderingStatus={orderingStatus} onAddToCart={handleAddToCart} isSingleCard={drinksItems.length === 1} />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {selectedCategory === 'Steak' && (
+              <div className="mb-12">
+                {(() => {
+                  const steakItems = filteredItems.filter(item => item.category === 'Main Courses');
+                  return (
+                    <div className={getGridClass(steakItems.length)}>
+                      {steakItems.map((item) => (
+                        <MenuItemCard key={item.id} item={item} orderingStatus={orderingStatus} onAddToCart={handleAddToCart} isSingleCard={steakItems.length === 1} />
                       ))}
                     </div>
-                  </div>
+                  );
+                })()}
+              </div>
+            )}
 
-                  {/* Kids Menu Section */}
-                  <div>
-                    <h2 className="text-3xl font-bold text-center mb-8 text-yellow-600 border-b-2 border-yellow-200 pb-2">
-                      Kids Menu
-                    </h2>
-                    <div className="grid gap-6 md:grid-cols-1 max-w-md mx-auto">
-                      {filteredItems.filter(item => item.category === 'Kids').map((item) => (
-                        <MenuItemCard key={item.id} item={item} orderingStatus={orderingStatus} onAddToCart={handleAddToCart} />
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Drinks Section */}
-                  <div>
-                    <h2 className="text-3xl font-bold text-center mb-8 text-yellow-600 border-b-2 border-yellow-200 pb-2">
-                      Drinks
-                    </h2>
-                    <div className="grid gap-6 md:grid-cols-1 max-w-md mx-auto">
-                      {filteredItems.filter(item => item.category === 'Drinks').map((item) => (
-                        <MenuItemCard key={item.id} item={item} orderingStatus={orderingStatus} onAddToCart={handleAddToCart} />
-                      ))}
-                    </div>
-                  </div>
+            {selectedCategory === 'Fries' && (
+              <div className="mb-12">
+                <div className={getGridClass(filteredItems.length)}>
+                  {filteredItems.map((item) => (
+                    <MenuItemCard key={item.id} item={item} orderingStatus={orderingStatus} onAddToCart={handleAddToCart} isSingleCard={filteredItems.length === 1} />
+                  ))}
                 </div>
-              )}
+              </div>
+            )}
 
-              {selectedCategory === 'Steak' && (
-                <div className="mb-12">
-                  <h2 className="text-3xl font-bold text-center mb-8 text-yellow-600 border-b-2 border-yellow-200 pb-2">
-                    Main Menu
-                  </h2>
-                  <div className="grid gap-6 md:grid-cols-1 max-w-md mx-auto">
-                    {filteredItems.filter(item => item.category === 'Main Courses').map((item) => (
-                      <MenuItemCard key={item.id} item={item} orderingStatus={orderingStatus} onAddToCart={handleAddToCart} />
-                    ))}
-                  </div>
+            {selectedCategory === 'Kids' && (
+              <div className="mb-12">
+                <div className={getGridClass(filteredItems.length)}>
+                  {filteredItems.map((item) => (
+                    <MenuItemCard key={item.id} item={item} orderingStatus={orderingStatus} onAddToCart={handleAddToCart} isSingleCard={filteredItems.length === 1} />
+                  ))}
                 </div>
-              )}
+              </div>
+            )}
 
-              {selectedCategory === 'Fries' && (
-                <div className="mb-12">
-                  <h2 className="text-3xl font-bold text-center mb-8 text-yellow-600 border-b-2 border-yellow-200 pb-2">
-                    Fries Only
-                  </h2>
-                  <div className="grid gap-6 md:grid-cols-1 max-w-md mx-auto">
-                    {filteredItems.map((item) => (
-                      <MenuItemCard key={item.id} item={item} orderingStatus={orderingStatus} onAddToCart={handleAddToCart} />
-                    ))}
-                  </div>
+            {selectedCategory === 'Drinks' && (
+              <div className="mb-12">
+                <div className={getGridClass(filteredItems.length)}>
+                  {filteredItems.map((item) => (
+                    <MenuItemCard key={item.id} item={item} orderingStatus={orderingStatus} onAddToCart={handleAddToCart} isSingleCard={filteredItems.length === 1} />
+                  ))}
                 </div>
-              )}
+              </div>
+            )}
 
-              {selectedCategory === 'Kids' && (
-                <div className="mb-12">
-                  <h2 className="text-3xl font-bold text-center mb-8 text-yellow-600 border-b-2 border-yellow-200 pb-2">
-                    Kids Menu
-                  </h2>
-                  <div className="grid gap-6 md:grid-cols-1 max-w-md mx-auto">
-                    {filteredItems.map((item) => (
-                      <MenuItemCard key={item.id} item={item} orderingStatus={orderingStatus} onAddToCart={handleAddToCart} />
-                    ))}
-                  </div>
-                </div>
-              )}
+            {/* Remove add-ons section from main menu display */}
+            {showAddOns && (
+              <div className="text-center mt-6">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowAddOns(false)}
+                  className="mr-4"
+                >
+                  Skip Add-ons
+                </Button>
+                <Button
+                  onClick={() => setShowAddOns(false)}
+                  className="bg-yellow-500 hover:bg-yellow-600 text-black"
+                >
+                  Continue to Cart
+                </Button>
+              </div>
+            )}
 
-              {selectedCategory === 'Drinks' && (
-                <div className="mb-12">
-                  <h2 className="text-3xl font-bold text-center mb-8 text-yellow-600 border-b-2 border-yellow-200 pb-2">
-                    Drinks
-                  </h2>
-                  <div className="grid gap-6 md:grid-cols-1 max-w-md mx-auto">
-                    {filteredItems.map((item) => (
-                      <MenuItemCard key={item.id} item={item} orderingStatus={orderingStatus} onAddToCart={handleAddToCart} />
-                    ))}
-                  </div>
-                </div>
-              )}
+            {noItemsFound}
 
-              {/* Remove add-ons section from main menu display */}
-              {showAddOns && (
-                <div className="text-center mt-6">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowAddOns(false)}
-                    className="mr-4"
-                  >
-                    Skip Add-ons
-                  </Button>
-                  <Button
-                    onClick={() => setShowAddOns(false)}
-                    className="bg-yellow-500 hover:bg-yellow-600 text-black"
-                  >
-                    Continue to Cart
-                  </Button>
-                </div>
-              )}
-
-              {noItemsFound}
-            </div>
-
-            {/* Right Column - Location & Hours */}
-            <div className="space-y-6">
-              <Card className="mt-10">
+            {/* Bottom Section - Operating Hours, FAQ, and Find Us */}
+            <div className="grid md:grid-cols-3 gap-6 mt-12">
+              <Card>
                 <CardContent className="p-6">
                   <h3 className="text-xl font-semibold mb-4 flex items-center">
                     <Clock className="w-5 h-5 mr-2 text-yellow-600" />
@@ -493,31 +627,31 @@ const MenuPage: React.FC = () => {
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span className="font-medium">Monday</span>
-                      <span className="text-muted-foreground">24/7</span>
+                      <span className="text-muted-foreground">Closed</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium">Tuesday</span>
-                      <span className="text-muted-foreground">24/7</span>
+                      <span className="text-muted-foreground">Closed</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium">Wednesday</span>
-                      <span className="text-muted-foreground">24/7</span>
+                      <span className="text-muted-foreground">12:00 - 18:00</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium">Thursday</span>
-                      <span className="text-muted-foreground">24/7</span>
+                      <span className="text-muted-foreground">12:00 - 18:00</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium">Friday</span>
-                      <span className="text-muted-foreground">24/7</span>
+                      <span className="text-muted-foreground">12:00 - 18:00</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium">Saturday</span>
-                      <span className="text-muted-foreground">24/7</span>
+                      <span className="text-muted-foreground">12:00 - 18:00, 19:00 - 22:00</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium">Sunday</span>
-                      <span className="text-muted-foreground">24/7</span>
+                      <span className="text-muted-foreground">12:00 - 16:00</span>
                     </div>
                   </div>
                 </CardContent>
@@ -525,83 +659,101 @@ const MenuPage: React.FC = () => {
 
               <Card>
                 <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="mb-4">
                     <h3 className="text-xl font-semibold flex items-center">
                       <HelpCircle className="w-5 h-5 mr-2 text-yellow-600" />
                       FAQ
                     </h3>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowFAQ(!showFAQ)}
-                      className="text-yellow-600 hover:text-yellow-700"
-                    >
-                      {showFAQ ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </Button>
                   </div>
 
-                  {showFAQ && (
-                    <div className="space-y-4">
-                      <div className="border-b border-border pb-4">
-                        <button
-                          className="w-full text-left flex items-center justify-between py-2 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors text-foreground"
-                          onClick={() => setExpandedFAQ(expandedFAQ === 1 ? null : 1)}
-                        >
-                          <span className="font-medium">What type of steak do you serve?</span>
-                          {expandedFAQ === 1 ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                        </button>
-                        {expandedFAQ === 1 && (
-                          <p className="text-sm text-muted-foreground dark:text-gray-300 mt-2 leading-relaxed">
-                            We serve premium quality beef steaks, including ribeye, sirloin, and tenderloin cuts.
-                            All our steaks are sourced from local suppliers and cooked to your preferred doneness.
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="border-b border-border pb-4">
-                        <button
-                          className="w-full text-left flex items-center justify-between py-2 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors text-foreground"
-                          onClick={() => setExpandedFAQ(expandedFAQ === 2 ? null : 2)}
-                        >
-                          <span className="font-medium">How does the ordering process work?</span>
-                          {expandedFAQ === 2 ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                        </button>
-                        {expandedFAQ === 2 && (
-                          <p className="text-sm text-muted-foreground dark:text-gray-300 mt-2 leading-relaxed">
-                            Simply browse our menu, add items to your cart, and proceed to checkout.
-                            You'll need to create an account or sign in to place an order. Orders can be placed
-                            for immediate pickup or scheduled for later collection.
-                          </p>
-                        )}
-                      </div>
-
-                      <div>
-                        <button
-                          className="w-full text-left flex items-center justify-between py-2 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors text-foreground"
-                          onClick={() => setExpandedFAQ(expandedFAQ === 3 ? null : 3)}
-                        >
-                          <span className="font-medium">Do you accommodate dietary restrictions?</span>
-                          {expandedFAQ === 3 ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                        </button>
-                        {expandedFAQ === 3 && (
-                          <p className="text-sm text-muted-foreground dark:text-gray-300 mt-2 leading-relaxed">
-                            We can accommodate most dietary needs. Please contact us directly for allergies,
-                            gluten-free options, or other special requirements. Our team will work with you
-                            to ensure a safe and enjoyable dining experience.
-                          </p>
-                        )}
-                      </div>
+                  <div className="space-y-4">
+                    <div className="border-b border-border pb-4">
+                      <button
+                        className="w-full text-left flex items-center justify-between py-2 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors text-foreground bg-transparent border-none"
+                        onClick={() => setExpandedFAQ(expandedFAQ === 1 ? null : 1)}
+                      >
+                        <span className="font-medium">What type of steak do you serve?</span>
+                        {expandedFAQ === 1 ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </button>
+                      {expandedFAQ === 1 && (
+                        <p className="text-sm text-muted-foreground dark:text-gray-300 mt-2 leading-relaxed">
+                          We serve premium quality beef steaks, including ribeye, sirloin, and tenderloin cuts.
+                          All our steaks are sourced from local suppliers and cooked to your preferred doneness.
+                        </p>
+                      )}
                     </div>
-                  )}
+
+                    <div className="border-b border-border pb-4">
+                      <button
+                        className="w-full text-left flex items-center justify-between py-2 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors text-foreground bg-transparent border-none"
+                        onClick={() => setExpandedFAQ(expandedFAQ === 2 ? null : 2)}
+                      >
+                        <span className="font-medium">How does the ordering process work?</span>
+                        {expandedFAQ === 2 ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </button>
+                      {expandedFAQ === 2 && (
+                        <p className="text-sm text-muted-foreground dark:text-gray-300 mt-2 leading-relaxed">
+                          Simply browse our menu, add items to your cart, and proceed to checkout.
+                          You'll need to create an account or sign in to place an order. Orders can be placed
+                          for immediate pickup or scheduled for later collection.
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="border-b border-border pb-4">
+                      <button
+                        className="w-full text-left flex items-center justify-between py-2 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors text-foreground bg-transparent border-none"
+                        onClick={() => setExpandedFAQ(expandedFAQ === 3 ? null : 3)}
+                      >
+                        <span className="font-medium">Do you accommodate dietary restrictions?</span>
+                        {expandedFAQ === 3 ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </button>
+                      {expandedFAQ === 3 && (
+                        <p className="text-sm text-muted-foreground dark:text-gray-300 mt-2 leading-relaxed">
+                          We can accommodate most dietary needs. Please contact us directly for allergies,
+                          gluten-free options, or other special requirements. Our team will work with you
+                          to ensure a safe and enjoyable dining experience.
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <button
+                        className="w-full text-left flex items-center justify-between py-2 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors text-foreground bg-transparent border-none"
+                        onClick={() => setExpandedFAQ(expandedFAQ === 4 ? null : 4)}
+                      >
+                        <span className="font-medium">How long does it take to prepare my order?</span>
+                        {expandedFAQ === 4 ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </button>
+                      {expandedFAQ === 4 && (
+                        <p className="text-sm text-muted-foreground dark:text-gray-300 mt-2 leading-relaxed">
+                          Preparation time varies by item. Steaks typically take 10-15 minutes depending on your
+                          preferred doneness. Fries and other sides are usually ready in 5-8 minutes. You'll receive
+                          a notification when your order is ready for pickup.
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardContent className="p-6">
-                  <h3 className="text-xl font-semibold mb-4 flex items-center">
-                    <MapPin className="w-5 h-5 mr-2 text-yellow-600" />
-                    Find Us
-                  </h3>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-semibold flex items-center">
+                      <MapPin className="w-5 h-5 mr-2 text-yellow-600" />
+                      Find Us
+                    </h3>
+
+                    <Badge
+                      variant="outline"
+                      className="cursor-pointer hover:bg-accent flex items-center gap-1"
+                      onClick={() => window.location.href = 'tel:01234567892'}
+                    >
+                      <Phone className="w-3 h-3" />
+                      01234 567892
+                    </Badge>
+                  </div>
 
                   <div className="space-y-4">
                     <div>
@@ -609,33 +761,46 @@ const MenuPage: React.FC = () => {
                       <p className="text-muted-foreground">Epsom, England KT19 8EB</p>
                     </div>
 
-                    <div className="flex items-center text-muted-foreground">
-                      <Phone className="w-4 h-4 mr-2" />
-                      <span>01234 567892</span>
-                    </div>
-
-                    <Button className="w-full" variant="outline">
+                    <Button
+                      className="w-full"
+                      variant="outline"
+                      onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent('Clock Tower, Kings Shade Walk, Epsom, England KT19 8EB')}`, '_blank')}
+                    >
                       <Navigation className="w-4 h-4 mr-2" />
                       Get Directions
                     </Button>
+
+                    {/* Small Map */}
+                    <div className="w-full h-32 bg-gray-100 rounded-lg overflow-hidden">
+                      <iframe
+                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2488.0000000000005!2d-0.2674!3d51.3326!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x4875d9b8b8b8b8b8%3A0x4875d9b8b8b8b8b8!2sClock%20Tower%2C%20Kings%20Shade%20Walk%2C%20Epsom%20KT19%208EB%2C%20UK!5e0!3m2!1sen!2suk!4v1690000000000!5m2!1sen!2suk"
+                        width="100%"
+                        height="100%"
+                        style={{ border: 0 }}
+                        allowFullScreen={false}
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                        title="Location Map"
+                      ></iframe>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
-          </div>
+          </>
         )}
 
         {/* Customize Order Dialog */}
         {showCustomizeDialog && selectedItem && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-            <div className="relative w-full max-w-4xl mx-4 bg-background rounded-lg shadow-lg">
+            <div className="relative w-full max-w-6xl mx-4 bg-background rounded-lg shadow-lg border-2 border-border">
               <button
                 onClick={() => setShowCustomizeDialog(false)}
                 className="absolute -top-4 -right-4 z-[60] w-8 h-8 bg-background border border-border rounded-full flex items-center justify-center hover:bg-accent text-xl"
               >
                 ×
               </button>
-              
+
               <div className="p-8">
                 <div className="mb-8">
                   <h2 className="text-3xl font-bold text-foreground mb-3">{selectedItem.name}</h2>
@@ -643,7 +808,7 @@ const MenuPage: React.FC = () => {
                   <p className="text-xl font-semibold text-yellow-600 mt-3">Base price: £{selectedItem.price.toFixed(2)}</p>
                 </div>
 
-                <div className="max-h-[500px] overflow-y-auto custom-scrollbar">
+                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent pl-6">
                   {selectedItem.category === 'Kids' && selectedItem.name === 'Kids Meal' ? (
                     /* Kids Meal Sauce Selection */
                     <div className="mb-8">
@@ -651,7 +816,7 @@ const MenuPage: React.FC = () => {
                       <p className="text-muted-foreground mb-6">
                         Your Kids Meal includes a drink and one free sauce. Please choose your preferred sauce:
                       </p>
-                      <div className="space-y-4">
+                      <div className="flex flex-wrap gap-4">
                         {/* Check both Sauces and Add-ons categories for sauce items */}
                         {menuItems.filter(item =>
                           (item.category === 'Sauces' || item.category === 'Add-ons') &&
@@ -662,7 +827,7 @@ const MenuPage: React.FC = () => {
                           return (
                             <div
                               key={sauce.id}
-                              className={`p-6 border-2 rounded-xl cursor-pointer transition-all ${
+                              className={`p-6 border-2 rounded-xl cursor-pointer transition-all flex-1 min-w-[300px] ${
                                 isSelected
                                   ? 'border-yellow-500 bg-yellow-50'
                                   : isOtherSelected
@@ -718,17 +883,17 @@ const MenuPage: React.FC = () => {
                     /* Main Course Add-ons */
                     <>
                       <h3 className="text-2xl font-semibold mb-6 text-foreground">Add Extras</h3>
-                      
+
                       {/* Meat Add-ons */}
-                      <div className="mb-8 ml-[50px]">
-                        <div className="grid gap-4">
+                      <div className="mb-8">
+                        <div className="flex flex-wrap gap-4">
                           {menuItems.filter(item =>
                             item.category === 'Add-ons' &&
                             (item.name.includes('Steak') || item.name.includes('Lamb') || item.name.includes('Ribs'))
                           ).map((addOn) => {
                             const quantity = selectedAddOns[addOn.id]?.quantity || 0;
                             return (
-                              <div key={addOn.id} className="flex items-center p-4 border-2 rounded-xl hover:bg-accent">
+                              <div key={addOn.id} className="flex items-center p-4 border-2 rounded-xl hover:bg-accent flex-1 min-w-[300px]">
                                 <h5 className="font-semibold text-foreground text-lg text-center flex-1">{addOn.name}</h5>
                                 <div className="flex items-center gap-4 ml-4">
                                   <span className="font-bold text-yellow-600 text-lg">£{addOn.price.toFixed(2)}</span>
@@ -765,11 +930,11 @@ const MenuPage: React.FC = () => {
                       {/* Sauces */}
                       <div className="mb-8">
                         <h4 className="text-xl font-semibold mb-4 text-foreground">Sauces</h4>
-                        <div className="grid gap-4">
+                        <div className="flex flex-wrap gap-4">
                           {menuItems.filter(item => item.category === 'Add-ons' && item.name.includes('Sauce')).map((addOn) => {
                             const quantity = selectedAddOns[addOn.id]?.quantity || 0;
                             return (
-                              <div key={addOn.id} className="flex items-center p-4 border-2 rounded-xl hover:bg-accent">
+                              <div key={addOn.id} className="flex items-center p-4 border-2 rounded-xl hover:bg-accent flex-1 min-w-[300px]">
                                 <h5 className="font-semibold text-foreground text-lg text-center flex-1">{addOn.name}</h5>
                                 <div className="flex items-center gap-4 ml-4">
                                   <span className="font-bold text-yellow-600 text-lg">£{addOn.price.toFixed(2)}</span>
@@ -806,11 +971,11 @@ const MenuPage: React.FC = () => {
                       {/* Drinks */}
                       <div className="mb-8">
                         <h4 className="text-xl font-semibold mb-4 text-foreground">Drinks</h4>
-                        <div className="grid gap-4">
+                        <div className="flex flex-wrap gap-4">
                           {menuItems.filter(item => item.category === 'Drinks').map((addOn) => {
                             const quantity = selectedAddOns[addOn.id]?.quantity || 0;
                             return (
-                              <div key={addOn.id} className="flex items-center p-4 border-2 rounded-xl hover:bg-accent">
+                              <div key={addOn.id} className="flex items-center p-4 border-2 rounded-xl hover:bg-accent flex-1 min-w-[300px]">
                                 <h5 className="font-semibold text-foreground text-lg text-center flex-1">{addOn.name}</h5>
                                 <div className="flex items-center gap-4 ml-4">
                                   <span className="font-bold text-yellow-600 text-lg">£{addOn.price.toFixed(2)}</span>
@@ -877,7 +1042,7 @@ const MenuPage: React.FC = () => {
                       className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-black"
                       disabled={selectedItem.category === 'Kids' && selectedItem.name === 'Kids Meal' && !selectedSauce}
                     >
-                      {selectedItem.category === 'Kids' && selectedItem.name === 'Kids Meal' ? 'Add Kids Meal' : 'Add to Cart'}
+                      {selectedItem.category === 'Kids' && selectedItem.name === 'Kids Meal' ? 'Add Kids Meal' : 'Checkout'}
                     </Button>
                   </div>
                 </div>
@@ -902,7 +1067,6 @@ const MenuPage: React.FC = () => {
             </div>
           </div>
         )}
-      </div>
     </div>
   );
 };

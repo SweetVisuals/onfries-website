@@ -14,12 +14,14 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import AuthModal from '../Auth/AuthModal';
 import CartDrawer from '../Cart/CartDrawer';
+import logo from '../../images/OnFries-Logo.png';
 
 interface HeaderProps {
   onNavigate: (page: string) => void;
+  hideLogo?: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
+const Header: React.FC<HeaderProps> = ({ onNavigate, hideLogo = false }) => {
   const { user, logout } = useAuth();
   const { getItemCount } = useCart();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -55,21 +57,25 @@ const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
   return (
     <>
       <header className="bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-50 w-full border-b backdrop-blur-lg">
-        <nav className="mx-auto flex h-14 w-full max-w-6xl items-center justify-end px-4">
-          <div className="flex items-center gap-4">
+        <nav className="mx-auto flex h-14 w-full max-w-6xl items-center px-4">
+          {/* Logo */}
+          {!hideLogo && (
+            <div className="flex items-center">
+              <img src={logo} alt="OnFries Logo" className="h-8 w-auto" />
+            </div>
+          )}
+          <div className="flex items-center gap-4 ml-auto">
             {user ? (
               <>
                 {/* User Avatar and Dropdown */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src="" alt={user.name} />
-                        <AvatarFallback className="bg-muted text-muted-foreground hover:bg-accent">
-                            {user.name.charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                      </Avatar>
-                    </Button>
+                    <Avatar className="h-8 w-8 cursor-pointer">
+                      <AvatarImage src="" alt={user.name} />
+                      <AvatarFallback className="bg-muted text-muted-foreground hover:bg-accent">
+                        {user.name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-56" align="end" forceMount>
                     <div className="flex items-center justify-start gap-2 p-2">
@@ -127,6 +133,7 @@ const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
                     size="icon"
                     className="relative"
                     onClick={() => setIsCartOpen(true)}
+                    data-cart-icon
                   >
                     <ShoppingCart className="h-4 w-4" />
                     {getItemCount() > 0 && (

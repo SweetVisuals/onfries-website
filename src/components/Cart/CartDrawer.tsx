@@ -178,7 +178,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, onNavigateToOr
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent className="w-full sm:max-w-md flex flex-col">
+      <SheetContent className="w-full sm:max-w-md flex flex-col border-2 border-border">
         {/* Only show header when not showing success screen */}
         {!showSuccess && (
           <SheetHeader className="pr-12 pt-5">
@@ -195,7 +195,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, onNavigateToOr
             </SheetTitle>
           </SheetHeader>
         )}
-        
+
         {/* Payment Success Screen */}
         {showSuccess && createdOrder ? (
           <PaymentSuccessScreen
@@ -213,7 +213,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, onNavigateToOr
             onViewOrders={handleViewOrders}
           />
         ) : (
-          <div className="flex-1 overflow-y-auto py-4">
+          <div className="flex-1 overflow-y-auto py-4 pl-6 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
             {showPayment ? (
               // Payment Form
               <div className="px-2.5">
@@ -225,7 +225,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, onNavigateToOr
                   customerEmail={user?.email}
                   disabled={false}
                 />
-                
+
                 <div className="mt-4">
                   <Button
                     variant="outline"
@@ -239,13 +239,13 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, onNavigateToOr
               </div>
             ) : (
               // Cart Contents
-              <div className="px-2.5 space-y-4">
+              <div className="px-2.5 grid grid-cols-1 gap-3">
                 {items.map((item) => (
-                  <div key={item.id} className="flex items-center gap-3 bg-muted rounded-lg p-3">
+                  <div key={item.id} className="flex items-center gap-3 bg-muted rounded-lg p-2">
                     <div className="flex-1 min-w-0">
                       <h4 className="font-medium text-foreground truncate">{item.name}</h4>
                       <p className="text-sm text-muted-foreground">£{item.price.toFixed(2)}</p>
-                      
+
                       <div className="flex items-center justify-between mt-2">
                         <div className="flex items-center gap-2">
                           <div
@@ -254,11 +254,11 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, onNavigateToOr
                           >
                             <Minus className="w-3 h-3 text-foreground" />
                           </div>
-                          
+
                           <span className="text-sm font-medium w-8 text-center text-foreground">
                             {item.quantity}
                           </span>
-                          
+
                           <div
                             className="cursor-pointer p-1 hover:bg-accent rounded-md transition-colors"
                             onClick={() => updateQuantity(item.id, item.quantity + 1)}
@@ -266,7 +266,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, onNavigateToOr
                             <Plus className="w-3 h-3 text-foreground" />
                           </div>
                         </div>
-                        
+
                         <div
                           className="cursor-pointer p-1 hover:bg-accent rounded-md transition-colors"
                           onClick={() => removeItem(item.id)}

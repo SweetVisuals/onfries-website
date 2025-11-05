@@ -16,6 +16,7 @@ interface OrderWithItems extends Order {
     quantity: number;
     price: number;
     menu_items?: {
+      id: string;
       name: string;
       description: string;
       category: string;
@@ -101,9 +102,9 @@ const CurrentOrderManagement: React.FC = () => {
       customerId: order.customer_id,
       customerName: order.customer_name,
       customerEmail: order.customer_email,
-      items: order.order_items?.map((item) => ({
+      items: order.order_items?.map((item, index) => ({
         item: {
-          id: '', // We don't have this in the query result
+          id: item.menu_items?.id || `item-${index}`, // Use actual menu item ID or fallback
           name: item.menu_items?.name || 'Unknown Item',
           description: item.menu_items?.description || '',
           price: item.price,
@@ -167,11 +168,163 @@ const CurrentOrderManagement: React.FC = () => {
     }
   };
 
-  const handleAddOrder = (_customerName: string, _customerEmail: string, _items: Array<{ item: MenuItem; quantity: number; addOns?: Array<{ item: MenuItem; quantity: number }> }>) => {
-    // This would typically create a new order in the database
-    console.log('Add order functionality would be implemented here');
-    // Reload orders to reflect the change
-    loadOrders();
+  const handleAddOrder = async (customerName: string, customerEmail: string, items: Array<{ item: MenuItem; quantity: number; addOns?: Array<{ item: MenuItem; quantity: number }> }>) => {
+    try {
+      // Use the admin's user ID as customer ID (don't create separate customer)
+      if (!user) {
+        throw new Error('Admin user not authenticated');
+      }
+
+      const customerId = user.id; // Use the admin's user ID as customer ID
+
+      // Get actual menu items from database to ensure we have correct UUIDs
+      const { getMenuItems } = await import('../../lib/database');
+      const dbMenuItems = await getMenuItems();
+
+      // Create a map of name to database item for lookup
+      const menuItemMap = new Map();
+      dbMenuItems.forEach(dbItem => {
+        menuItemMap.set(dbItem.name, dbItem);
+      });
+
+      // Transform items to match CartItem interface using database IDs
+      const cartItems = items.flatMap(orderItem => {
+        // Handle main item
+        const dbItem = menuItemMap.get(orderItem.item.name);
+        if (!dbItem) {
+          throw new Error(`Menu item "${orderItem.item.name}" not found in database`);
+        }
+
+        const mainItem = {
+          id: dbItem.id, // Use database UUID
+          name: orderItem.item.name,
+          description: orderItem.item.description,
+          price: orderItem.item.price,
+          image: orderItem.item.image,
+          category: orderItem.item.category,
+          isAvailable: orderItem.item.isAvailable,
+          preparationTime: orderItem.item.preparationTime,
+          quantity: orderItem.quantity
+        };
+
+        // Handle add-ons as separate items
+        const addOnItems = (orderItem.addOns || []).map(addOn => {
+          const dbAddOn = menuItemMap.get(addOn.item.name);
+          if (!dbAddOn) {
+            console.warn(`Add-on "${addOn.item.name}" not found in database, skipping`);
+            return null; // Skip this add-on instead of throwing error
+          }
+          return {
+            id: dbAddOn.id,
+            name: addOn.item.name,
+            description: addOn.item.description,
+            price: addOn.item.price,
+            image: addOn.item.image,
+            category: addOn.item.category,
+            isAvailable: addOn.item.isAvailable,
+            preparationTime: addOn.item.preparationTime,
+            quantity: addOn.quantity * orderItem.quantity // Multiply by main item quantity
+          };
+        }).filter(item => item !== null); // Remove null items
+
+        return [mainItem, ...addOnItems];
+      });
+
+      // Calculate total including add-ons
+      const total = items.reduce((sum, orderItem) => {
+        const itemTotal = orderItem.item.price * orderItem.quantity;
+        const addOnsTotal = (orderItem.addOns || []).reduce((addOnSum, addOn) => addOnSum + (addOn.item.price * addOn.quantity), 0) * orderItem.quantity;
+        return sum + itemTotal + addOnsTotal;
+      }, 0);
+
+      // Import supabase directly
+      const { supabase } = await import('../../lib/supabase');
+
+      // Get the next order number (sequential based on all orders)
+      const { data: allOrders, error: countError } = await supabase
+        .from('orders')
+        .select('id')
+        .order('created_at', { ascending: false });
+
+      if (countError) {
+        console.error('Error getting order count:', countError);
+      }
+
+      const nextOrderNumber = (allOrders?.length || 0) + 1;
+      const orderId = crypto.randomUUID(); // Use UUID instead of ORDER-XXXX format
+
+      // Create the order directly using the admin's user ID (skip customer creation entirely)
+      const orderDate = new Date().toISOString();
+      const estimatedDelivery = new Date(Date.now() + 30 * 60 * 1000).toISOString(); // 30 minutes from now
+
+      console.log('Inserting order record...', {
+        id: orderId,
+        customer_id: customerId,
+        customer_name: customerName,
+        customer_email: customerEmail || user.email,
+        total: total,
+        status: 'pending',
+        order_date: orderDate,
+        estimated_delivery: estimatedDelivery,
+        notes: 'Created by admin'
+      });
+
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          id: orderId,
+          customer_id: customerId,
+          customer_name: customerName,
+          customer_email: customerEmail || user.email,
+          total: total,
+          status: 'pending',
+          order_date: orderDate,
+          estimated_delivery: estimatedDelivery,
+          notes: 'Created by admin'
+        })
+        .select()
+        .single();
+
+      if (orderError) {
+        console.error('Order creation error:', orderError);
+        throw orderError;
+      }
+
+      console.log('Order record created successfully:', order);
+
+      // Create order items
+      const orderItems = cartItems.map(item => ({
+        order_id: orderId,
+        menu_item_id: item.id,
+        quantity: item.quantity,
+        price: item.price
+      }));
+
+      console.log('Inserting order items...', orderItems);
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) {
+        console.error('Order items creation error:', itemsError);
+        // If order items creation fails, delete the order
+        await supabase.from('orders').delete().eq('id', orderId);
+        throw itemsError;
+      }
+
+      console.log('Order items created successfully');
+
+      // Trigger refresh event for admin panels
+      const { triggerOrderRefresh } = await import('../../lib/database');
+      triggerOrderRefresh();
+
+      console.log('Order created successfully by admin');
+      // Reload orders to reflect the change
+      loadOrders();
+    } catch (error) {
+      console.error('Error creating order:', error);
+    }
   };
 
   const handleDeleteOrder = async (orderId: string) => {
@@ -223,14 +376,14 @@ const CurrentOrderManagement: React.FC = () => {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredOrders.map((order) => (
+            {filteredOrders.map((order, index) => (
               <CurrentOrderCard
-                key={order.id}
+                key={`${order.id}-${index}`}
                 order={transformOrderForCard(order)}
                 onComplete={handleOrderComplete}
                 onDelete={handleDeleteOrder}
               />
-            ))}
+            )).reverse()}
           </div>
         )}
       </div>

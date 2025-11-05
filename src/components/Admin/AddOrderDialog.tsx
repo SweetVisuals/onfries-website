@@ -23,30 +23,39 @@ const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [selectedItems, setSelectedItems] = useState<OrderItem[]>([]);
-  const [showAddOnDialog, setShowAddOnDialog] = useState<{ isOpen: boolean; itemId: string }>({ isOpen: false, itemId: '' });
+  // Single dialog with different modes instead of nested dialog
+  const [dialogMode, setDialogMode] = useState<'select' | 'customize'>('select');
+  const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
+  const [selectedAddOns, setSelectedAddOns] = useState<{[key: string]: {item: MenuItem, quantity: number}}>({});
+  const [selectedSauce, setSelectedSauce] = useState<string>('');
+
+  const hasAddOns = (item: MenuItem) => {
+    // Steak Only should not have add-ons (it's its own menu item)
+    // Steak should be an add-on for Signature Fries, Steak & Fries, and Deluxe Steak & Fries
+    const result = (item.category === 'Main Courses' && item.name !== 'Steak Only') || (item.category === 'Kids' && item.name === 'Kids Meal');
+    console.log('hasAddOns check for', item.name, ':', result, '(category:', item.category, ')');
+    return result;
+  };
 
   const handleAddItem = (item: MenuItem) => {
-    const existing = selectedItems.find(si => si.item.id === item.id);
-    if (existing) {
-      setSelectedItems(selectedItems.map(si =>
-        si.item.id === item.id ? { ...si, quantity: si.quantity + 1 } : si
-      ));
+    console.log('handleAddItem called with:', item.name, 'category:', item.category);
+    console.log('hasAddOns result:', hasAddOns(item));
+
+    if (hasAddOns(item)) {
+      console.log('Switching to customize mode for:', item.name);
+      // Switch to customization mode for items that have add-ons
+      setSelectedItem(item);
+      setSelectedAddOns({});
+      setSelectedSauce('');
+      setDialogMode('customize');
     } else {
+      console.log('Adding directly for:', item.name);
+      // Directly add items without add-ons as separate items
       setSelectedItems([...selectedItems, { item, quantity: 1, addOns: [] }]);
     }
   };
 
-  const handleAddAddOn = (addOn: MenuItem, mainItemId: string) => {
-    setSelectedItems(selectedItems.map(si =>
-      si.item.id === mainItemId
-        ? {
-            ...si,
-            addOns: [...si.addOns, { item: addOn, quantity: 1 }]
-          }
-        : si
-    ));
-    setShowAddOnDialog({ isOpen: false, itemId: '' });
-  };
+  // Removed unused handleAddAddOn function - add-ons are now handled in customize dialog
 
   const handleRemoveAddOn = (addOnIndex: number, mainItemId: string) => {
     setSelectedItems(selectedItems.map(si =>
@@ -74,7 +83,7 @@ const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
   };
 
   const handleSubmit = () => {
-    if (customerName && customerEmail && selectedItems.length > 0) {
+    if (customerName && selectedItems.length > 0) {
       onAddOrder(customerName, customerEmail, selectedItems);
       handleResetDialog();
     }
@@ -85,7 +94,10 @@ const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
     setCustomerName('');
     setCustomerEmail('');
     setSelectedItems([]);
-    setShowAddOnDialog({ isOpen: false, itemId: '' });
+    setDialogMode('select');
+    setSelectedItem(null);
+    setSelectedAddOns({});
+    setSelectedSauce('');
   };
 
   const total = selectedItems.reduce((sum, si) => {
@@ -99,8 +111,74 @@ const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
   const kidsItems = menuItems.filter(item => item.category === 'Kids');
   const availableAddOns = menuItems.filter(item => item.category === 'Add-ons');
 
+  const updateAddOnQuantity = (addOn: any, newQuantity: number) => {
+    console.log('updateAddOnQuantity called with:', addOn.name, 'new quantity:', newQuantity);
+    setSelectedAddOns(prev => {
+      const newSelected = { ...prev };
+      if (newQuantity === 0) {
+        delete newSelected[addOn.id];
+      } else {
+        newSelected[addOn.id] = {
+          item: addOn,
+          quantity: newQuantity
+        };
+      }
+      console.log('New selected add-ons:', newSelected);
+      return newSelected;
+    });
+  };
+
+  const handleConfirmCustomize = () => {
+    let addOnsWithQuantities: Array<{ item: MenuItem; quantity: number }> = [];
+
+    // Handle Kids Meal sauce selection
+    if (selectedItem!.category === 'Kids' && selectedItem!.name === 'Kids Meal') {
+      if (selectedSauce) {
+        const selectedSauceItem = menuItems.find(item => item.id === selectedSauce);
+        if (selectedSauceItem) {
+          addOnsWithQuantities = [{
+            item: selectedSauceItem,
+            quantity: 1
+          }];
+        }
+      }
+    } else {
+      // Handle regular add-ons for main courses
+      addOnsWithQuantities = Object.values(selectedAddOns).map(({ item, quantity }) => ({
+        item,
+        quantity
+      }));
+    }
+
+    // Add to selected items as separate item (keep original item name and price)
+    setSelectedItems([...selectedItems, { item: selectedItem!, quantity: 1, addOns: addOnsWithQuantities }]);
+
+    // Reset state and switch back to select mode
+    setDialogMode('select');
+    setSelectedItem(null);
+    setSelectedAddOns({});
+    setSelectedSauce('');
+  };
+
   return (
     <>
+      <style>
+        {`
+          .thin-scrollbar::-webkit-scrollbar {
+            width: 6px;
+          }
+          .thin-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+          }
+          .thin-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(156, 163, 175, 0.5);
+            border-radius: 3px;
+          }
+          .thin-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(156, 163, 175, 0.7);
+          }
+        `}
+      </style>
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogTrigger asChild>
           <Button className="flex items-center gap-2">
@@ -108,242 +186,570 @@ const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
             Add Order
           </Button>
         </DialogTrigger>
-        <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto [&>button]:hidden">
+        <DialogContent className="max-w-7xl max-h-[95vh] overflow-hidden [&>button]:hidden">
           <DialogHeader className="relative">
-            <DialogTitle>Add New Order</DialogTitle>
-            <X
-              className="absolute right-0 top-0 h-6 w-6 cursor-pointer text-muted-foreground hover:text-foreground"
-              onClick={() => handleResetDialog()}
-            />
+            <DialogTitle>
+              {dialogMode === 'select' ? 'Add New Order' : `Customize: ${selectedItem?.name}`}
+            </DialogTitle>
+            <div className="flex items-center gap-2">
+              {dialogMode === 'customize' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDialogMode('select')}
+                  className="cursor-pointer"
+                >
+                  ← Back to Menu
+                </Button>
+              )}
+              <X
+                className="absolute right-0 top-0 h-6 w-6 cursor-pointer text-muted-foreground hover:text-foreground"
+                onClick={() => handleResetDialog()}
+              />
+            </div>
           </DialogHeader>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Left Column - Menu Items */}
-            <div className="space-y-6">
-              {/* Customer Details */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="customerName">Customer Name</Label>
-                  <Input
-                    id="customerName"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    placeholder="Enter customer name"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="customerEmail">Customer Email</Label>
-                  <Input
-                    id="customerEmail"
-                    type="email"
-                    value={customerEmail}
-                    onChange={(e) => setCustomerEmail(e.target.value)}
-                    placeholder="Enter customer email"
-                  />
-                </div>
-              </div>
-
-              {/* Main Courses */}
-              <div>
-                <h3 className="text-lg font-semibold mb-4">Main Courses</h3>
-                <div className="grid grid-cols-1 gap-3">
-                  {mainCourses.map((item) => (
-                    <Card key={item.id} className="cursor-pointer hover:shadow-md transition-shadow">
-                      <CardHeader className="pb-2">
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-sm">{item.name}</CardTitle>
-                          <Badge variant={item.isAvailable ? 'default' : 'secondary'}>
-                            {item.isAvailable ? 'Available' : 'Unavailable'}
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground">{item.description}</p>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="flex items-center justify-between">
-                          <span className="font-semibold">£{item.price.toFixed(2)}</span>
-                          <Button
-                            size="sm"
-                            onClick={() => handleAddItem(item)}
-                            disabled={!item.isAvailable}
-                          >
-                            Add to Order
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-
-              {/* Kids Menu */}
-              {kidsItems.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold mb-4">Kids Menu</h3>
-                  <div className="grid grid-cols-1 gap-3">
-                    {kidsItems.map((item) => (
-                      <Card key={item.id} className="cursor-pointer hover:shadow-md transition-shadow">
-                        <CardHeader className="pb-2">
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="text-sm">{item.name}</CardTitle>
-                            <Badge variant={item.isAvailable ? 'default' : 'secondary'}>
-                              {item.isAvailable ? 'Available' : 'Unavailable'}
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground">{item.description}</p>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="flex items-center justify-between">
-                            <span className="font-semibold">£{item.price.toFixed(2)}</span>
-                            <Button
-                              size="sm"
-                              onClick={() => handleAddItem(item)}
-                              disabled={!item.isAvailable}
-                            >
-                              Add to Order
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+          <div className="flex flex-col h-full max-h-[calc(95vh-8rem)]">
+            {/* Select Mode Layout */}
+            {dialogMode === 'select' && (
+              <>
+                {/* Customer Details */}
+                <div className="mb-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="customerName">Customer Name</Label>
+                      <Input
+                        id="customerName"
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        placeholder="Enter customer name"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="customerEmail">Customer Email</Label>
+                      <Input
+                        id="customerEmail"
+                        type="email"
+                        value={customerEmail}
+                        onChange={(e) => setCustomerEmail(e.target.value)}
+                        placeholder="Enter customer email"
+                      />
+                    </div>
                   </div>
                 </div>
-              )}
 
-              {/* Drinks */}
-              {drinks.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold mb-4">Drinks</h3>
-                  <div className="grid grid-cols-1 gap-3">
-                    {drinks.map((item) => (
-                      <Card key={item.id} className="cursor-pointer hover:shadow-md transition-shadow">
-                        <CardHeader className="pb-2">
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="text-sm">{item.name}</CardTitle>
-                            <Badge variant={item.isAvailable ? 'default' : 'secondary'}>
-                              {item.isAvailable ? 'Available' : 'Unavailable'}
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground">{item.description}</p>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="flex items-center justify-between">
-                            <span className="font-semibold">£{item.price.toFixed(2)}</span>
-                            <Button
-                              size="sm"
-                              onClick={() => handleAddItem(item)}
-                              disabled={!item.isAvailable}
-                            >
-                              Add to Order
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Right Column - Order Summary */}
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-semibold mb-4">Order Summary</h3>
-                
-                {selectedItems.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <p>No items added yet. Select items from the menu to build your order.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {selectedItems.map((si) => (
-                      <Card key={si.item.id} className="border-l-4 border-l-primary">
-                        <CardHeader className="pb-2">
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="text-sm">{si.item.name}</CardTitle>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => handleRemoveItem(si.item.id)}
-                            >
-                              Remove
-                            </Button>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-3">
-                            {/* Quantity Controls */}
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
+                {/* Menu Items */}
+                <div className="flex-1 overflow-y-auto pr-2 thin-scrollbar">
+                  <div className="space-y-6">
+                    {/* Main Courses */}
+                    <div>
+                      <h3 className="text-lg font-semibold mb-3">Main Courses</h3>
+                      <div className="flex gap-3 overflow-x-auto pb-2">
+                        {mainCourses.map((item) => (
+                          <Card key={item.id} className="cursor-pointer hover:shadow-md transition-shadow flex-shrink-0 w-64 flex flex-col h-full">
+                            <CardHeader className="pb-2 flex-1">
+                              <div className="flex items-center justify-between">
+                                <CardTitle className="text-sm line-clamp-2 min-h-[2.5rem]">{item.name}</CardTitle>
+                                <Badge variant="outline" className={item.isAvailable ? 'bg-gray-800 text-white border-gray-800' : 'bg-red-600 text-white border-red-600'}>
+                                  {item.isAvailable ? 'Available' : 'Unavailable'}
+                                </Badge>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                              <div className="flex items-center justify-between">
+                                <span className="font-semibold">£{item.price.toFixed(2)}</span>
                                 <Button
+                                  type="button"
                                   size="sm"
-                                  variant="outline"
-                                  onClick={() => handleQuantityChange(si.item.id, si.quantity - 1)}
+                                  onClick={(e) => {
+                                    console.log('Add button clicked for:', item.name);
+                                    handleAddItem(item);
+                                  }}
+                                  disabled={!item.isAvailable}
                                 >
-                                  <Minus className="w-4 h-4" />
-                                </Button>
-                                <span className="w-8 text-center font-medium">{si.quantity}</span>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleQuantityChange(si.item.id, si.quantity + 1)}
-                                >
-                                  <Plus className="w-4 h-4" />
+                                  Add
                                 </Button>
                               </div>
-                              <div className="text-right">
-                                <p className="font-semibold">£{(si.item.price * si.quantity).toFixed(2)}</p>
-                                <p className="text-xs text-muted-foreground">£{si.item.price.toFixed(2)} each</p>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Add-ons */}
+                    {availableAddOns.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-semibold mb-3">Add-ons</h3>
+                        <div className="flex gap-3 overflow-x-auto pb-2">
+                          {availableAddOns.map((item) => (
+                            <Card key={item.id} className="cursor-pointer hover:shadow-md transition-shadow flex-shrink-0 w-64 flex flex-col h-full">
+                              <CardHeader className="pb-2 flex-1">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-sm line-clamp-2 min-h-[2.5rem]">{item.name}</CardTitle>
+                                  <Badge variant="outline" className={item.isAvailable ? 'bg-gray-800 text-white border-gray-800' : 'bg-red-600 text-white border-red-600'}>
+                                    {item.isAvailable ? 'Available' : 'Unavailable'}
+                                  </Badge>
+                                </div>
+                              </CardHeader>
+                              <CardContent className="pt-0">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-semibold">£{item.price.toFixed(2)}</span>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleAddItem(item)}
+                                    disabled={!item.isAvailable}
+                                  >
+                                    Add
+                                  </Button>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Kids Menu */}
+                    {kidsItems.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-semibold mb-3">Kids Menu</h3>
+                        <div className="flex gap-3 overflow-x-auto pb-2">
+                          {kidsItems.map((item) => (
+                            <Card key={item.id} className="cursor-pointer hover:shadow-md transition-shadow flex-shrink-0 w-64 flex flex-col h-full">
+                              <CardHeader className="pb-2 flex-1">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-sm line-clamp-2 min-h-[2.5rem]">{item.name}</CardTitle>
+                                  <Badge variant="outline" className={item.isAvailable ? 'bg-gray-800 text-white border-gray-800' : 'bg-red-600 text-white border-red-600'}>
+                                    {item.isAvailable ? 'Available' : 'Unavailable'}
+                                  </Badge>
+                                </div>
+                              </CardHeader>
+                              <CardContent className="pt-0">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-semibold">£{item.price.toFixed(2)}</span>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleAddItem(item)}
+                                    disabled={!item.isAvailable}
+                                  >
+                                    Add
+                                  </Button>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Drinks */}
+                    {drinks.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-semibold mb-3">Drinks</h3>
+                        <div className="flex gap-3 overflow-x-auto pb-2">
+                          {drinks.map((item) => (
+                            <Card key={item.id} className="cursor-pointer hover:shadow-md transition-shadow flex-shrink-0 w-64 h-32 flex flex-col">
+                              <CardHeader className="pb-2">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-sm line-clamp-2 min-h-[2.5rem]">{item.name}</CardTitle>
+                                  <Badge variant="outline" className={item.isAvailable ? 'bg-gray-800 text-white border-gray-800' : 'bg-red-600 text-white border-red-600'}>
+                                    {item.isAvailable ? 'Available' : 'Unavailable'}
+                                  </Badge>
+                                </div>
+                              </CardHeader>
+                              <CardContent className="pt-0">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-semibold">£{item.price.toFixed(2)}</span>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleAddItem(item)}
+                                    disabled={!item.isAvailable}
+                                  >
+                                    Add
+                                  </Button>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Customize Mode Layout - Full height, no scroll conflicts */}
+            {dialogMode === 'customize' && selectedItem && (
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto pr-2 thin-scrollbar">
+                  <div className="space-y-6">
+                    <div className="mb-6">
+                      <h2 className="text-2xl font-bold text-foreground mb-3">{selectedItem.name}</h2>
+                      <p className="text-muted-foreground text-base">{selectedItem.description}</p>
+                      <p className="text-lg font-semibold text-yellow-600 mt-2">Base price: £{selectedItem.price.toFixed(2)}</p>
+                    </div>
+
+                    <div>
+                      {selectedItem.category === 'Kids' && selectedItem.name === 'Kids Meal' ? (
+                        /* Kids Meal Sauce Selection */
+                        <div className="mb-6">
+                          <h3 className="text-xl font-semibold mb-4 text-foreground">Choose Your Sauce</h3>
+                          <p className="text-muted-foreground mb-4 text-sm">
+                            Your Kids Meal includes a drink and one free sauce. Please choose your preferred sauce:
+                          </p>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {menuItems.filter(item =>
+                              item.category === 'Add-ons' && item.name.includes('Sauce')
+                            ).map((sauce) => {
+                              const isSelected = selectedSauce === sauce.id;
+                              return (
+                                <div
+                                  key={sauce.id}
+                                  className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                                    isSelected
+                                      ? 'border-yellow-500 bg-yellow-50 dark:bg-yellow-950 ring-2 ring-yellow-200'
+                                      : 'border-border hover:border-yellow-400 hover:bg-accent dark:hover:bg-accent'
+                                  }`}
+                                  onClick={() => {
+                                    console.log('Sauce clicked:', sauce.name);
+                                    setSelectedSauce(sauce.id);
+                                  }}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <h5 className="font-semibold text-foreground">{sauce.name}</h5>
+                                      <p className="text-muted-foreground text-sm">{sauce.description}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                                        isSelected
+                                          ? 'border-yellow-500 bg-yellow-500'
+                                          : 'border-muted-foreground'
+                                      }`}>
+                                        {isSelected && (
+                                          <div className="w-2 h-2 rounded-full bg-foreground"></div>
+                                        )}
+                                      </div>
+                                      <span className="font-bold text-yellow-600 text-sm">FREE</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          {!selectedSauce && (
+                            <p className="text-red-500 mt-3 text-sm font-medium">
+                              Please select a sauce to continue
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        /* Main Course Add-ons */
+                        <div className="space-y-6">
+                          <div>
+                            <h3 className="text-xl font-semibold mb-4 text-foreground">Add Extras</h3>
+                            
+                            {/* Steak Add-ons */}
+                            <div className="mb-6">
+                              <h4 className="text-lg font-semibold mb-3 text-foreground">Extra Steak</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {menuItems.filter(item => item.id === '8').map((addOn) => {
+                                  const quantity = selectedAddOns[addOn.id]?.quantity || 0;
+                                  return (
+                                    <div key={addOn.id} className="flex items-center p-3 border-2 rounded-lg hover:bg-accent">
+                                      <h5 className="font-semibold text-foreground text-sm text-center flex-1">{addOn.name}</h5>
+                                      <div className="flex items-center gap-3 ml-3">
+                                        <span className="font-bold text-yellow-600 text-sm">£{addOn.price.toFixed(2)}</span>
+                                        <div className="flex items-center gap-1">
+                                          {quantity > 0 && (
+                                            <Button
+                                              type="button"
+                                              size="sm"
+                                              variant="outline"
+                                              onClick={(e) => {
+                                                console.log('Steak minus button clicked for:', addOn.name);
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                updateAddOnQuantity(addOn, quantity - 1);
+                                              }}
+                                              className="w-7 h-7 p-0 text-xs cursor-pointer"
+                                              style={{ pointerEvents: 'auto' }}
+                                            >
+                                              -
+                                            </Button>
+                                          )}
+                                          {quantity > 0 && (
+                                            <span className="w-6 text-center font-medium text-sm">{quantity}</span>
+                                          )}
+                                          <Button
+                                            type="button"
+                                            size="sm"
+                                            variant={quantity > 0 ? 'default' : 'outline'}
+                                            onClick={(e) => {
+                                              console.log('Steak plus button clicked for:', addOn.name);
+                                              e.preventDefault();
+                                              e.stopPropagation();
+                                              updateAddOnQuantity(addOn, quantity + 1);
+                                            }}
+                                            className="w-7 h-7 p-0 text-xs cursor-pointer"
+                                            style={{ pointerEvents: 'auto' }}
+                                          >
+                                            +
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             </div>
 
-                            {/* Add Add-ons Button */}
-                            {availableAddOns.length > 0 && (
+                            {/* Sauces */}
+                            <div className="mb-6">
+                              <h4 className="text-lg font-semibold mb-3 text-foreground">Sauces</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {menuItems.filter(item => item.category === 'Add-ons' && item.name.includes('Sauce')).map((addOn) => {
+                                  const quantity = selectedAddOns[addOn.id]?.quantity || 0;
+                                  return (
+                                    <div key={addOn.id} className="flex items-center p-3 border-2 rounded-lg hover:bg-accent">
+                                      <h5 className="font-semibold text-foreground text-sm text-center flex-1">{addOn.name}</h5>
+                                      <div className="flex items-center gap-3 ml-3">
+                                        <span className="font-bold text-yellow-600 text-sm">£{addOn.price.toFixed(2)}</span>
+                                        <div className="flex items-center gap-1">
+                                          {quantity > 0 && (
+                                            <Button
+                                              type="button"
+                                              size="sm"
+                                              variant="outline"
+                                              onClick={(e) => {
+                                                console.log('Sauce minus button clicked for:', addOn.name);
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                updateAddOnQuantity(addOn, quantity - 1);
+                                              }}
+                                              className="w-7 h-7 p-0 text-xs cursor-pointer"
+                                              style={{ pointerEvents: 'auto' }}
+                                            >
+                                              -
+                                            </Button>
+                                          )}
+                                          {quantity > 0 && (
+                                            <span className="w-6 text-center font-medium text-sm">{quantity}</span>
+                                          )}
+                                          <Button
+                                            type="button"
+                                            size="sm"
+                                            variant={quantity > 0 ? 'default' : 'outline'}
+                                            onClick={(e) => {
+                                              console.log('Sauce plus button clicked for:', addOn.name);
+                                              e.preventDefault();
+                                              e.stopPropagation();
+                                              updateAddOnQuantity(addOn, quantity + 1);
+                                            }}
+                                            className="w-7 h-7 p-0 text-xs cursor-pointer"
+                                            style={{ pointerEvents: 'auto' }}
+                                          >
+                                            +
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            {/* Drinks */}
+                            <div className="mb-6">
+                              <h4 className="text-lg font-semibold mb-3 text-foreground">Drinks</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {menuItems.filter(item => item.category === 'Drinks').map((addOn) => {
+                                  const quantity = selectedAddOns[addOn.id]?.quantity || 0;
+                                  return (
+                                    <div key={addOn.id} className="flex items-center p-3 border-2 rounded-lg hover:bg-accent">
+                                      <h5 className="font-semibold text-foreground text-sm text-center flex-1">{addOn.name}</h5>
+                                      <div className="flex items-center gap-3 ml-3">
+                                        <span className="font-bold text-yellow-600 text-sm">£{addOn.price.toFixed(2)}</span>
+                                        <div className="flex items-center gap-1">
+                                          {quantity > 0 && (
+                                            <Button
+                                              type="button"
+                                              size="sm"
+                                              variant="outline"
+                                              onClick={(e) => {
+                                                console.log('Drink minus button clicked for:', addOn.name);
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                updateAddOnQuantity(addOn, quantity - 1);
+                                              }}
+                                              className="w-7 h-7 p-0 text-xs cursor-pointer"
+                                              style={{ pointerEvents: 'auto' }}
+                                            >
+                                              -
+                                            </Button>
+                                          )}
+                                          {quantity > 0 && (
+                                            <span className="w-6 text-center font-medium text-sm">{quantity}</span>
+                                          )}
+                                          <Button
+                                            type="button"
+                                            size="sm"
+                                            variant={quantity > 0 ? 'default' : 'outline'}
+                                            onClick={(e) => {
+                                              console.log('Drink plus button clicked for:', addOn.name);
+                                              e.preventDefault();
+                                              e.stopPropagation();
+                                              updateAddOnQuantity(addOn, quantity + 1);
+                                            }}
+                                            className="w-7 h-7 p-0 text-xs cursor-pointer"
+                                            style={{ pointerEvents: 'auto' }}
+                                          >
+                                            +
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons for Customize Mode - Fixed at bottom */}
+                <div className="border-t pt-4 mt-4 flex-shrink-0">
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-base font-semibold text-foreground">Total:</span>
+                    <span className="text-lg font-bold text-yellow-600">
+                      {(() => {
+                        // For Kids Meal, show the fixed price as it includes drink and sauce
+                        if (selectedItem.category === 'Kids' && selectedItem.name === 'Kids Meal') {
+                          return `£${selectedItem.price.toFixed(2)} (includes drink & sauce)`;
+                        }
+                        // For other items, calculate based on add-ons
+                        return `£${(selectedItem.price + Object.values(selectedAddOns).reduce((sum, { item, quantity }) => sum + (item.price * quantity), 0)).toFixed(2)}`;
+                      })()}
+                    </span>
+                  </div>
+                  <div className="flex gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={(e) => {
+                        console.log('Customize Cancel button clicked');
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setDialogMode('select');
+                        setSelectedAddOns({});
+                        setSelectedSauce('');
+                      }}
+                      className="flex-1 cursor-pointer"
+                      style={{ pointerEvents: 'auto' }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={(e) => {
+                        console.log('Customize Add to Order button clicked');
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleConfirmCustomize();
+                      }}
+                      className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-black cursor-pointer"
+                      disabled={selectedItem.category === 'Kids' && selectedItem.name === 'Kids Meal' && !selectedSauce}
+                      style={{ pointerEvents: 'auto' }}
+                    >
+                      {selectedItem.category === 'Kids' && selectedItem.name === 'Kids Meal' ? 'Add Kids Meal' : 'Add to Order'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Order Summary - Bottom */}
+            <div className="border-t pt-4 mt-4">
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold mb-3">Order Summary</h3>
+
+                {selectedItems.length === 0 ? (
+                  <div className="text-center py-4 text-muted-foreground">
+                    <p>No items added yet. Select items from the menu to build your order.</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Order Items Grid */}
+                    <div className="grid grid-cols-4 gap-3 mb-4">
+                      {selectedItems.map((si) => (
+                        <div key={si.item.id} className="border border-border rounded-lg p-3 bg-card relative">
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleRemoveItem(si.item.id)}
+                            className="absolute -top-2 -right-2 w-6 h-6 p-0 rounded-full"
+                          >
+                            <X className="w-3 h-3" />
+                          </Button>
+
+                          <div className="text-center">
+                            <h4 className="text-sm font-semibold text-foreground mb-1 line-clamp-2">{si.item.name}</h4>
+                            <div className="flex items-center justify-center gap-1 mb-2">
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="w-full"
-                                onClick={() => setShowAddOnDialog({ isOpen: true, itemId: si.item.id })}
+                                onClick={() => handleQuantityChange(si.item.id, si.quantity - 1)}
+                                className="w-6 h-6 p-0"
                               >
-                                <Plus className="w-4 h-4 mr-2" />
-                                Add Add-ons
+                                <Minus className="w-3 h-3" />
                               </Button>
-                            )}
+                              <span className="text-lg font-bold text-foreground min-w-[2rem] text-center">{si.quantity}</span>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleQuantityChange(si.item.id, si.quantity + 1)}
+                                className="w-6 h-6 p-0"
+                              >
+                                <Plus className="w-3 h-3" />
+                              </Button>
+                            </div>
+                            <p className="text-sm font-bold text-yellow-600">£{(si.item.price * si.quantity).toFixed(2)}</p>
 
-                            {/* Current Add-ons */}
+                            {/* Add-ons */}
                             {si.addOns.length > 0 && (
-                              <div>
-                                <p className="text-sm font-medium mb-2 text-green-600">Add-ons:</p>
+                              <div className="mt-2 pt-2 border-t border-border">
+                                <p className="text-xs font-medium text-green-600 mb-1">Add-ons:</p>
                                 <div className="space-y-1">
                                   {si.addOns.map((addOn, idx) => (
-                                    <div key={idx} className="flex items-center justify-between bg-green-50 p-2 rounded text-sm">
-                                      <span>{addOn.item.name}</span>
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-muted-foreground">£{addOn.item.price.toFixed(2)}</span>
-                                        <Button
-                                          size="sm"
-                                          variant="destructive"
-                                          onClick={() => handleRemoveAddOn(idx, si.item.id)}
-                                        >
-                                          <X className="w-3 h-3" />
-                                        </Button>
-                                      </div>
+                                    <div key={idx} className="flex items-center justify-between text-xs">
+                                      <span className="text-foreground truncate mr-1">{addOn.item.name} x{addOn.quantity}</span>
+                                      <Button
+                                        size="sm"
+                                        variant="destructive"
+                                        onClick={() => handleRemoveAddOn(idx, si.item.id)}
+                                        className="w-4 h-4 p-0 flex-shrink-0"
+                                      >
+                                        <X className="w-2 h-2" />
+                                      </Button>
                                     </div>
                                   ))}
                                 </div>
                               </div>
                             )}
                           </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                    
-                    {/* Total */}
-                    <div className="border-t pt-4">
-                      <div className="text-right">
-                        <p className="text-xl font-bold">Total: £{total.toFixed(2)}</p>
-                      </div>
+                        </div>
+                      ))}
                     </div>
-                  </div>
+
+                    {/* Total */}
+                    <div className="text-center border-t pt-3">
+                      <p className="text-xl font-bold">Total: £{total.toFixed(2)}</p>
+                    </div>
+                  </>
                 )}
               </div>
 
@@ -354,62 +760,13 @@ const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
                 </Button>
                 <Button
                   onClick={handleSubmit}
-                  disabled={!customerName || !customerEmail || selectedItems.length === 0}
+                  disabled={!customerName || selectedItems.length === 0}
                   className="flex-1"
                 >
                   Create Order
                 </Button>
               </div>
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Add-ons Selection Dialog */}
-      <Dialog open={showAddOnDialog.isOpen} onOpenChange={(open) => !open && setShowAddOnDialog({ isOpen: false, itemId: '' })}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Select Add-ons</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            {availableAddOns.length === 0 ? (
-              <p className="text-center text-muted-foreground">No add-ons available</p>
-            ) : (
-              <div className="grid grid-cols-1 gap-3">
-                {availableAddOns.map((addOn) => (
-                  <Card key={addOn.id} className="cursor-pointer hover:shadow-md transition-shadow">
-                    <CardHeader className="pb-2">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm">{addOn.name}</CardTitle>
-                        <Badge variant={addOn.isAvailable ? 'default' : 'secondary'}>
-                          {addOn.isAvailable ? 'Available' : 'Unavailable'}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground">{addOn.description}</p>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold">£{addOn.price.toFixed(2)}</span>
-                        <Button
-                          size="sm"
-                          onClick={() => handleAddAddOn(addOn, showAddOnDialog.itemId)}
-                          disabled={!addOn.isAvailable}
-                        >
-                          Add Add-on
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-            <Button
-              variant="outline"
-              onClick={() => setShowAddOnDialog({ isOpen: false, itemId: '' })}
-              className="w-full"
-            >
-              Cancel
-            </Button>
           </div>
         </DialogContent>
       </Dialog>

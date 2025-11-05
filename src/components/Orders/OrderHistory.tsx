@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Trash2, Clock } from 'lucide-react';
+import { Search, Trash2, Clock, LogIn } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getCustomerOrders, Order, deleteOrder } from '../../lib/database';
 import CurrentOrderCard from './CurrentOrderCard';
@@ -27,8 +27,19 @@ const OrderHistory: React.FC = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-background py-8 flex items-center justify-center">
-        <p className="text-xl text-muted-foreground">Please login to view your order history.</p>
+      <div className="bg-background py-12">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center max-w-md mx-auto">
+            <LogIn className="w-16 h-16 text-muted-foreground mx-auto mb-6" />
+            <h2 className="text-2xl font-semibold text-foreground mb-4">Welcome Back</h2>
+            <p className="text-lg text-muted-foreground mb-6">
+              Please login to view your order history and track your delicious meals.
+            </p>
+            <Button className="px-8 py-3 text-lg">
+              Sign In
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }

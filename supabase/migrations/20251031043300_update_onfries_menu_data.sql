@@ -8,10 +8,9 @@ TRUNCATE menu_items RESTART IDENTITY CASCADE;
 INSERT INTO menu_items (name, description, price, category, is_available, preparation_time) VALUES
 ('Steak & Fries', 'Classic steak served with crispy fries', 12.00, 'Main Courses', true, 20),
 ('Deluxe Steak & Fries', 'Premium steak with crispy fries', 20.00, 'Main Courses', true, 25),
-('Premium Steak & Fries', 'Top-quality steak with premium fries', 30.00, 'Main Courses', true, 30),
-('Quadzilla & Fries', 'Massive portion for the ultimate appetite', 40.00, 'Main Courses', true, 35),
-('Centurion', 'The king of all steaks', 50.00, 'Main Courses', true, 40),
-('Custom Item', 'Personalized meal with custom pricing', 0.00, 'Main Courses', true, 25);
+('Steak Only', 'Premium steak served alone', 10.00, 'Main Courses', true, 20),
+('Signature Fries', 'Crispy fries with our signature seasoning', 4.00, 'Main Courses', true, 10),
+('Premium Steak & Fries', 'Top-quality steak with premium fries', 30.00, 'Main Courses', true, 30);
 
 -- Insert Add-ons
 INSERT INTO menu_items (name, description, price, category, is_available, preparation_time) VALUES
