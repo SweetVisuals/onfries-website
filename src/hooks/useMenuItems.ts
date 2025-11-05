@@ -18,7 +18,7 @@ export const useMenuItems = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchMenuItems = useCallback(async (forceRefresh = false) => {
+  const fetchMenuItems = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -59,11 +59,11 @@ export const useMenuItems = () => {
   }, []);
 
   const refreshMenu = useCallback(() => {
-    fetchMenuItems(true);
+    fetchMenuItems();
   }, [fetchMenuItems]);
 
   useEffect(() => {
-    fetchMenuItems(false);
+    fetchMenuItems();
   }, [fetchMenuItems]);
 
   return { menuItems, categories, loading, error, refreshMenu };

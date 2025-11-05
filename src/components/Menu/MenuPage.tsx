@@ -107,7 +107,7 @@ const MenuPage: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [orderingStatus, setOrderingStatus] = useState({ allowed: true, isPreOrder: false });
   const [selectedSauce, setSelectedSauce] = useState<string>('');
-  const [businessHours, setBusinessHours] = useState({ openingTime: '09:00', closingTime: '22:00' });
+  // const [businessHours, setBusinessHours] = useState({ openingTime: '09:00', closingTime: '22:00' }); // Not used
   const [animatingItem, setAnimatingItem] = useState<string | null>(null);
   const [animationStartPos, setAnimationStartPos] = useState<{ x: number; y: number } | null>(null);
   const [animationEndPos, setAnimationEndPos] = useState<{ x: number; y: number } | null>(null);

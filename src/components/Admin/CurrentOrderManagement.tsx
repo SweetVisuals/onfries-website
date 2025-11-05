@@ -250,8 +250,7 @@ const CurrentOrderManagement: React.FC = () => {
         console.error('Error getting order count:', countError);
       }
 
-      const nextOrderNumber = (allOrders?.length || 0) + 1;
-      // nextOrderNumber is used for logging purposes only
+      // const nextOrderNumber = (allOrders?.length || 0) + 1; // Not used
       const orderId = crypto.randomUUID(); // Use UUID instead of ORDER-XXXX format
 
       // Create the order directly using the admin's user ID (skip customer creation entirely)
