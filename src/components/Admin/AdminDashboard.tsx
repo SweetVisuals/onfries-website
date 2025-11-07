@@ -56,12 +56,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, initialTab 
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        const [statsData, revenueByItemData, revenueOverTimeData, recentOrdersData, storeStatusData] = await Promise.all([
+        const [statsData, revenueByItemData, revenueOverTimeData, recentOrdersData] = await Promise.all([
           getDashboardStats(),
           getRevenueByItemToday(),
           getRevenueOverTime(timeframe),
           getRecentOrders(5),
-          getStoreStatus()
         ]);
 
         setStats(statsData);

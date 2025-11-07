@@ -104,7 +104,9 @@ const OrderHistory: React.FC = () => {
           isAvailable: true,
           preparationTime: 0
         },
-        quantity: item.quantity
+        quantity: item.quantity,
+        addOns: [],
+        drinks: []
       })) || [],
       total: order.total,
       status: order.status,
