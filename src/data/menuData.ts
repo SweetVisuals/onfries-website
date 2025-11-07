@@ -19,7 +19,7 @@ export const menuCategories = [
 export const menuItems: MenuItem[] = [
   // Main Menu
   {
-    id: '2',
+    id: '567b6a07-f08a-48dc-8401-350900404a5a',
     name: 'Deluxe Steak & Fries',
     description: 'Premium quality steak with our signature fries and special seasoning',
     price: 20.00,
@@ -29,7 +29,7 @@ export const menuItems: MenuItem[] = [
     preparationTime: 25
   },
   {
-    id: '1',
+    id: 'bafb0ca1-7a7d-477c-95db-8340750d5073',
     name: 'Steak & Fries',
     description: 'Premium steak served with crispy fries and signature seasoning',
     price: 12.00,
@@ -39,7 +39,7 @@ export const menuItems: MenuItem[] = [
     preparationTime: 20
   },
   {
-    id: '8',
+    id: 'dcdedc23-359a-4120-9c3c-488386410364',
     name: 'Steak Only',
     description: 'Premium steak served alone',
     price: 10.00,
@@ -49,7 +49,7 @@ export const menuItems: MenuItem[] = [
     preparationTime: 20
   },
   {
-    id: '3',
+    id: '135dda9e-ce09-480a-b7cc-fa48a202fa0b',
     name: 'Signature Fries',
     description: 'Crispy fries with our signature seasoning',
     price: 4.00,
@@ -61,7 +61,7 @@ export const menuItems: MenuItem[] = [
 
   // Add-ons (Sauces and Steak)
   {
-    id: '9',
+    id: 'f119d64e-3340-4552-a207-58171cf328f0',
     name: 'Green Sauce',
     description: 'Extra green sauce add-on',
     price: 2.00,
@@ -71,7 +71,7 @@ export const menuItems: MenuItem[] = [
     preparationTime: 0
   },
   {
-    id: '10',
+    id: 'f9d7308a-399c-4abe-a125-237fc4722824',
     name: 'Red Sauce',
     description: 'Extra red sauce add-on',
     price: 2.00,
@@ -81,7 +81,7 @@ export const menuItems: MenuItem[] = [
     preparationTime: 0
   },
   {
-    id: '13',
+    id: '4d26334c-0d1e-4c3e-8b87-1075c66b678b',
     name: 'Steak',
     description: 'Extra steak add-on',
     price: 10.00,
@@ -93,7 +93,7 @@ export const menuItems: MenuItem[] = [
 
   // Kids Menu
   {
-    id: '4',
+    id: '2836bb5e-3d5e-4a8a-8b63-64b55786b5d4',
     name: 'Kids Meal',
     description: 'Specially curated meal for kids',
     price: 10.00,
@@ -103,7 +103,7 @@ export const menuItems: MenuItem[] = [
     preparationTime: 15
   },
   {
-    id: '5',
+    id: '40902b4c-4e1e-46b3-8d91-e44b0bb800cf',
     name: 'Kids Fries',
     description: 'Perfect portion of crispy fries made just for kids',
     price: 2.00,
@@ -113,7 +113,7 @@ export const menuItems: MenuItem[] = [
     preparationTime: 8
   },
   {
-    id: '6',
+    id: '73919a44-13f5-4976-9cd5-9ab2ec6a9aef',
     name: '£1 Steak Cone',
     description: 'Small portion of steak in a convenient cone',
     price: 1.00,
@@ -125,7 +125,7 @@ export const menuItems: MenuItem[] = [
 
   // Drinks
   {
-    id: '7',
+    id: '4495999f-0737-43c2-a961-9601a2677a66',
     name: 'Coke',
     description: 'Classic Coca-Cola soft drink',
     price: 1.50,
@@ -135,7 +135,7 @@ export const menuItems: MenuItem[] = [
     preparationTime: 0
   },
   {
-    id: '11',
+    id: '4664385c-0601-4496-94c9-57fbb007a34d',
     name: 'Coke Zero',
     description: 'Zero sugar Coca-Cola soft drink',
     price: 1.50,
@@ -145,7 +145,7 @@ export const menuItems: MenuItem[] = [
     preparationTime: 0
   },
   {
-    id: '12',
+    id: '992f34f6-6bda-475d-8273-4ba06e115fca',
     name: 'Tango Mango',
     description: 'Tango Mango flavored soft drink',
     price: 1.50,

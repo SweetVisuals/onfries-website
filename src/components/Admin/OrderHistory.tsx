@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Trash2, Clock } from 'lucide-react';
-import { Order } from '../../lib/database';
+import { Search, Clock, Calendar } from 'lucide-react';
+import { Order, deleteOrder } from '../../lib/database';
 import { useAuth } from '../../contexts/AuthContext';
 import PastOrderCard from '../Orders/PastOrderCard';
 import { Card, CardContent } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { listenForOrderUpdates } from '../../lib/database';
 
 interface OrderWithItems extends Order {
@@ -13,12 +14,14 @@ interface OrderWithItems extends Order {
     quantity: number;
     price: number;
     menu_items?: {
+      id: string;
       name: string;
       description: string;
       category: string;
       price: number;
     };
   }>;
+  completed_at?: string;
 }
 
 const OrderHistory: React.FC = () => {
@@ -26,6 +29,7 @@ const OrderHistory: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState('all');
 
   if (!user) {
     return (
@@ -61,6 +65,7 @@ const OrderHistory: React.FC = () => {
             quantity,
             price,
             menu_items (
+              id,
               name,
               description,
               category,
@@ -80,45 +85,207 @@ const OrderHistory: React.FC = () => {
     }
   };
 
-  const filteredOrders = orders.filter(order =>
-    order.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    order.id.toString().includes(searchTerm) ||
-    order.order_items?.some((item) => item.menu_items?.name?.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredOrders = orders.filter(order => {
+    const matchesSearch = order.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.id.toString().includes(searchTerm) ||
+      order.order_items?.some((item) => item.menu_items?.name?.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    if (!matchesSearch) return false;
+
+    if (selectedDate === 'all') return true;
+
+    const orderDate = new Date(order.order_date);
+    const today = new Date();
+
+    switch (selectedDate) {
+      case 'today':
+        return orderDate.toDateString() === today.toDateString();
+      case 'yesterday':
+        const yesterday = new Date(today);
+        yesterday.setDate(today.getDate() - 1);
+        return orderDate.toDateString() === yesterday.toDateString();
+      case 'week':
+        const weekAgo = new Date(today);
+        weekAgo.setDate(today.getDate() - 7);
+        return orderDate >= weekAgo;
+      case 'month':
+        const monthAgo = new Date(today);
+        monthAgo.setMonth(today.getMonth() - 1);
+        return orderDate >= monthAgo;
+      default:
+        return true;
+    }
+  });
 
   const transformOrderForCard = (order: OrderWithItems) => {
-    // Transform database order format to match PastOrderCard expectations
+    // Group order items by main item, add-ons, and drinks
+    const groupedItems: { [key: string]: { mainItem: any; addOns: any[]; drinks: any[] } } = {};
+    const standaloneItems: any[] = [];
+    let lastMainItemKey: string | null = null;
+
+    order.order_items?.forEach((item, index) => {
+      const menuItem = item.menu_items;
+      if (!menuItem) return;
+
+      const itemId = item.menu_items?.id || `item-${index}`;
+      const category = menuItem.category;
+      const name = menuItem.name;
+
+      // Determine if this is a main item, add-on, or drink
+      if (category === 'Main Courses' || category === 'Kids') {
+        // Main item - check if it can have add-ons
+        const canHaveAddOns = (category === 'Main Courses' && name !== 'Steak Only') || (category === 'Kids' && name === 'Kids Meal');
+
+        if (canHaveAddOns) {
+          // Main item that can have add-ons
+          if (!groupedItems[itemId]) {
+            groupedItems[itemId] = {
+              mainItem: {
+                item: {
+                  id: itemId,
+                  name: menuItem.name,
+                  description: menuItem.description,
+                  price: item.price,
+                  image: '',
+                  category: menuItem.category,
+                  isAvailable: true,
+                  preparationTime: 0
+                },
+                quantity: item.quantity
+              },
+              addOns: [],
+              drinks: []
+            };
+          }
+          lastMainItemKey = itemId; // Track the last main item that can have add-ons
+        } else {
+          // Standalone main item (like Steak Only)
+          standaloneItems.push({
+            item: {
+              id: itemId,
+              name: menuItem.name,
+              description: menuItem.description,
+              price: item.price,
+              image: '',
+              category: menuItem.category,
+              isAvailable: true,
+              preparationTime: 0
+            },
+            quantity: item.quantity,
+            addOns: [],
+            drinks: []
+          });
+          lastMainItemKey = null; // Reset since this item can't have add-ons
+        }
+      } else if (category === 'Add-ons') {
+        // Add-on - associate with the last main item that can have add-ons
+        if (lastMainItemKey && groupedItems[lastMainItemKey]) {
+          groupedItems[lastMainItemKey].addOns.push({
+            item: {
+              id: itemId,
+              name: menuItem.name,
+              description: menuItem.description,
+              price: item.price,
+              image: '',
+              category: menuItem.category,
+              isAvailable: true,
+              preparationTime: 0
+            },
+            quantity: item.quantity
+          });
+        } else {
+          // No suitable main item found, treat as standalone
+          standaloneItems.push({
+            item: {
+              id: itemId,
+              name: menuItem.name,
+              description: menuItem.description,
+              price: item.price,
+              image: '',
+              category: menuItem.category,
+              isAvailable: true,
+              preparationTime: 0
+            },
+            quantity: item.quantity,
+            addOns: [],
+            drinks: []
+          });
+        }
+      } else if (category === 'Drinks') {
+        // Drink - associate with the last main item that can have add-ons
+        if (lastMainItemKey && groupedItems[lastMainItemKey]) {
+          groupedItems[lastMainItemKey].drinks.push({
+            item: {
+              id: itemId,
+              name: menuItem.name,
+              description: menuItem.description,
+              price: item.price,
+              image: '',
+              category: menuItem.category,
+              isAvailable: true,
+              preparationTime: 0
+            },
+            quantity: item.quantity
+          });
+        } else {
+          // No suitable main item found, treat as standalone
+          standaloneItems.push({
+            item: {
+              id: itemId,
+              name: menuItem.name,
+              description: menuItem.description,
+              price: item.price,
+              image: '',
+              category: menuItem.category,
+              isAvailable: true,
+              preparationTime: 0
+            },
+            quantity: item.quantity,
+            addOns: [],
+            drinks: []
+          });
+        }
+      }
+    });
+
+    // Convert grouped items to the expected format
+    const items = [
+      ...Object.values(groupedItems).map(group => ({
+        ...group.mainItem,
+        addOns: group.addOns,
+        drinks: group.drinks
+      })),
+      ...standaloneItems
+    ];
+
     return {
-      id: order.id,
+      id: order.display_id || order.id,
       customerId: order.customer_id,
       customerName: order.customer_name,
       customerEmail: order.customer_email,
-      items: order.order_items?.map((item) => ({
-        item: {
-          id: '', // We don't have this in the query result
-          name: item.menu_items?.name || 'Unknown Item',
-          description: item.menu_items?.description || '',
-          price: item.price,
-          image: '',
-          category: item.menu_items?.category || '',
-          isAvailable: true,
-          preparationTime: 0
-        },
-        quantity: item.quantity,
-        addOns: [],
-        drinks: []
-      })) || [],
+      items: items,
       total: order.total,
       status: order.status,
       orderDate: order.order_date,
       estimatedDelivery: order.estimated_delivery,
-      notes: order.notes
+      notes: order.notes,
+      completedAt: order.completed_at
     };
   };
 
-  const handleClearHistory = () => {
-    setSearchTerm('');
-    console.log('Clear history functionality would be implemented here.');
+
+  const handleDeleteOrder = async (orderId: string) => {
+    try {
+      // Find the actual database UUID from the display ID
+      const order = orders.find(o => (o.display_id || o.id) === orderId);
+      const actualOrderId = order?.id || orderId;
+
+      await deleteOrder(actualOrderId);
+      // Refresh the orders list after deletion
+      loadOrders();
+    } catch (error) {
+      console.error('Error deleting order:', error);
+    }
   };
 
   return (
@@ -128,8 +295,8 @@ const OrderHistory: React.FC = () => {
           <h1 className="text-3xl font-bold text-foreground mb-2">Order History</h1>
         </div>
 
-        <div className="flex items-center space-x-4 mb-8">
-          <div className="relative flex-1">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-4 mb-8">
+          <div className="relative flex-1 w-full sm:w-auto">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               type="text"
@@ -139,14 +306,21 @@ const OrderHistory: React.FC = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button
-            variant="outline"
-            className="flex items-center gap-2"
-            onClick={handleClearHistory}
-          >
-            <Trash2 className="w-4 h-4" />
-            Clear History
-          </Button>
+          <div className="flex items-center space-x-2 w-full sm:w-auto">
+            <Calendar className="w-4 h-4 text-muted-foreground" />
+            <Select value={selectedDate} onValueChange={setSelectedDate}>
+              <SelectTrigger className="w-full sm:w-40">
+                <SelectValue placeholder="Filter by date" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Orders</SelectItem>
+                <SelectItem value="today">Today</SelectItem>
+                <SelectItem value="yesterday">Yesterday</SelectItem>
+                <SelectItem value="week">Last 7 Days</SelectItem>
+                <SelectItem value="month">Last 30 Days</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {loading ? (
@@ -166,7 +340,11 @@ const OrderHistory: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredOrders.map((order) => (
-              <PastOrderCard key={order.id} order={transformOrderForCard(order)} />
+              <PastOrderCard
+                key={order.id}
+                order={transformOrderForCard(order)}
+                onDelete={handleDeleteOrder}
+              />
             ))}
           </div>
         )}

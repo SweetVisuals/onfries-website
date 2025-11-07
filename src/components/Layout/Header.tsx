@@ -9,21 +9,37 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { ShoppingCart, User, LogOut, Settings, Sun, Moon } from 'lucide-react';
+import { ShoppingCart, User, LogOut, Settings, Sun, Moon, ChevronDown } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
+import { useIsMobile } from '../../hooks/use-mobile';
 import AuthModal from '../Auth/AuthModal';
 import CartDrawer from '../Cart/CartDrawer';
 import logo from '../../images/OnFries-Logo.png';
 
+interface Tab {
+  id: string;
+  label: string;
+}
+
 interface HeaderProps {
   onNavigate: (page: string) => void;
   hideLogo?: boolean;
+  adminTabs?: Tab[];
+  selectedAdminTab?: string;
+  onAdminTabChange?: (tabId: string) => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onNavigate, hideLogo = false }) => {
+const Header: React.FC<HeaderProps> = ({
+  onNavigate,
+  hideLogo = false,
+  adminTabs,
+  selectedAdminTab,
+  onAdminTabChange
+}) => {
   const { user, logout } = useAuth();
   const { getItemCount } = useCart();
+  const isMobile = useIsMobile();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -64,6 +80,32 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, hideLogo = false }) => {
               <img src={logo} alt="OnFries Logo" className="h-8 w-auto" />
             </div>
           )}
+
+          {/* Mobile Admin Tabs Dropdown */}
+          {isMobile && adminTabs && adminTabs.length > 0 && (
+            <div className="flex items-center mx-4">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="flex items-center gap-2">
+                    <span>{adminTabs.find(tab => tab.id === selectedAdminTab)?.label || 'Select Tab'}</span>
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  {adminTabs.map((tab) => (
+                    <DropdownMenuItem
+                      key={tab.id}
+                      onClick={() => onAdminTabChange?.(tab.id)}
+                      className={selectedAdminTab === tab.id ? 'bg-accent' : ''}
+                    >
+                      {tab.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
+
           <div className="flex items-center gap-4 ml-auto">
             {user ? (
               <>

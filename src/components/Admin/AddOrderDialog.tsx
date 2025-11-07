@@ -169,6 +169,7 @@ const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
 
   const handleConfirmCustomize = () => {
     let addOnsWithQuantities: Array<{ item: MenuItem; quantity: number }> = [];
+    let drinksWithQuantities: Array<{ item: MenuItem; quantity: number }> = [];
 
     // Handle Kids Meal sauce selection
     if (selectedItem!.category === 'Kids' && selectedItem!.name === 'Kids Meal') {
@@ -181,16 +182,23 @@ const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
           }];
         }
       }
+      // Kids Meal includes a free drink, so we don't add drinks from selection
     } else {
       // Handle regular add-ons for main courses
       addOnsWithQuantities = Object.values(selectedAddOns).map(({ item, quantity }) => ({
         item,
         quantity
       }));
+
+      // Handle drinks for main courses
+      drinksWithQuantities = Object.values(selectedDrinks).map(({ item, quantity }) => ({
+        item,
+        quantity
+      }));
     }
 
     // Add to selected items as separate item (keep original item name and price)
-    setSelectedItems([...selectedItems, { item: selectedItem!, quantity: 1, addOns: addOnsWithQuantities, drinks: Object.values(selectedDrinks).map(({ item, quantity }) => ({ item, quantity })) }]);
+    setSelectedItems([...selectedItems, { item: selectedItem!, quantity: 1, addOns: addOnsWithQuantities, drinks: drinksWithQuantities }]);
 
     // Reset state and switch back to select mode
     setDialogMode('select');

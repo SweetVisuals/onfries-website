@@ -141,17 +141,24 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, onNavigateToOr
   const handleBackToMenu = () => {
     setShowSuccess(false);
     setCreatedOrder(null);
+    onClose();
   };
 
   const handleViewOrders = () => {
     setShowSuccess(false);
     setCreatedOrder(null);
     onClose();
-    
+
     // Navigate to orders tab
     if (onNavigateToOrders) {
       onNavigateToOrders();
     }
+  };
+
+  const handleBackToMenu = () => {
+    setShowSuccess(false);
+    setCreatedOrder(null);
+    onClose();
   };
 
   if (items.length === 0) {
@@ -211,6 +218,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, onNavigateToOr
             estimatedDelivery={createdOrder.estimated_delivery}
             onBackToMenu={handleBackToMenu}
             onViewOrders={handleViewOrders}
+            isInDrawer={true}
           />
         ) : (
           <div className="flex-1 overflow-y-auto py-4 pl-6 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">

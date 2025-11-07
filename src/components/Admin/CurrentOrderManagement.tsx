@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Trash2, Clock } from 'lucide-react';
+import { Search, Clock } from 'lucide-react';
 import { Order, deleteOrder } from '../../lib/database';
 import { useAuth } from '../../contexts/AuthContext';
+import { useIsMobile } from '../../hooks/use-mobile';
 import CurrentOrderCard from '../Orders/CurrentOrderCard';
 import { Card, CardContent } from '@/components/ui/card';
 import AddOrderDialog from './AddOrderDialog';
@@ -28,6 +29,7 @@ interface OrderWithItems extends Order {
 
 const CurrentOrderManagement: React.FC = () => {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [searchTerm, setSearchTerm] = useState('');
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [_, setLoading] = useState(false);
@@ -91,33 +93,163 @@ const CurrentOrderManagement: React.FC = () => {
     order.order_items?.some((item) => item.menu_items?.name?.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const handleClearHistory = () => {
-    setSearchTerm('');
-    console.log('Clear history functionality would be implemented here.');
-  };
+  // Sort orders by time elapsed (longest first) on mobile
+  const sortedOrders = isMobile
+    ? [...filteredOrders].sort((a, b) => {
+        const aTime = new Date(a.order_date).getTime();
+        const bTime = new Date(b.order_date).getTime();
+        return aTime - bTime; // Oldest first (longest elapsed time)
+      })
+    : filteredOrders;
+
 
   const transformOrderForCard = (order: OrderWithItems) => {
-    // Transform database order format to match CurrentOrderCard expectations
+    // Group order items by main item, add-ons, and drinks
+    const groupedItems: { [key: string]: { mainItem: any; addOns: any[]; drinks: any[] } } = {};
+    const standaloneItems: any[] = [];
+    let lastMainItemKey: string | null = null;
+
+    order.order_items?.forEach((item, index) => {
+      const menuItem = item.menu_items;
+      if (!menuItem) return;
+
+      const itemId = item.menu_items?.id || `item-${index}`;
+      const category = menuItem.category;
+      const name = menuItem.name;
+
+      // Determine if this is a main item, add-on, or drink
+      if (category === 'Main Courses' || category === 'Kids') {
+        // Main item - check if it can have add-ons
+        const canHaveAddOns = (category === 'Main Courses' && name !== 'Steak Only') || (category === 'Kids' && name === 'Kids Meal');
+
+        if (canHaveAddOns) {
+          // Main item that can have add-ons
+          if (!groupedItems[itemId]) {
+            groupedItems[itemId] = {
+              mainItem: {
+                item: {
+                  id: itemId,
+                  name: menuItem.name,
+                  description: menuItem.description,
+                  price: item.price,
+                  image: '',
+                  category: menuItem.category,
+                  isAvailable: true,
+                  preparationTime: 0
+                },
+                quantity: item.quantity
+              },
+              addOns: [],
+              drinks: []
+            };
+          }
+          lastMainItemKey = itemId; // Track the last main item that can have add-ons
+        } else {
+          // Standalone main item (like Steak Only)
+          standaloneItems.push({
+            item: {
+              id: itemId,
+              name: menuItem.name,
+              description: menuItem.description,
+              price: item.price,
+              image: '',
+              category: menuItem.category,
+              isAvailable: true,
+              preparationTime: 0
+            },
+            quantity: item.quantity,
+            addOns: [],
+            drinks: []
+          });
+          lastMainItemKey = null; // Reset since this item can't have add-ons
+        }
+      } else if (category === 'Add-ons') {
+        // Add-on - associate with the last main item that can have add-ons
+        if (lastMainItemKey && groupedItems[lastMainItemKey]) {
+          groupedItems[lastMainItemKey].addOns.push({
+            item: {
+              id: itemId,
+              name: menuItem.name,
+              description: menuItem.description,
+              price: item.price,
+              image: '',
+              category: menuItem.category,
+              isAvailable: true,
+              preparationTime: 0
+            },
+            quantity: item.quantity
+          });
+        } else {
+          // No suitable main item found, treat as standalone
+          standaloneItems.push({
+            item: {
+              id: itemId,
+              name: menuItem.name,
+              description: menuItem.description,
+              price: item.price,
+              image: '',
+              category: menuItem.category,
+              isAvailable: true,
+              preparationTime: 0
+            },
+            quantity: item.quantity,
+            addOns: [],
+            drinks: []
+          });
+        }
+      } else if (category === 'Drinks') {
+        // Drink - associate with the last main item that can have add-ons
+        if (lastMainItemKey && groupedItems[lastMainItemKey]) {
+          groupedItems[lastMainItemKey].drinks.push({
+            item: {
+              id: itemId,
+              name: menuItem.name,
+              description: menuItem.description,
+              price: item.price,
+              image: '',
+              category: menuItem.category,
+              isAvailable: true,
+              preparationTime: 0
+            },
+            quantity: item.quantity
+          });
+        } else {
+          // No suitable main item found, treat as standalone
+          standaloneItems.push({
+            item: {
+              id: itemId,
+              name: menuItem.name,
+              description: menuItem.description,
+              price: item.price,
+              image: '',
+              category: menuItem.category,
+              isAvailable: true,
+              preparationTime: 0
+            },
+            quantity: item.quantity,
+            addOns: [],
+            drinks: []
+          });
+        }
+      }
+    });
+
+    // Convert grouped items to the expected format
+    const items = [
+      ...Object.values(groupedItems).map(group => ({
+        ...group.mainItem,
+        addOns: group.addOns,
+        drinks: group.drinks
+      })),
+      ...standaloneItems
+    ];
+
     return {
       id: order.display_id || order.id,
       customerId: order.customer_id,
       customerName: order.customer_name,
       customerEmail: order.customer_email,
-      items: order.order_items?.map((item, index) => ({
-        item: {
-          id: item.menu_items?.id || `item-${index}`, // Use actual menu item ID or fallback
-          name: item.menu_items?.name || 'Unknown Item',
-          description: item.menu_items?.description || '',
-          price: item.price,
-          image: '',
-          category: item.menu_items?.category || '',
-          isAvailable: true,
-          preparationTime: 0
-        },
-        quantity: item.quantity,
-        addOns: [],
-        drinks: []
-      })) || [],
+      items: items,
       total: order.total,
       status: order.status,
       orderDate: order.order_date,
@@ -178,7 +310,7 @@ const CurrentOrderManagement: React.FC = () => {
     }
   };
 
-  const handleAddOrder = async (customerName: string, customerEmail: string, items: Array<{ item: MenuItem; quantity: number; addOns?: Array<{ item: MenuItem; quantity: number }> }>) => {
+  const handleAddOrder = async (customerName: string, customerEmail: string, items: Array<{ item: MenuItem; quantity: number; addOns: Array<{ item: MenuItem; quantity: number }>; drinks: Array<{ item: MenuItem; quantity: number }> }>) => {
     try {
       // Use the admin's user ID as customer ID (don't create separate customer)
       if (!user) {
@@ -197,8 +329,14 @@ const CurrentOrderManagement: React.FC = () => {
         menuItemMap.set(dbItem.name, dbItem);
       });
 
+      console.log('Menu item map:', menuItemMap);
+
       // Transform items to match CartItem interface using database IDs
       const cartItems = items.flatMap(orderItem => {
+        console.log('Processing order item:', orderItem.item.name);
+        console.log('Add-ons:', orderItem.addOns);
+        console.log('Drinks:', orderItem.drinks);
+
         // Handle main item
         const dbItem = menuItemMap.get(orderItem.item.name);
         if (!dbItem) {
@@ -218,7 +356,8 @@ const CurrentOrderManagement: React.FC = () => {
         };
 
         // Handle add-ons as separate items
-        const addOnItems = (orderItem.addOns || []).map(addOn => {
+        const addOnItems = orderItem.addOns.map(addOn => {
+          console.log('Processing add-on:', addOn.item.name);
           const dbAddOn = menuItemMap.get(addOn.item.name);
           if (!dbAddOn) {
             console.warn(`Add-on "${addOn.item.name}" not found in database, skipping`);
@@ -237,14 +376,37 @@ const CurrentOrderManagement: React.FC = () => {
           };
         }).filter(item => item !== null); // Remove null items
 
-        return [mainItem, ...addOnItems];
+        // Handle drinks as separate items
+        const drinkItems = orderItem.drinks.map(drink => {
+          console.log('Processing drink:', drink.item.name);
+          const dbDrink = menuItemMap.get(drink.item.name);
+          if (!dbDrink) {
+            console.warn(`Drink "${drink.item.name}" not found in database, skipping`);
+            return null; // Skip this drink instead of throwing error
+          }
+          return {
+            id: dbDrink.id,
+            name: drink.item.name,
+            description: drink.item.description,
+            price: drink.item.price,
+            image: drink.item.image,
+            category: drink.item.category,
+            isAvailable: drink.item.isAvailable,
+            preparationTime: drink.item.preparationTime,
+            quantity: drink.quantity * orderItem.quantity // Multiply by main item quantity
+          };
+        }).filter(item => item !== null); // Remove null items
+
+        console.log('Final cart items for this order item:', [mainItem, ...addOnItems, ...drinkItems]);
+        return [mainItem, ...addOnItems, ...drinkItems];
       });
 
-      // Calculate total including add-ons
+      // Calculate total including add-ons and drinks
       const total = items.reduce((sum, orderItem) => {
         const itemTotal = orderItem.item.price * orderItem.quantity;
-        const addOnsTotal = (orderItem.addOns || []).reduce((addOnSum, addOn) => addOnSum + (addOn.item.price * addOn.quantity), 0) * orderItem.quantity;
-        return sum + itemTotal + addOnsTotal;
+        const addOnsTotal = orderItem.addOns.reduce((addOnSum, addOn) => addOnSum + (addOn.item.price * addOn.quantity), 0) * orderItem.quantity;
+        const drinksTotal = orderItem.drinks.reduce((drinkSum, drink) => drinkSum + (drink.item.price * drink.quantity), 0) * orderItem.quantity;
+        return sum + itemTotal + addOnsTotal + drinksTotal;
       }, 0);
 
       // Import supabase directly
@@ -372,14 +534,6 @@ const CurrentOrderManagement: React.FC = () => {
             />
           </div>
           <AddOrderDialog onAddOrder={handleAddOrder} />
-          <Button
-            variant="outline"
-            className="flex items-center gap-2"
-            onClick={handleClearHistory}
-          >
-            <Trash2 className="w-4 h-4" />
-            Clear History
-          </Button>
         </div>
 
         {filteredOrders.length === 0 ? (
@@ -392,14 +546,14 @@ const CurrentOrderManagement: React.FC = () => {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredOrders.map((order, index) => (
+            {sortedOrders.map((order, index) => (
               <CurrentOrderCard
                 key={`${order.id}-${index}`}
                 order={transformOrderForCard(order)}
                 onComplete={handleOrderComplete}
                 onDelete={handleDeleteOrder}
               />
-            )).reverse()}
+            ))}
           </div>
         )}
       </div>

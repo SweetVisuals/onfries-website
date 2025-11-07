@@ -146,40 +146,100 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
   };
 };
 
-export const getRevenueByItemToday = async (): Promise<RevenueByItem[]> => {
-  const today = new Date().toISOString().split('T')[0];
+export const getRevenueByItem = async (period: string = 'today'): Promise<RevenueByItem[]> => {
+  let startDate: string;
+  let endDate: string;
+
+  const now = new Date();
+  const today = now.toISOString().split('T')[0];
+
+  switch (period) {
+    case 'today':
+      startDate = today;
+      endDate = today;
+      break;
+    case '7d':
+      const sevenDaysAgo = new Date(now);
+      sevenDaysAgo.setDate(now.getDate() - 6); // Include today, so -6
+      startDate = sevenDaysAgo.toISOString().split('T')[0];
+      endDate = today;
+      break;
+    case '30d':
+      const thirtyDaysAgo = new Date(now);
+      thirtyDaysAgo.setDate(now.getDate() - 29);
+      startDate = thirtyDaysAgo.toISOString().split('T')[0];
+      endDate = today;
+      break;
+    case '90d':
+      const ninetyDaysAgo = new Date(now);
+      ninetyDaysAgo.setDate(now.getDate() - 89);
+      startDate = ninetyDaysAgo.toISOString().split('T')[0];
+      endDate = today;
+      break;
+    default:
+      startDate = today;
+      endDate = today;
+  }
 
   const { data, error } = await supabase
     .from('orders')
     .select(`
+      id,
       total,
+      order_date,
+      status,
       order_items (
+        id,
         quantity,
         price,
         menu_items (
+          id,
           name
         )
       )
     `)
-    .gte('order_date', today)
-    .eq('status', 'delivered');
+    .gte('order_date', `${startDate}T00:00:00.000Z`)
+    .lt('order_date', `${endDate}T23:59:59.999Z`);
+
+  // Debug: Check all orders to see what's in the database
+  const { data: allOrders } = await supabase
+    .from('orders')
+    .select('id, total, order_date, status')
+    .order('created_at', { ascending: false })
+    .limit(10);
+
+  console.log('All recent orders in database:', allOrders);
+
+  console.log('Revenue by item query:', {
+    period,
+    startDate,
+    endDate,
+    dataCount: data?.length,
+    data
+  });
 
   if (error) throw error;
 
   const revenueMap = new Map<string, number>();
 
   data?.forEach(order => {
+    console.log('Processing order:', order.id, 'items:', order.order_items);
     order.order_items?.forEach((item: any) => {
+      console.log('Processing item:', item);
       const itemName = item.menu_items?.name || 'Unknown Item';
       const revenue = item.quantity * item.price;
+      console.log('Item:', itemName, 'revenue:', revenue);
       revenueMap.set(itemName, (revenueMap.get(itemName) || 0) + revenue);
     });
   });
 
-  return Array.from(revenueMap.entries())
+  const result = Array.from(revenueMap.entries())
     .map(([name, revenue]) => ({ name, revenue }))
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 5);
+
+  console.log('Revenue by item data:', result);
+  return result;
 };
 
 export const getRevenueOverTime = async (period: string): Promise<RevenueData[]> => {
@@ -209,24 +269,91 @@ export const getRevenueOverTime = async (period: string): Promise<RevenueData[]>
   const { data, error } = await supabase
     .from('orders')
     .select('total, order_date')
-    .gte('order_date', startDate.toISOString().split('T')[0])
-    .lte('order_date', endDate.toISOString().split('T')[0])
-    .eq('status', 'delivered');
+    .gte('order_date', `${startDate.toISOString().split('T')[0]}T00:00:00.000Z`)
+    .lt('order_date', `${endDate.toISOString().split('T')[0]}T23:59:59.999Z`);
 
-  if (error) throw error;
+  console.log('Revenue over time raw query result:', {
+    startDate: startDate.toISOString().split('T')[0],
+    endDate: endDate.toISOString().split('T')[0],
+    dataCount: data?.length,
+    data
+  });
+
+  console.log('Revenue over time query:', {
+    startDate: startDate.toISOString().split('T')[0],
+    endDate: endDate.toISOString().split('T')[0],
+    dataCount: data?.length,
+    data,
+    period
+  });
 
   if (period === '1d') {
-    // Hourly data for today
+    // Hourly data for today from 9am to 11pm
     const hourlyData: { [key: string]: number } = {};
-    for (let hour = 0; hour < 24; hour++) {
+    for (let hour = 9; hour <= 23; hour++) {
       hourlyData[`${hour.toString().padStart(2, '0')}:00`] = 0;
     }
 
     data?.forEach(order => {
       const orderDate = new Date(order.order_date);
       const hour = orderDate.getHours();
-      const hourKey = `${hour.toString().padStart(2, '0')}:00`;
-      hourlyData[hourKey] += order.total;
+      if (hour >= 9 && hour <= 23) {
+        const hourKey = `${hour.toString().padStart(2, '0')}:00`;
+        hourlyData[hourKey] += order.total;
+      }
+    });
+
+    const result = Object.entries(hourlyData).map(([time, revenue]) => ({
+      date: time,
+      revenue,
+    }));
+
+    console.log('Revenue over time 1d result:', result);
+    return result;
+  } else {
+    // Daily data
+    const dailyData: { [key: string]: number } = {};
+
+    for (let i = 0; i < days; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() - (days - 1 - i));
+      const dateKey = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      dailyData[dateKey] = 0;
+    }
+
+    data?.forEach(order => {
+      const orderDate = new Date(order.order_date);
+      const dateKey = orderDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      if (dailyData.hasOwnProperty(dateKey)) {
+        dailyData[dateKey] += order.total;
+      }
+    });
+
+    const result = Object.entries(dailyData).map(([date, revenue]) => ({
+      date,
+      revenue,
+    }));
+
+    console.log('Revenue over time daily result:', result);
+    return result;
+  }
+
+  if (error) throw error;
+
+  if (period === '1d') {
+    // Hourly data for today from 9am to 11pm
+    const hourlyData: { [key: string]: number } = {};
+    for (let hour = 9; hour <= 23; hour++) {
+      hourlyData[`${hour.toString().padStart(2, '0')}:00`] = 0;
+    }
+
+    data?.forEach(order => {
+      const orderDate = new Date(order.order_date);
+      const hour = orderDate.getHours();
+      if (hour >= 9 && hour <= 23) {
+        const hourKey = `${hour.toString().padStart(2, '0')}:00`;
+        hourlyData[hourKey] += order.total;
+      }
     });
 
     return Object.entries(hourlyData).map(([time, revenue]) => ({

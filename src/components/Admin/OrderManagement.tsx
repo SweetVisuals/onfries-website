@@ -86,27 +86,152 @@ const OrderManagement: React.FC = () => {
   );
 
   const transformOrderForCard = (order: OrderWithItems) => {
-    // Transform database order format to match CurrentOrderCard expectations
+    // Group order items by main item, add-ons, and drinks
+    const groupedItems: { [key: string]: { mainItem: any; addOns: any[]; drinks: any[] } } = {};
+    const standaloneItems: any[] = [];
+    let lastMainItemKey: string | null = null;
+
+    order.order_items?.forEach((item, index) => {
+      const menuItem = item.menu_items;
+      if (!menuItem) return;
+
+      const itemId = `item-${index}`;
+      const category = menuItem.category;
+      const name = menuItem.name;
+
+      // Determine if this is a main item, add-on, or drink
+      if (category === 'Main Courses' || category === 'Kids') {
+        // Main item - check if it can have add-ons
+        const canHaveAddOns = (category === 'Main Courses' && name !== 'Steak Only') || (category === 'Kids' && name === 'Kids Meal');
+
+        if (canHaveAddOns) {
+          // Main item that can have add-ons
+          if (!groupedItems[itemId]) {
+            groupedItems[itemId] = {
+              mainItem: {
+                item: {
+                  id: itemId,
+                  name: menuItem.name,
+                  description: menuItem.description,
+                  price: item.price,
+                  image: '',
+                  category: menuItem.category,
+                  isAvailable: true,
+                  preparationTime: 0
+                },
+                quantity: item.quantity
+              },
+              addOns: [],
+              drinks: []
+            };
+          }
+          lastMainItemKey = itemId; // Track the last main item that can have add-ons
+        } else {
+          // Standalone main item (like Steak Only)
+          standaloneItems.push({
+            item: {
+              id: itemId,
+              name: menuItem.name,
+              description: menuItem.description,
+              price: item.price,
+              image: '',
+              category: menuItem.category,
+              isAvailable: true,
+              preparationTime: 0
+            },
+            quantity: item.quantity,
+            addOns: [],
+            drinks: []
+          });
+          lastMainItemKey = null; // Reset since this item can't have add-ons
+        }
+      } else if (category === 'Add-ons') {
+        // Add-on - associate with the last main item that can have add-ons
+        if (lastMainItemKey && groupedItems[lastMainItemKey]) {
+          groupedItems[lastMainItemKey].addOns.push({
+            item: {
+              id: itemId,
+              name: menuItem.name,
+              description: menuItem.description,
+              price: item.price,
+              image: '',
+              category: menuItem.category,
+              isAvailable: true,
+              preparationTime: 0
+            },
+            quantity: item.quantity
+          });
+        } else {
+          // No suitable main item found, treat as standalone
+          standaloneItems.push({
+            item: {
+              id: itemId,
+              name: menuItem.name,
+              description: menuItem.description,
+              price: item.price,
+              image: '',
+              category: menuItem.category,
+              isAvailable: true,
+              preparationTime: 0
+            },
+            quantity: item.quantity,
+            addOns: [],
+            drinks: []
+          });
+        }
+      } else if (category === 'Drinks') {
+        // Drink - associate with the last main item that can have add-ons
+        if (lastMainItemKey && groupedItems[lastMainItemKey]) {
+          groupedItems[lastMainItemKey].drinks.push({
+            item: {
+              id: itemId,
+              name: menuItem.name,
+              description: menuItem.description,
+              price: item.price,
+              image: '',
+              category: menuItem.category,
+              isAvailable: true,
+              preparationTime: 0
+            },
+            quantity: item.quantity
+          });
+        } else {
+          // No suitable main item found, treat as standalone
+          standaloneItems.push({
+            item: {
+              id: itemId,
+              name: menuItem.name,
+              description: menuItem.description,
+              price: item.price,
+              image: '',
+              category: menuItem.category,
+              isAvailable: true,
+              preparationTime: 0
+            },
+            quantity: item.quantity,
+            addOns: [],
+            drinks: []
+          });
+        }
+      }
+    });
+
+    // Convert grouped items to the expected format
+    const items = [
+      ...Object.values(groupedItems).map(group => ({
+        ...group.mainItem,
+        addOns: group.addOns,
+        drinks: group.drinks
+      })),
+      ...standaloneItems
+    ];
+
     return {
       id: order.id,
       customerId: order.customer_id,
       customerName: order.customer_name,
       customerEmail: order.customer_email,
-      items: order.order_items?.map((item) => ({
-        item: {
-          id: '', // We don't have this in the query result
-          name: item.menu_items?.name || 'Unknown Item',
-          description: item.menu_items?.description || '',
-          price: item.price,
-          image: '',
-          category: item.menu_items?.category || '',
-          isAvailable: true,
-          preparationTime: 0
-        },
-        quantity: item.quantity,
-        addOns: [],
-        drinks: []
-      })) || [],
+      items: items,
       total: order.total,
       status: order.status,
       orderDate: order.order_date,

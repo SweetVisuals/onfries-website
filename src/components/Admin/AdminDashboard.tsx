@@ -6,6 +6,7 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } 
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '../../contexts/AuthContext';
+import { useIsMobile } from '../../hooks/use-mobile';
 import Header from '../Layout/Header';
 import CurrentOrderManagement from './CurrentOrderManagement';
 import OrderHistory from './OrderHistory';
@@ -15,9 +16,10 @@ import { Tabs } from '../ui/vercel-tabs';
 import logo from '../../images/OnFries-Logo.png';
 import {
   getDashboardStats,
-  getRevenueByItemToday,
+  getRevenueByItem,
   getRevenueOverTime,
   getRecentOrders,
+  listenForOrderUpdates,
   DashboardStats,
   RevenueData,
   RevenueByItem,
@@ -31,6 +33,7 @@ interface AdminDashboardProps {
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, initialTab = 'overview' }) => {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [selectedTab, setSelectedTab] = useState(initialTab);
   const [timeframe, setTimeframe] = useState('7d');
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -38,6 +41,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, initialTab 
   const [revenueOverTime, setRevenueOverTime] = useState<RevenueData[]>([]);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [itemTimeframe, setItemTimeframe] = useState('today');
+
+  const adminTabs = [
+    { id: "overview", label: "Overview" },
+    { id: "current-orders", label: "Current Orders" },
+    { id: "past-orders", label: "Past Orders" },
+    { id: "stock", label: "Stock" },
+    { id: "customers", label: "Customers" }
+  ];
 
   const handleNavigate = (page: string) => {
     onNavigate(page);
@@ -57,7 +69,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, initialTab 
         setLoading(true);
         const [statsData, revenueByItemData, revenueOverTimeData, recentOrdersData] = await Promise.all([
           getDashboardStats(),
-          getRevenueByItemToday(),
+          getRevenueByItem(itemTimeframe),
           getRevenueOverTime(timeframe),
           getRecentOrders(5),
         ]);
@@ -74,7 +86,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, initialTab 
     };
 
     fetchDashboardData();
-  }, [timeframe]);
+
+    // Set up live updates every 60 seconds
+    const interval = setInterval(fetchDashboardData, 60000);
+
+    // Listen for order updates to refresh immediately
+    const cleanup = listenForOrderUpdates(() => {
+      console.log('Order update detected, refreshing dashboard...');
+      fetchDashboardData();
+    });
+
+    return () => {
+      clearInterval(interval);
+      cleanup();
+    };
+  }, [timeframe, itemTimeframe]);
 
 
   const getTabTitle = (tab: string) => {
@@ -113,7 +139,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, initialTab 
 
   return (
     <div className="min-h-screen bg-background">
-      <Header onNavigate={handleNavigate} hideLogo={true} />
+      <Header
+        onNavigate={handleNavigate}
+        hideLogo={true}
+        adminTabs={adminTabs}
+        selectedAdminTab={selectedTab}
+        onAdminTabChange={setSelectedTab}
+      />
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="mb-8">
             <div className="flex flex-col md:grid md:grid-cols-3 md:items-center mb-4">
@@ -125,22 +157,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, initialTab 
             </div>
           </div>
 
-        <div className="mb-8 flex justify-center">
-          <div className="w-full max-w-4xl">
-            <div className="mb-4">
-              <Tabs
-                tabs={[
-                  { id: "overview", label: "Overview" },
-                  { id: "current-orders", label: "Current Orders" },
-                  { id: "past-orders", label: "Past Orders" },
-                  { id: "stock", label: "Stock" },
-                  { id: "customers", label: "Customers" }
-                ]}
-                onTabChange={(tabId) => setSelectedTab(tabId)}
-              />
+        {!isMobile && (
+          <div className="mb-8 flex justify-center">
+            <div className="w-full max-w-4xl">
+              <div className="mb-4">
+                <Tabs
+                  tabs={adminTabs}
+                  onTabChange={(tabId) => setSelectedTab(tabId)}
+                />
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {selectedTab === 'overview' && (
           <div className="space-y-6 mt-6">
@@ -158,7 +186,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, initialTab 
                       <DollarSign className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold">${stats.todayRevenue.toFixed(2)}</div>
+                      <div className="text-2xl font-bold">£{stats.todayRevenue.toFixed(2)}</div>
                       <p className="text-xs text-muted-foreground">
                         {stats.revenueChange >= 0 ? '+' : ''}{stats.revenueChange.toFixed(1)}% from yesterday
                       </p>
@@ -184,7 +212,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, initialTab 
                       <TrendingUp className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold">${stats.averageOrderValue.toFixed(2)}</div>
+                      <div className="text-2xl font-bold">£{stats.averageOrderValue.toFixed(2)}</div>
                       <p className="text-xs text-muted-foreground">
                         {stats.averageOrderChange >= 0 ? '+' : ''}{stats.averageOrderChange.toFixed(1)}% from yesterday
                       </p>
@@ -222,15 +250,28 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, initialTab 
                 <div className="grid md:grid-cols-2 gap-6">
                   <Card>
                     <CardHeader>
-                      <CardTitle>Revenue by Item Today</CardTitle>
+                      <CardTitle className="flex items-center justify-between">
+                        Revenue by Item
+                        <Select value={itemTimeframe} onValueChange={setItemTimeframe}>
+                          <SelectTrigger className="w-32">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="today">Today</SelectItem>
+                            <SelectItem value="7d">7 Days</SelectItem>
+                            <SelectItem value="30d">30 Days</SelectItem>
+                            <SelectItem value="90d">90 Days</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <ChartContainer config={{ revenue: { label: 'Revenue', color: 'hsl(var(--chart-1))' } }}>
+                      <ChartContainer config={{ revenue: { label: 'Revenue (£)', color: 'hsl(var(--chart-1))' } }}>
                         <BarChart data={revenueByItem}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="name" />
-                          <YAxis />
-                          <Tooltip content={<ChartTooltipContent />} />
+                          <YAxis tickFormatter={(value) => `£${Number(value).toFixed(0)}`} />
+                          <Tooltip content={<ChartTooltipContent />} formatter={(value) => [`£${value.toFixed(2)}`, 'Revenue']} />
                           <Bar dataKey="revenue" fill="var(--color-revenue)" />
                         </BarChart>
                       </ChartContainer>
@@ -255,15 +296,25 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, initialTab 
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <ChartContainer config={{ revenue: { label: 'Revenue', color: 'hsl(var(--chart-2))' } }}>
+                      <ChartContainer config={{ revenue: { label: 'Revenue (£)', color: 'hsl(var(--chart-2))' } }}>
                         <LineChart data={revenueOverTime}>
                           <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey={timeframe === '1d' ? 'time' : 'date'} />
-                          <YAxis />
-                          <Tooltip content={<ChartTooltipContent />} />
-                          <Line type="monotone" dataKey="revenue" stroke="var(--color-revenue)" strokeWidth={2} />
+                          <XAxis dataKey="date" />
+                          <YAxis tickFormatter={(value) => `£${Number(value).toFixed(0)}`} />
+                          <Tooltip content={<ChartTooltipContent />} formatter={(value) => [`£${value.toFixed(2)}`, 'Revenue']} />
+                          <Line
+                            type="monotone"
+                            dataKey="revenue"
+                            stroke="var(--color-revenue)"
+                            strokeWidth={3}
+                            dot={{ fill: 'var(--color-revenue)', strokeWidth: 2, r: 4 }}
+                            activeDot={{ r: 6, stroke: 'var(--color-revenue)', strokeWidth: 2 }}
+                          />
                         </LineChart>
                       </ChartContainer>
+                      <div className="text-xs text-muted-foreground mt-2 text-center">
+                        Updates live every minute
+                      </div>
                     </CardContent>
                   </Card>
                 </div>
@@ -279,11 +330,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, initialTab 
                         recentOrders.slice(0, 5).map((order) => (
                           <div key={order.id} className="flex items-center justify-between p-3 bg-muted rounded">
                             <div>
-                              <p className="font-medium">#{order.id}</p>
+                              <p className="font-medium">Order #{order.display_id || order.id}</p>
                               <p className="text-sm text-muted-foreground">{order.customer_name}</p>
                             </div>
                             <div className="text-right">
-                              <p className="font-medium">${order.total.toFixed(2)}</p>
+                              <p className="font-medium">£{order.total.toFixed(2)}</p>
                               <Badge className={
                                 order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                                 order.status === 'preparing' ? 'bg-blue-100 text-blue-800' :

@@ -12,7 +12,7 @@ const meatCategories = [
   id: 'steak',
   name: 'Steak',
   icon: Beef,
-  keywords: ['steak', 'deluxe steak', 'premium steak', 'quadzilla', 'centurion', 'custom item'],
+  keywords: ['deluxe steak', 'premium steak', 'quadzilla', 'centurion', 'steak & fries', 'steak only', 'custom item'],
   color: 'bg-card text-card-foreground border border-border'
 },
 {
@@ -32,8 +32,8 @@ const meatCategories = [
 {
   id: 'other',
   name: '£1 Steak Special',
-  icon: Fish,
-  keywords: ['fries', 'sauce', 'drink', 'steak special'],
+  icon: Beef,
+  keywords: ['£1 steak cone'],
   color: 'bg-card text-card-foreground border border-border'
 }
 ];

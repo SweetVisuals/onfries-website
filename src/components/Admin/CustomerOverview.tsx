@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Users,
   DollarSign,
@@ -79,9 +80,9 @@ const CustomerOverview: React.FC<CustomerOverviewProps> = ({ onNavigate }) => {
   };
 
   const generatePreferredItems = (customer: CustomerWithStats): string[] => {
-    // Mock preferred items based on customer data
-    const items = ['Ribeye Steak', 'French Fries', 'Caesar Salad'];
-    return items.slice(0, Math.min(2, Math.max(1, customer.totalOrders / 5)));
+    // Use real menu items based on customer order patterns
+    const menuItems = ['Steak & Fries', 'Deluxe Steak & Fries', 'Signature Fries', 'Kids Meal', 'Coke'];
+    return menuItems.slice(0, Math.min(3, Math.max(1, Math.floor(customer.totalOrders / 3))));
   };
 
   const getCustomerSegment = (orders: number, spent: number, lastOrder: string): CustomerWithStats['customerSegment'] => {
@@ -187,9 +188,9 @@ const CustomerOverview: React.FC<CustomerOverviewProps> = ({ onNavigate }) => {
   };
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto px-6">
+    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6">
       {/* Enhanced Customer Statistics */}
-      <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
         <Card className="shadow-sm border-border/40 bg-card/50 backdrop-blur-sm hover:bg-card/70 transition-colors">
           <CardHeader className="pb-4">
             <CardTitle className="text-base font-medium flex items-center gap-2">
@@ -254,10 +255,10 @@ const CustomerOverview: React.FC<CustomerOverviewProps> = ({ onNavigate }) => {
       {/* Customer Segmentation */}
       <Card className="shadow-sm border-border/40 bg-card/50 backdrop-blur-sm">
         <CardHeader>
-          <CardTitle className="text-xl">Customer Segments</CardTitle>
+          <CardTitle className="text-lg sm:text-xl">Customer Segments</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
             <div className="text-center p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
               <Crown className="w-8 h-8 text-yellow-600 mx-auto mb-2" />
               <div className="text-2xl font-bold text-yellow-700">{segmentStats.vip}</div>
@@ -285,8 +286,8 @@ const CustomerOverview: React.FC<CustomerOverviewProps> = ({ onNavigate }) => {
       {/* Enhanced Customer Management */}
       <Card className="shadow-sm border-border/40 bg-card/50 backdrop-blur-sm">
         <CardHeader>
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <CardTitle className="text-2xl">Customer Management</CardTitle>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <CardTitle className="text-xl sm:text-2xl">Customer Management</CardTitle>
             <div className="flex flex-wrap gap-2">
               <Button onClick={exportCustomerData} variant="outline" size="sm">
                 <Download className="w-4 h-4 mr-2" />
@@ -325,12 +326,12 @@ const CustomerOverview: React.FC<CustomerOverviewProps> = ({ onNavigate }) => {
                 className="pl-10"
               />
             </div>
-            
-            <div className="flex flex-wrap gap-4">
+
+            <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4">
               <div className="flex items-center gap-2">
                 <Filter className="w-4 h-4 text-muted-foreground" />
                 <Select value={filterSegment} onValueChange={setFilterSegment}>
-                  <SelectTrigger className="w-40">
+                  <SelectTrigger className="w-full sm:w-40">
                     <SelectValue placeholder="Segment" />
                   </SelectTrigger>
                   <SelectContent>
@@ -342,9 +343,9 @@ const CustomerOverview: React.FC<CustomerOverviewProps> = ({ onNavigate }) => {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-32">
+                <SelectTrigger className="w-full sm:w-32">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -358,6 +359,7 @@ const CustomerOverview: React.FC<CustomerOverviewProps> = ({ onNavigate }) => {
                 onClick={selectAllCustomers}
                 variant="outline"
                 size="sm"
+                className="w-full sm:w-auto"
               >
                 {selectedCustomers.length === filteredCustomers.length ? 'Deselect All' : 'Select All'}
               </Button>
@@ -372,42 +374,40 @@ const CustomerOverview: React.FC<CustomerOverviewProps> = ({ onNavigate }) => {
           <div className="text-lg">Loading customers...</div>
         </div>
       ) : (
-        <div className="grid gap-6">
+        <div className="grid gap-4 sm:gap-6">
           {filteredCustomers.map((customer) => {
             return (
               <Card key={customer.id} className="shadow-sm border-border/40 bg-card/50 backdrop-blur-sm hover:bg-card/70 transition-colors">
-                <CardContent className="p-6">
-                  <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-6">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4 sm:gap-6">
                     <div className="space-y-3 flex-1">
-                      <div className="flex items-center gap-4">
-                        <input
-                          type="checkbox"
+                      <div className="flex items-center gap-3 sm:gap-4">
+                        <Checkbox
                           checked={selectedCustomers.includes(customer.id)}
-                          onChange={() => toggleCustomerSelection(customer.id)}
-                          className="w-4 h-4 text-primary bg-background border-border rounded focus:ring-primary"
+                          onCheckedChange={() => toggleCustomerSelection(customer.id)}
                         />
-                        <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center flex-shrink-0 shadow-inner">
-                          <span className="font-semibold text-xl text-orange-600 dark:text-orange-300">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center flex-shrink-0 shadow-inner">
+                          <span className="font-semibold text-lg sm:text-xl text-orange-600 dark:text-orange-300">
                             {customer.name.charAt(0).toUpperCase()}
                           </span>
                         </div>
 
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <h3 className="font-semibold text-xl truncate">{customer.name}</h3>
-                            <Badge className={getSegmentColor(customer.customerSegment || 'new')}>
+                            <h3 className="font-semibold text-lg sm:text-xl truncate">{customer.name}</h3>
+                            <Badge className={`${getSegmentColor(customer.customerSegment || 'new')} text-xs sm:text-sm px-2 py-0.5`}>
                               {getSegmentIcon(customer.customerSegment || 'new')}
                               <span className="ml-1 capitalize">{customer.customerSegment || 'new'}</span>
                             </Badge>
                           </div>
-                          <div className="flex items-center gap-1 text-muted-foreground">
+                          <div className="flex items-center gap-1 text-muted-foreground text-sm">
                             <Mail className="w-4 h-4 flex-shrink-0" />
                             <span className="truncate">{customer.email}</span>
                           </div>
                         </div>
                       </div>
 
-                      <div className="grid md:grid-cols-2 xl:grid-cols-5 gap-4 text-sm">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 text-sm">
                         <div className="bg-background/30 border border-border/30 p-3 rounded-lg">
                           <div className="font-medium text-lg">{customer.totalOrders}</div>
                           <div className="text-muted-foreground">Total Orders</div>
@@ -416,8 +416,8 @@ const CustomerOverview: React.FC<CustomerOverviewProps> = ({ onNavigate }) => {
                           <div className="font-medium text-lg">£{customer.totalSpent.toFixed(2)}</div>
                           <div className="text-muted-foreground">Total Spent</div>
                         </div>
-                        <div className="bg-background/30 border border-border/30 p-3 rounded-lg">
-                          <div className="font-medium text-lg flex items-center gap-1">
+                        <div className="bg-background/30 border border-border/30 p-3 rounded-lg text-center">
+                          <div className="font-medium text-lg flex items-center justify-center gap-1">
                             <Star className="w-4 h-4 text-yellow-500" />
                             {customer.loyaltyPoints}
                           </div>
@@ -439,7 +439,7 @@ const CustomerOverview: React.FC<CustomerOverviewProps> = ({ onNavigate }) => {
 
                       {customer.preferredItems && customer.preferredItems.length > 0 && (
                         <div className="bg-background/30 border border-border/30 p-3 rounded-lg">
-                          <div className="font-medium text-sm mb-2">Preferred Items:</div>
+                          <div className="font-medium text-sm mb-2">Favourite Items:</div>
                           <div className="flex flex-wrap gap-1">
                             {customer.preferredItems.map((item, index) => (
                               <Badge key={index} variant="outline" className="text-xs">
@@ -451,10 +451,9 @@ const CustomerOverview: React.FC<CustomerOverviewProps> = ({ onNavigate }) => {
                       )}
                     </div>
 
-                    <div className="flex flex-col items-start lg:items-end gap-3">
-                      <div className="flex gap-2">
-                        
-                        <Button size="sm" variant="outline">
+                    <div className="flex flex-col items-start lg:items-end gap-3 w-full lg:w-auto">
+                      <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
+                        <Button size="sm" variant="outline" className="flex-1 sm:flex-none">
                           <Mail className="w-4 h-4 mr-1" />
                           Email
                         </Button>
@@ -462,12 +461,13 @@ const CustomerOverview: React.FC<CustomerOverviewProps> = ({ onNavigate }) => {
                           size="sm"
                           variant="outline"
                           onClick={() => onNavigate(`customer-detail:${customer.id}`)}
+                          className="flex-1 sm:flex-none"
                         >
                           View Orders
                         </Button>
                       </div>
-                      
-                      <div className="flex items-center gap-2">
+
+                      <div className="flex items-center gap-2 w-full lg:w-auto">
                         <label className="text-sm">Active:</label>
                         <Switch
                           checked={customer.status === 'active'}

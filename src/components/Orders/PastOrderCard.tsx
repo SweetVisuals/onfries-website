@@ -1,21 +1,27 @@
 import React from 'react';
-import { Receipt, Check, Clock } from 'lucide-react';
+import { Receipt, Check, Clock, Trash2 } from 'lucide-react';
 import { Order } from '../../data/orderData';
 import { useOrderTimer } from '../../hooks/useOrderTimer';
 
 interface PastOrderCardProps {
   order: Order;
+  onDelete?: (orderId: string) => void;
 }
 
-const PastOrderCard: React.FC<PastOrderCardProps> = ({ order }) => {
+const PastOrderCard: React.FC<PastOrderCardProps> = ({ order, onDelete }) => {
   const { formattedTime, totalTimeInMinutes } = useOrderTimer({
     startTime: order.orderDate,
     endTime: order.completedAt
   });
 
-  // Group items: main courses and their associated add-ons
-  const mainCourses = order.items.filter(item => item.item.category !== 'Add-ons');
-  const addOns = order.items.filter(item => item.item.category === 'Add-ons');
+  const handleDelete = async () => {
+    if (onDelete) {
+      onDelete(order.id);
+    }
+  };
+
+  // Main courses are now the top-level items, add-ons and drinks are nested within each item
+  const mainCourses = order.items;
 
   return (
     <div className="rounded-lg shadow-md overflow-hidden h-full flex flex-col bg-card text-card-foreground border border-border">
@@ -28,7 +34,19 @@ const PastOrderCard: React.FC<PastOrderCardProps> = ({ order }) => {
               Order #{order.id}
             </p>
           </div>
-          <div className="text-right">
+          <div className="flex items-center gap-2">
+            {/* Delete Button */}
+            {onDelete && (
+              <button
+                onClick={handleDelete}
+                className="p-2 rounded-lg transition-colors duration-200 bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 text-red-600 dark:text-red-400"
+                title="Delete Order"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+
+            {/* Status Icon */}
             <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-900">
               <Check className="w-4 h-4 text-white" />
             </div>
@@ -63,17 +81,36 @@ const PastOrderCard: React.FC<PastOrderCardProps> = ({ order }) => {
               </div>
               
               {/* Display associated add-ons for this main course */}
-              {addOns.length > 0 && (
+              {mainCourse.addOns && mainCourse.addOns.length > 0 && (
                 <div className="mt-3 ml-4 border-l-2 border-gray-400 dark:border-gray-500 pl-4">
                   <p className="text-sm text-gray-600 dark:text-gray-400 font-semibold mb-2 uppercase tracking-wide">Add-ons</p>
                   <div className="space-y-1">
-                    {addOns.map((addon) => (
+                    {mainCourse.addOns.map((addon) => (
                       <div key={addon.item.id} className="flex justify-between items-center text-sm">
                         <span className="text-gray-700 dark:text-gray-300 flex-1 mr-2">
-                          {addon.item.name} x{addon.quantity}
+                          {addon.item.name === 'Steak Only' ? 'Steak' : addon.item.name} x{addon.quantity}
                         </span>
                         <span className="font-medium text-gray-800 dark:text-gray-200">
                           £{(addon.item.price * addon.quantity).toFixed(2)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Display associated drinks for this main course */}
+              {mainCourse.drinks && mainCourse.drinks.length > 0 && (
+                <div className="mt-3 ml-4 border-l-2 border-gray-400 dark:border-gray-500 pl-4">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 font-semibold mb-2 uppercase tracking-wide">Drink</p>
+                  <div className="space-y-1">
+                    {mainCourse.drinks.map((drink) => (
+                      <div key={drink.item.id} className="flex justify-between items-center text-sm">
+                        <span className="text-gray-700 dark:text-gray-300 flex-1 mr-2">
+                          {drink.item.name} x{drink.quantity}
+                        </span>
+                        <span className="font-medium text-gray-800 dark:text-gray-200">
+                          £{(drink.item.price * drink.quantity).toFixed(2)}
                         </span>
                       </div>
                     ))}
