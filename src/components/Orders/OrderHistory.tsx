@@ -89,7 +89,9 @@ const OrderHistory: React.FC = () => {
           isAvailable: true,
           preparationTime: 0
         },
-        quantity: item.quantity
+        quantity: item.quantity,
+        addOns: [],
+        drinks: []
       })) || [],
       total: order.total,
       status: order.status,
@@ -99,15 +101,6 @@ const OrderHistory: React.FC = () => {
     };
   };
 
-  const handleDeleteOrder = async (orderId: string) => {
-    try {
-      await deleteOrder(orderId);
-      // Refresh the orders list after deletion
-      loadOrders();
-    } catch (error) {
-      console.error('Error deleting order:', error);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-background py-8" style={{ marginRight: '-5px', paddingRight: '5px', width: '100%', maxWidth: '100vw', boxSizing: 'border-box' }}>

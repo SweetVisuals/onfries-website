@@ -95,7 +95,7 @@ const MenuItemCard: React.FC<{ item: any; orderingStatus: any; onAddToCart: (ite
 const MenuPage: React.FC = () => {
   const { addItem } = useCart();
   const { user } = useAuth();
-  const { menuItems, loading, error, refreshMenu } = useMenuItems();
+  const { menuItems, loading, error } = useMenuItems();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Steak');
   const [showAddOns, setShowAddOns] = useState(false);

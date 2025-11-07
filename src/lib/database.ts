@@ -834,7 +834,7 @@ export const createOrder = async (orderData: {
   }
 };
 
-export const updateOrderStatus = async (orderId: string, status: Order['status'], completedAt?: string): Promise<Order> => {
+export const updateOrderStatus = async (orderId: string, status: Order['status']): Promise<Order> => {
   const updateData: any = { status, updated_at: new Date().toISOString() };
 
   const { data, error } = await supabase
