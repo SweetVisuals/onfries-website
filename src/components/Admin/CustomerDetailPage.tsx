@@ -215,7 +215,7 @@ const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({ customerId, onN
               {recentOrder ? (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="font-medium">Order #{recentOrder.id.slice(-8)}</span>
+                    <span className="font-medium">Order #{recentOrder.id}</span>
                     <Badge className={getStatusColor(recentOrder.status)}>
                       {recentOrder.status}
                     </Badge>
@@ -269,7 +269,7 @@ const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({ customerId, onN
                   <div key={order.id} className="flex items-center justify-between p-4 border border-border/50 rounded-lg hover:border-border/80 transition-colors bg-background/30">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <span className="font-medium">Order #{order.id.slice(-8)}</span>
+                        <span className="font-medium">Order #{order.id}</span>
                         <Badge className={getStatusColor(order.status)}>
                           {order.status}
                         </Badge>

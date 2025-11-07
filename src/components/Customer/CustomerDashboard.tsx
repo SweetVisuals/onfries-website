@@ -145,7 +145,7 @@ const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ initialTab = 'men
   };
 
   return (
-    <div className={`${selectedTab === 'menu' ? 'h-screen overflow-hidden' : 'min-h-screen'} bg-background relative`}>
+    <div className="min-h-screen overflow-y-auto overflow-x-hidden bg-background relative" style={{ marginRight: '-5px', paddingRight: '5px', width: '100%', maxWidth: '100vw', boxSizing: 'border-box' }}>
       {/* Promotional Banner */}
       {promotionalBanner.enabled && (
         <div
@@ -163,14 +163,14 @@ const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ initialTab = 'men
       )}
 
       {/* Logo Section */}
-      <div className="bg-background py-4">
+      <div className="bg-background pt-[10px] pb-[5px]">
         <div className="container mx-auto px-4">
           <div className="relative">
             <div className="text-center mb-6">
               <img
                 src={OnFriesLogo}
                 alt="OnFries Logo"
-                className="mx-auto w-48 h-auto mb-4 md:mb-4 mt-0 md:mt-0 mt-[30px]"
+                className="mx-auto w-48 h-auto mb-4 md:mb-4 pt-[60px] md:pt-0"
               />
               <div className="mb-8">
                 <Tabs
@@ -282,96 +282,94 @@ const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ initialTab = 'men
                   <div className="text-lg">Loading customer data...</div>
                 </div>
               ) : (
-                <div className="space-y-8">
+                <div className="space-y-6">
                   {/* Customer Profile Header */}
                   <Card>
-                    <CardContent className="p-8">
-                      <div className="flex items-center gap-8">
-                        <div className="w-24 h-24 bg-orange-100 rounded-full flex items-center justify-center dark:bg-orange-900">
-                          <span className="font-semibold text-3xl text-orange-600 dark:text-orange-300">
+                    <CardContent className="p-6">
+                      <div className="flex items-start gap-6">
+                        <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center dark:bg-orange-900 flex-shrink-0">
+                          <span className="font-semibold text-2xl text-orange-600 dark:text-orange-300">
                             {user?.name.charAt(0).toUpperCase()}
                           </span>
                         </div>
-                        
-                        <div className="flex-1">
-                          <h1 className="text-4xl font-bold mb-3">{user?.name}</h1>
-                          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-4">
-                            <span className="text-lg">{user?.email}</span>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="space-y-1">
+                            <h1 className="text-2xl font-bold text-foreground text-left">{user?.name}</h1>
+                            <p className="text-sm text-muted-foreground text-left">{user?.email}</p>
                           </div>
-                          <div className="flex items-center gap-6">
-                            <div className="flex items-center gap-2">
-                              <Star className="w-5 h-5 text-yellow-500" />
-                              <span className="font-medium text-lg">{customerStats.loyaltyPoints} Loyalty Points</span>
-                            </div>
+                          <div className="flex items-center gap-2 mt-3">
+                            <Star className="w-5 h-5 text-yellow-500" />
+                            <span className="font-medium">{customerStats.loyaltyPoints} Loyalty Points</span>
                           </div>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
 
-                  {/* Customer Stats Cards - Made Wider */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8">
-                    <Card className="xl:col-span-1">
-                      <CardHeader className="pb-4">
-                        <CardTitle className="text-base font-medium flex items-center gap-2">
-                          <DollarSign className="h-5 w-5 text-muted-foreground" />
+                  {/* Customer Stats Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-medium flex items-center gap-2">
+                          <DollarSign className="h-4 w-4 text-muted-foreground" />
                           Total Spent
                         </CardTitle>
                       </CardHeader>
-                      <CardContent>
-                        <div className="text-3xl font-bold">£{customerStats.totalSpent.toFixed(2)}</div>
-                        <p className="text-sm text-muted-foreground mt-1">
+                      <CardContent className="pt-0">
+                        <div className="text-2xl font-bold">£{customerStats.totalSpent.toFixed(2)}</div>
+                        <p className="text-xs text-muted-foreground mt-1">
                           Lifetime value
                         </p>
                       </CardContent>
                     </Card>
 
-                    <Card className="xl:col-span-1">
-                      <CardHeader className="pb-4">
-                        <CardTitle className="text-base font-medium flex items-center gap-2">
-                          <ShoppingBag className="h-5 w-5 text-muted-foreground" />
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-medium flex items-center gap-2">
+                          <ShoppingBag className="h-4 w-4 text-muted-foreground" />
                           Total Orders
                         </CardTitle>
                       </CardHeader>
-                      <CardContent>
-                        <div className="text-3xl font-bold">{customerStats.totalOrders}</div>
-                        <p className="text-sm text-muted-foreground mt-1">
+                      <CardContent className="pt-0">
+                        <div className="text-2xl font-bold">{customerStats.totalOrders}</div>
+                        <p className="text-xs text-muted-foreground mt-1">
                           All time orders
                         </p>
                       </CardContent>
                     </Card>
 
-                    <Card className="xl:col-span-1">
-                      <CardHeader className="pb-4">
-                        <CardTitle className="text-base font-medium flex items-center gap-2">
-                          <Star className="h-5 w-5 text-muted-foreground" />
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-medium flex items-center gap-2">
+                          <Star className="h-4 w-4 text-muted-foreground" />
                           Loyalty Points
                         </CardTitle>
                       </CardHeader>
-                      <CardContent>
-                        <div className="text-3xl font-bold">{customerStats.loyaltyPoints}</div>
-                        <p className="text-sm text-muted-foreground mt-1">
+                      <CardContent className="pt-0">
+                        <div className="text-2xl font-bold">{customerStats.loyaltyPoints}</div>
+                        <p className="text-xs text-muted-foreground mt-1">
                           1 point per £10 spent
                         </p>
                       </CardContent>
                     </Card>
 
-                    <Card className="xl:col-span-1">
-                      <CardHeader className="pb-4">
-                        <CardTitle className="text-base font-medium flex items-center gap-2">
-                          <Calendar className="h-5 w-5 text-muted-foreground" />
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-medium flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
                           Member Since
                         </CardTitle>
                       </CardHeader>
-                      <CardContent>
-                        <div className="text-3xl font-bold">
+                      <CardContent className="pt-0">
+                        <div className="text-2xl font-bold text-lg">
                           {user ? new Date(user.created_at || Date.now()).toLocaleDateString('en-GB', {
                             month: 'short',
                             day: 'numeric',
                             year: 'numeric'
                           }) : 'N/A'}
                         </div>
-                        <p className="text-sm text-muted-foreground mt-1">
+                        <p className="text-xs text-muted-foreground mt-1">
                           Customer since
                         </p>
                       </CardContent>
@@ -379,22 +377,22 @@ const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ initialTab = 'men
                   </div>
 
                   {/* Recent and Favorite Orders */}
-                  <div className="grid md:grid-cols-2 gap-8">
+                  <div className="grid md:grid-cols-2 gap-6">
                     {/* Recent Order */}
                     <Card>
-                      <CardHeader>
-                        <CardTitle className="text-xl">Most Recent Order</CardTitle>
+                      <CardHeader className="pb-4">
+                        <CardTitle className="text-lg">Most Recent Order</CardTitle>
                       </CardHeader>
                       <CardContent>
                         {customerStats.recentOrder ? (
-                          <div className="space-y-4">
+                          <div className="space-y-3">
                             <div className="flex items-center justify-between">
-                              <span className="font-semibold text-lg">Order #{customerStats.recentOrder.id.slice(-8)}</span>
-                              <Badge variant="outline" className="text-sm">
+                              <span className="font-semibold">Order #{customerStats.recentOrder.id}</span>
+                              <Badge variant="outline" className="text-xs">
                                 {customerStats.recentOrder.status}
                               </Badge>
                             </div>
-                            <div className="text-gray-600 dark:text-gray-400">
+                            <div className="text-muted-foreground text-sm">
                               <div className="mb-1">{new Date(customerStats.recentOrder.order_date).toLocaleDateString()}</div>
                               <div className="font-medium">Total: £{customerStats.recentOrder.total.toFixed(2)}</div>
                             </div>
@@ -405,10 +403,10 @@ const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ initialTab = 'men
                             )}
                           </div>
                         ) : (
-                          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                            <ShoppingBag className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                            <p className="text-lg">No recent orders</p>
-                            <p className="text-sm">Start ordering to see your order history here</p>
+                          <div className="text-center py-6 text-muted-foreground">
+                            <ShoppingBag className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                            <p className="text-sm font-medium">No recent orders</p>
+                            <p className="text-xs">Start ordering to see your order history here</p>
                           </div>
                         )}
                       </CardContent>
@@ -416,15 +414,15 @@ const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ initialTab = 'men
 
                     {/* Favorite Order */}
                     <Card>
-                      <CardHeader>
-                        <CardTitle className="text-xl">Favorite Order</CardTitle>
+                      <CardHeader className="pb-4">
+                        <CardTitle className="text-lg">Favorite Order</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="flex items-center gap-4">
-                          <Star className="w-8 h-8 text-yellow-500" />
+                        <div className="flex items-center gap-3">
+                          <Star className="w-6 h-6 text-yellow-500" />
                           <div>
-                            <div className="font-semibold text-lg">{customerStats.favoriteOrder}</div>
-                            <div className="text-gray-600 dark:text-gray-400 text-sm">
+                            <div className="font-semibold">{customerStats.favoriteOrder}</div>
+                            <div className="text-muted-foreground text-xs">
                               Most frequently ordered item
                             </div>
                           </div>
@@ -435,26 +433,26 @@ const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ initialTab = 'men
 
                   {/* Account Information */}
                   <Card>
-                    <CardHeader>
-                      <CardTitle className="text-xl">Account Information</CardTitle>
+                    <CardHeader className="pb-4">
+                      <CardTitle className="text-lg">Account Information</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid md:grid-cols-2 gap-6">
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">Name</label>
-                          <div className="text-lg font-medium">{user?.name}</div>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Name</label>
+                          <div className="font-medium">{user?.name}</div>
                         </div>
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">Email</label>
-                          <div className="text-lg font-medium">{user?.email}</div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Email</label>
+                          <div className="font-medium">{user?.email}</div>
                         </div>
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">Account Type</label>
-                          <div className="text-lg font-medium">{user?.role || 'Customer'}</div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Account Type</label>
+                          <div className="font-medium">{user?.role || 'Customer'}</div>
                         </div>
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">Customer ID</label>
-                          <div className="text-lg font-medium font-mono text-sm">{user?.id.slice(0, 8)}...</div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Customer ID</label>
+                          <div className="font-mono text-sm">{user?.id.slice(0, 8)}...</div>
                         </div>
                       </div>
                     </CardContent>

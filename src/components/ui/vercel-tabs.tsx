@@ -86,13 +86,13 @@ const Tabs = React.forwardRef<HTMLDivElement, TabsProps>(
            />
 
           {/* Tabs */}
-           <div className="relative flex flex-wrap space-x-[6px] items-center justify-center">
+           <div className="relative flex space-x-1 md:space-x-[6px] items-center justify-center overflow-x-auto">
              {tabs.map((tab, index) => (
                <div
                  key={tab.id}
                  ref={(el) => (tabRefs.current[index] = el)}
                  className={cn(
-                   "px-3 py-2 cursor-pointer transition-colors duration-300 h-[30px] flex-shrink-0",
+                   "px-2 md:px-3 py-2 cursor-pointer transition-colors duration-300 h-[30px] flex-shrink-0",
                    index === activeIndex
                      ? "text-[#0e0e10] dark:text-white"
                      : "text-[#0e0f1199] dark:text-[#ffffff99]"
@@ -104,7 +104,7 @@ const Tabs = React.forwardRef<HTMLDivElement, TabsProps>(
                    onTabChange?.(tab.id)
                  }}
                >
-                 <div className="text-sm font-medium leading-5 whitespace-nowrap flex items-center justify-center h-full">
+                 <div className="text-xs md:text-sm font-medium leading-5 whitespace-nowrap flex items-center justify-center h-full">
                    {tab.label}
                  </div>
                </div>

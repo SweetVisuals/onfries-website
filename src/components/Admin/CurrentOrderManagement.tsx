@@ -98,7 +98,7 @@ const CurrentOrderManagement: React.FC = () => {
   const transformOrderForCard = (order: OrderWithItems) => {
     // Transform database order format to match CurrentOrderCard expectations
     return {
-      id: order.id,
+      id: order.display_id || order.id,
       customerId: order.customer_id,
       customerName: order.customer_name,
       customerEmail: order.customer_email,
@@ -126,7 +126,7 @@ const CurrentOrderManagement: React.FC = () => {
   const transformOrderForMeatCards = (order: OrderWithItems) => {
     // Transform database order format to match MeatCookingCards expectations
     return {
-      id: order.id,
+      id: order.display_id || order.id,
       customerId: order.customer_id,
       customerName: order.customer_name,
       customerEmail: order.customer_email,
@@ -240,8 +240,19 @@ const CurrentOrderManagement: React.FC = () => {
       // Import supabase directly
       const { supabase } = await import('../../lib/supabase');
 
-      // Get the next order number (sequential based on all orders) - removed as not used
-      const orderId = crypto.randomUUID(); // Use UUID instead of ORDER-XXXX format
+      // Get the next order number (sequential based on all orders)
+      const { data: existingOrders } = await supabase
+        .from('orders')
+        .select('display_id')
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      const nextOrderNumber = existingOrders && existingOrders.length > 0
+        ? (parseInt(existingOrders[0].display_id) || 0) + 1
+        : 1;
+
+      // Generate UUID for database ID (required by schema)
+      const orderId = crypto.randomUUID();
 
       // Create the order directly using the admin's user ID (skip customer creation entirely)
       const orderDate = new Date().toISOString();
@@ -270,7 +281,8 @@ const CurrentOrderManagement: React.FC = () => {
           status: 'pending',
           order_date: orderDate,
           estimated_delivery: estimatedDelivery,
-          notes: 'Created by admin'
+          notes: 'Created by admin',
+          display_id: nextOrderNumber.toString().padStart(3, '0')
         })
         .select()
         .single();

@@ -110,7 +110,7 @@ const OrderHistory: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background py-8">
+    <div className="min-h-screen bg-background py-8" style={{ marginRight: '-5px', paddingRight: '5px', width: '100%', maxWidth: '100vw', boxSizing: 'border-box' }}>
       <div className="max-w-7xl mx-auto px-6">
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-foreground mb-2">Order History</h1>
@@ -129,7 +129,7 @@ const OrderHistory: React.FC = () => {
             />
           </div>
           <Button
-            variant="ghost"
+            variant="outline"
             className="flex items-center gap-2 px-6"
             onClick={handleClearHistory}
           >
@@ -158,7 +158,6 @@ const OrderHistory: React.FC = () => {
               <CurrentOrderCard
                 key={order.id}
                 order={transformOrderForCard(order)}
-                onDelete={handleDeleteOrder}
                 isPastOrder={true}
               />
             ))}

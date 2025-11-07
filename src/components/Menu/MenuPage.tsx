@@ -443,23 +443,6 @@ const MenuPage: React.FC = () => {
                 </Button>
               ))}
 
-              <Button
-                variant="outline"
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                className="text-sm ml-2"
-              >
-                {isRefreshing ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                    Refreshing...
-                  </>
-                ) : (
-                  <>
-                    Refresh Menu
-                  </>
-                )}
-              </Button>
             </div>
           </div>
         </div>

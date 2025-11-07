@@ -122,7 +122,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, initialTab 
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="mb-8">
             <div className="flex flex-col md:grid md:grid-cols-3 md:items-center mb-4">
-              <img src={logo} alt="OnFries Logo" className="w-auto h-40 md:h-48 mb-4 md:mb-0 md:col-start-1 md:justify-self-start md:mt-4" />
+              <img src={logo} alt="OnFries Logo" className="w-auto h-40 md:h-48 mb-4 md:mb-0 md:col-start-1 md:justify-self-start md:mt-4 object-contain" />
               <div className="text-center md:col-start-2 md:justify-self-center">
                 <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">{getTabTitle(selectedTab)}</h1>
                 <p className="text-sm md:text-base text-muted-foreground">{getTabDescription(selectedTab)}</p>
@@ -132,41 +132,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, initialTab 
 
         <div className="mb-8 flex justify-center">
           <div className="w-full max-w-4xl">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-full max-w-4xl">
-                <Tabs
-                  tabs={[
-                    { id: "overview", label: "Overview" },
-                    { id: "current-orders", label: "Current Orders" },
-                    { id: "past-orders", label: "Past Orders" },
-                    { id: "stock", label: "Stock" },
-                    { id: "customers", label: "Customers" }
-                  ]}
-                  onTabChange={(tabId) => setSelectedTab(tabId)}
-                />
-              </div>
-              <div className="flex items-center gap-2 ml-4">
-                <Settings className="w-4 h-4" />
-                <span className="text-sm font-medium">Store Status:</span>
-                <button
-                  onClick={async () => {
-                    const newStatus = !storeOpen;
-                    try {
-                      await setStoreStatus(newStatus);
-                      setStoreOpen(newStatus);
-                    } catch (error) {
-                      console.error('Error updating store status:', error);
-                    }
-                  }}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                    storeOpen
-                      ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                      : 'bg-red-100 text-red-800 hover:bg-red-200'
-                  }`}
-                >
-                  {storeOpen ? 'Open' : 'Closed'}
-                </button>
-              </div>
+            <div className="mb-4">
+              <Tabs
+                tabs={[
+                  { id: "overview", label: "Overview" },
+                  { id: "current-orders", label: "Current Orders" },
+                  { id: "past-orders", label: "Past Orders" },
+                  { id: "stock", label: "Stock" },
+                  { id: "customers", label: "Customers" }
+                ]}
+                onTabChange={(tabId) => setSelectedTab(tabId)}
+              />
             </div>
           </div>
         </div>
@@ -308,7 +284,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, initialTab 
                         recentOrders.slice(0, 5).map((order) => (
                           <div key={order.id} className="flex items-center justify-between p-3 bg-muted rounded">
                             <div>
-                              <p className="font-medium">#{order.id.slice(-8)}</p>
+                              <p className="font-medium">#{order.id}</p>
                               <p className="text-sm text-muted-foreground">{order.customer_name}</p>
                             </div>
                             <div className="text-right">

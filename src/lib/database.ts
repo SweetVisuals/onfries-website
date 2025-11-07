@@ -23,17 +23,18 @@ export interface MenuItem {
 }
 
 export interface Order {
-  id: string;
-  customer_id: string;
-  customer_name: string;
-  customer_email: string;
-  total: number;
-  status: 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
-  order_date: string;
-  estimated_delivery?: string;
-  notes?: string;
-  created_at: string;
-  updated_at: string;
+   id: string;
+   customer_id: string;
+   customer_name: string;
+   customer_email: string;
+   total: number;
+   status: 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
+   order_date: string;
+   estimated_delivery?: string;
+   notes?: string;
+   display_id?: string;
+   created_at: string;
+   updated_at: string;
 }
 
 export interface OrderItem {
@@ -268,7 +269,7 @@ export const getRecentOrders = async (limit: number = 5): Promise<Order[]> => {
     .from('orders')
     .select('*')
     .gte('order_date', startDate)
-    .order('order_date', { ascending: false })
+    .order('created_at', { ascending: false })
     .limit(limit);
 
   if (error) throw error;
@@ -465,7 +466,7 @@ export const getCustomerDetails = async (customerId: string): Promise<{
       )
     `)
     .eq('customer_id', customerId)
-    .order('order_date', { ascending: false });
+    .order('created_at', { ascending: false });
 
   if (ordersError) throw ordersError;
 
@@ -657,7 +658,8 @@ export const getCustomersWithStats = async (): Promise<Array<{
       const { data: allOrders, error: allOrdersError } = await supabase
         .from('orders')
         .select('total, order_date, status')
-        .eq('customer_id', user.id);
+        .eq('customer_id', user.id)
+        .order('created_at', { ascending: false });
 
       if (allOrdersError) throw allOrdersError;
 
@@ -706,7 +708,18 @@ export const createOrder = async (orderData: {
 }): Promise<Order> => {
   try {
     console.log('Database createOrder called with data:', orderData);
-    
+
+    // Get the next order number (sequential based on all orders)
+    const { data: existingOrders } = await supabase
+      .from('orders')
+      .select('display_id')
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    const nextOrderNumber = existingOrders && existingOrders.length > 0
+      ? (parseInt(existingOrders[0].display_id) || 0) + 1
+      : 1;
+
     // First, ensure customer exists in customers table
     console.log('Checking if customer exists...');
     const { data: existingCustomer } = await supabase
@@ -742,7 +755,7 @@ export const createOrder = async (orderData: {
     } else {
       console.log('Customer already exists:', customerId);
     }
-    
+
     // Create the main order record
     const orderDate = new Date().toISOString();
     const estimatedDelivery = new Date(Date.now() + 30 * 60 * 1000).toISOString(); // 30 minutes from now
@@ -768,7 +781,8 @@ export const createOrder = async (orderData: {
         status: 'pending',
         order_date: orderDate,
         estimated_delivery: estimatedDelivery,
-        notes: orderData.notes || null
+        notes: orderData.notes || null,
+        display_id: nextOrderNumber.toString().padStart(3, '0')
       })
       .select()
       .single();
