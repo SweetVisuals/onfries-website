@@ -50,9 +50,8 @@ const CurrentOrderCard: React.FC<CurrentOrderCardProps> = ({ order, onComplete, 
     }
   };
 
-  // Group items: main courses and their associated add-ons
-  const mainCourses = order.items.filter(item => item.item.category !== 'Add-ons');
-  const addOns = order.items.filter(item => item.item.category === 'Add-ons');
+  // Main courses are now the top-level items, add-ons and drinks are nested within each item
+  const mainCourses = order.items;
 
   return (
     <div className={`rounded-lg shadow-md overflow-hidden h-full flex flex-col ${isPastOrder ? 'bg-gray-800 text-white border border-gray-900' : 'bg-card'}`}>
@@ -121,19 +120,38 @@ const CurrentOrderCard: React.FC<CurrentOrderCardProps> = ({ order, onComplete, 
                 </div>
                 <p className={`font-semibold text-lg ${isPastOrder ? 'text-white' : 'text-card-foreground'} shrink-0`}>£{(mainCourse.item.price * mainCourse.quantity).toFixed(2)}</p>
               </div>
-              
+
               {/* Display associated add-ons for this main course */}
-              {addOns.length > 0 && (
+              {mainCourse.addOns && mainCourse.addOns.length > 0 && (
                 <div className="mt-3 ml-4 border-l-2 border-gray-400 dark:border-gray-500 pl-4">
                   <p className={`text-sm ${isPastOrder ? 'text-gray-300' : 'text-gray-600 dark:text-gray-400'} font-semibold mb-2 uppercase tracking-wide`}>Add-ons</p>
                   <div className="space-y-1">
-                    {addOns.map((addon) => (
+                    {mainCourse.addOns.map((addon) => (
                       <div key={addon.item.id} className="flex justify-between items-center text-sm">
                         <span className={`${isPastOrder ? 'text-gray-300' : 'text-gray-700 dark:text-gray-300'} flex-1 mr-2`}>
-                          {addon.item.name} x{addon.quantity}
+                          {addon.item.name === 'Steak Only' ? 'Steak' : addon.item.name} x{addon.quantity}
                         </span>
                         <span className={`font-medium ${isPastOrder ? 'text-white' : 'text-gray-800 dark:text-gray-200'}`}>
                           £{(addon.item.price * addon.quantity).toFixed(2)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Display associated drinks for this main course */}
+              {mainCourse.drinks && mainCourse.drinks.length > 0 && (
+                <div className="mt-3 ml-4 border-l-2 border-gray-400 dark:border-gray-500 pl-4">
+                  <p className={`text-sm ${isPastOrder ? 'text-gray-300' : 'text-gray-600 dark:text-gray-400'} font-semibold mb-2 uppercase tracking-wide`}>Drink</p>
+                  <div className="space-y-1">
+                    {mainCourse.drinks.map((drink) => (
+                      <div key={drink.item.id} className="flex justify-between items-center text-sm">
+                        <span className={`${isPastOrder ? 'text-gray-300' : 'text-gray-700 dark:text-gray-300'} flex-1 mr-2`}>
+                          {drink.item.name} x{drink.quantity}
+                        </span>
+                        <span className={`font-medium ${isPastOrder ? 'text-white' : 'text-gray-800 dark:text-gray-200'}`}>
+                          £{(drink.item.price * drink.quantity).toFixed(2)}
                         </span>
                       </div>
                     ))}

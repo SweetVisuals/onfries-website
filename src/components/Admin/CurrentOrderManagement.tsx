@@ -23,6 +23,7 @@ interface OrderWithItems extends Order {
       price: number;
     };
   }>;
+  completed_at?: string;
 }
 
 const CurrentOrderManagement: React.FC = () => {
@@ -119,7 +120,8 @@ const CurrentOrderManagement: React.FC = () => {
       status: order.status,
       orderDate: order.order_date,
       estimatedDelivery: order.estimated_delivery,
-      notes: order.notes
+      notes: order.notes,
+      completedAt: order.completed_at
     };
   };
 
@@ -154,15 +156,19 @@ const CurrentOrderManagement: React.FC = () => {
   const handleOrderComplete = async (updatedOrder: any) => {
     try {
       console.log(`Marking order ${updatedOrder.id} as completed. Time taken: ${updatedOrder.totalTimeTaken} minutes`);
-      
+
+      // Find the actual database UUID from the display ID
+      const order = orders.find(o => (o.display_id || o.id) === updatedOrder.id);
+      const actualOrderId = order?.id || updatedOrder.id;
+
       // Update order status to 'delivered' in the database
-      await updateOrderStatus(updatedOrder.id, 'delivered');
-      
+      await updateOrderStatus(actualOrderId, 'delivered', new Date().toISOString());
+
       console.log('Order marked as delivered successfully');
-      
+
       // Reload orders to reflect the change
       loadOrders();
-      
+
     } catch (error) {
       console.error('Error marking order as completed:', error);
     }
@@ -331,7 +337,11 @@ const CurrentOrderManagement: React.FC = () => {
 
   const handleDeleteOrder = async (orderId: string) => {
     try {
-      await deleteOrder(orderId);
+      // Find the actual database UUID from the display ID
+      const order = orders.find(o => (o.display_id || o.id) === orderId);
+      const actualOrderId = order?.id || orderId;
+
+      await deleteOrder(actualOrderId);
       // Refresh the orders list after deletion
       loadOrders();
     } catch (error) {

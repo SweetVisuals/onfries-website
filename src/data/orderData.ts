@@ -8,6 +8,14 @@ export interface Order {
   items: Array<{
     item: MenuItem;
     quantity: number;
+    addOns: Array<{
+      item: MenuItem;
+      quantity: number;
+    }>;
+    drinks: Array<{
+      item: MenuItem;
+      quantity: number;
+    }>;
   }>;
   total: number;
   status: 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
@@ -36,20 +44,23 @@ export const dummyOrders: Order[] = [
           isAvailable: true,
           preparationTime: 20
         },
-        quantity: 2
-      },
-      {
-        item: {
-          id: '9',
-          name: 'Green Sauce',
-          description: 'Extra green sauce add-on',
-          price: 2.00,
-          image: '',
-          category: 'Add-ons',
-          isAvailable: true,
-          preparationTime: 0
-        },
-        quantity: 1
+        quantity: 2,
+        addOns: [
+          {
+            item: {
+              id: '9',
+              name: 'Green Sauce',
+              description: 'Extra green sauce add-on',
+              price: 2.00,
+              image: '',
+              category: 'Add-ons',
+              isAvailable: true,
+              preparationTime: 0
+            },
+            quantity: 1
+          }
+        ],
+        drinks: []
       }
     ],
     total: 26.00,
@@ -75,33 +86,37 @@ export const dummyOrders: Order[] = [
           isAvailable: true,
           preparationTime: 30
         },
-        quantity: 1
-      },
-      {
-        item: {
-          id: '7',
-          name: 'Lamb Chops x2',
-          description: 'Two premium lamb chops',
-          price: 11.00,
-          image: '',
-          category: 'Add-ons',
-          isAvailable: true,
-          preparationTime: 0
-        },
-        quantity: 1
-      },
-      {
-        item: {
-          id: '11',
-          name: 'Can of Drink',
-          description: 'Assorted soft drinks',
-          price: 1.50,
-          image: '',
-          category: 'Add-ons',
-          isAvailable: true,
-          preparationTime: 0
-        },
-        quantity: 2
+        quantity: 1,
+        addOns: [
+          {
+            item: {
+              id: '7',
+              name: 'Lamb Chops x2',
+              description: 'Two premium lamb chops',
+              price: 11.00,
+              image: '',
+              category: 'Add-ons',
+              isAvailable: true,
+              preparationTime: 0
+            },
+            quantity: 1
+          }
+        ],
+        drinks: [
+          {
+            item: {
+              id: '11',
+              name: 'Can of Drink',
+              description: 'Assorted soft drinks',
+              price: 1.50,
+              image: '',
+              category: 'Drinks',
+              isAvailable: true,
+              preparationTime: 0
+            },
+            quantity: 2
+          }
+        ]
       }
     ],
     total: 53.50,
@@ -127,20 +142,23 @@ export const dummyOrders: Order[] = [
           isAvailable: true,
           preparationTime: 35
         },
-        quantity: 1
-      },
-      {
-        item: {
-          id: '8',
-          name: 'Short Ribs x2',
-          description: 'Two tender short ribs',
-          price: 6.00,
-          image: '',
-          category: 'Add-ons',
-          isAvailable: true,
-          preparationTime: 0
-        },
-        quantity: 2
+        quantity: 1,
+        addOns: [
+          {
+            item: {
+              id: '8',
+              name: 'Short Ribs x2',
+              description: 'Two tender short ribs',
+              price: 6.00,
+              image: '',
+              category: 'Add-ons',
+              isAvailable: true,
+              preparationTime: 0
+            },
+            quantity: 2
+          }
+        ],
+        drinks: []
       }
     ],
     total: 52.00,
@@ -166,20 +184,23 @@ export const dummyOrders: Order[] = [
           isAvailable: true,
           preparationTime: 25
         },
-        quantity: 1
-      },
-      {
-        item: {
-          id: '10',
-          name: 'Red Sauce',
-          description: 'Extra red sauce add-on',
-          price: 2.00,
-          image: '',
-          category: 'Add-ons',
-          isAvailable: true,
-          preparationTime: 0
-        },
-        quantity: 1
+        quantity: 1,
+        addOns: [
+          {
+            item: {
+              id: '10',
+              name: 'Red Sauce',
+              description: 'Extra red sauce add-on',
+              price: 2.00,
+              image: '',
+              category: 'Add-ons',
+              isAvailable: true,
+              preparationTime: 0
+            },
+            quantity: 1
+          }
+        ],
+        drinks: []
       }
     ],
     total: 22.00,
@@ -205,7 +226,9 @@ export const dummyOrders: Order[] = [
           isAvailable: true,
           preparationTime: 40
         },
-        quantity: 1
+        quantity: 1,
+        addOns: [],
+        drinks: []
       }
     ],
     total: 50.00,

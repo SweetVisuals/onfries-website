@@ -836,9 +836,6 @@ export const createOrder = async (orderData: {
 
 export const updateOrderStatus = async (orderId: string, status: Order['status'], completedAt?: string): Promise<Order> => {
   const updateData: any = { status, updated_at: new Date().toISOString() };
-  if (completedAt) {
-    updateData.completed_at = completedAt;
-  }
 
   const { data, error } = await supabase
     .from('orders')

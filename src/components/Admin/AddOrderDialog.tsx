@@ -11,13 +11,14 @@ import { menuItems, MenuItem } from '../../data/menuData';
 import { useIsMobile } from '../../hooks/use-mobile';
 
 interface AddOrderDialogProps {
-  onAddOrder: (customerName: string, customerEmail: string, items: Array<{ item: MenuItem; quantity: number; addOns: Array<{ item: MenuItem; quantity: number }> }>) => void;
+  onAddOrder: (customerName: string, customerEmail: string, items: Array<{ item: MenuItem; quantity: number; addOns: Array<{ item: MenuItem; quantity: number }>; drinks: Array<{ item: MenuItem; quantity: number }> }>) => void;
 }
 
 interface OrderItem {
   item: MenuItem;
   quantity: number;
   addOns: Array<{ item: MenuItem; quantity: number }>;
+  drinks: Array<{ item: MenuItem; quantity: number }>;
 }
 
 const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
@@ -26,6 +27,7 @@ const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [selectedItems, setSelectedItems] = useState<OrderItem[]>([]);
+  const [selectedDrinks, setSelectedDrinks] = useState<{[key: string]: {item: MenuItem, quantity: number}}>({});
   // Single dialog with different modes instead of nested dialog
   const [dialogMode, setDialogMode] = useState<'select' | 'customize'>('select');
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
@@ -51,10 +53,14 @@ const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
       setSelectedAddOns({});
       setSelectedSauce('');
       setDialogMode('customize');
+    } else if (item.category === 'Add-ons' || item.category === 'Drinks') {
+      console.log('Cannot add add-ons or drinks directly - they must be added during customization');
+      // Don't add add-ons or drinks directly - they should only be added during customization
+      return;
     } else {
       console.log('Adding directly for:', item.name);
       // Directly add items without add-ons as separate items
-      setSelectedItems([...selectedItems, { item, quantity: 1, addOns: [] }]);
+      setSelectedItems([...selectedItems, { item, quantity: 1, addOns: [], drinks: [] }]);
     }
   };
 
@@ -66,6 +72,17 @@ const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
         ? {
             ...si,
             addOns: si.addOns.filter((_, index) => index !== addOnIndex)
+          }
+        : si
+    ));
+  };
+
+  const handleRemoveDrink = (drinkIndex: number, mainItemId: string) => {
+    setSelectedItems(selectedItems.map(si =>
+      si.item.id === mainItemId
+        ? {
+            ...si,
+            drinks: si.drinks.filter((_, index) => index !== drinkIndex)
           }
         : si
     ));
@@ -100,16 +117,18 @@ const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
     setDialogMode('select');
     setSelectedItem(null);
     setSelectedAddOns({});
+    setSelectedDrinks({});
     setSelectedSauce('');
   };
 
   const total = selectedItems.reduce((sum, si) => {
     const itemTotal = si.item.price * si.quantity;
     const addOnsTotal = si.addOns.reduce((addOnSum, addOn) => addOnSum + (addOn.item.price * addOn.quantity), 0) * si.quantity;
-    return sum + itemTotal + addOnsTotal;
+    const drinksTotal = si.drinks.reduce((drinkSum, drink) => drinkSum + (drink.item.price * drink.quantity), 0) * si.quantity;
+    return sum + itemTotal + addOnsTotal + drinksTotal;
   }, 0);
 
-  const mainCourses = menuItems.filter(item => item.category === 'Main Courses');
+  const mainCourses = menuItems.filter(item => item.category === 'Main Courses' && item.name !== 'Steak Only');
   const drinks = menuItems.filter(item => item.category === 'Drinks');
   const kidsItems = menuItems.filter(item => item.category === 'Kids');
   const availableAddOns = menuItems.filter(item => item.category === 'Add-ons');
@@ -127,6 +146,23 @@ const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
         };
       }
       console.log('New selected add-ons:', newSelected);
+      return newSelected;
+    });
+  };
+
+  const updateDrinkQuantity = (drink: any, newQuantity: number) => {
+    console.log('updateDrinkQuantity called with:', drink.name, 'new quantity:', newQuantity);
+    setSelectedDrinks(prev => {
+      const newSelected = { ...prev };
+      if (newQuantity === 0) {
+        delete newSelected[drink.id];
+      } else {
+        newSelected[drink.id] = {
+          item: drink,
+          quantity: newQuantity
+        };
+      }
+      console.log('New selected drinks:', newSelected);
       return newSelected;
     });
   };
@@ -154,12 +190,13 @@ const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
     }
 
     // Add to selected items as separate item (keep original item name and price)
-    setSelectedItems([...selectedItems, { item: selectedItem!, quantity: 1, addOns: addOnsWithQuantities }]);
+    setSelectedItems([...selectedItems, { item: selectedItem!, quantity: 1, addOns: addOnsWithQuantities, drinks: Object.values(selectedDrinks).map(({ item, quantity }) => ({ item, quantity })) }]);
 
     // Reset state and switch back to select mode
     setDialogMode('select');
     setSelectedItem(null);
     setSelectedAddOns({});
+    setSelectedDrinks({});
     setSelectedSauce('');
   };
 
@@ -299,38 +336,7 @@ const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
                       </div>
                     </div>
 
-                    {/* Add-ons */}
-                    {availableAddOns.length > 0 && (
-                      <div>
-                        <h3 className="text-lg font-semibold mb-3">Add-ons</h3>
-                        <div className="space-y-3">
-                          {availableAddOns.map((item) => (
-                            <Card key={item.id} className="cursor-pointer hover:shadow-md transition-shadow w-full flex flex-col">
-                              <CardHeader className="pb-2 flex-1">
-                                <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm line-clamp-2 min-h-[2.5rem]">{item.name}</CardTitle>
-                                  <Badge variant="outline" className={item.isAvailable ? 'bg-gray-800 text-white border-gray-800' : 'bg-red-600 text-white border-red-600'}>
-                                    {item.isAvailable ? 'Available' : 'Unavailable'}
-                                  </Badge>
-                                </div>
-                              </CardHeader>
-                              <CardContent className="pt-0">
-                                <div className="flex items-center justify-between">
-                                  <span className="font-semibold">£{item.price.toFixed(2)}</span>
-                                  <Button
-                                    size="sm"
-                                    onClick={() => handleAddItem(item)}
-                                    disabled={!item.isAvailable}
-                                  >
-                                    Add
-                                  </Button>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                    {/* Add-ons - Hidden since they should only be added during customization */}
 
                     {/* Kids Menu */}
                     {kidsItems.length > 0 && (
@@ -365,38 +371,8 @@ const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
                       </div>
                     )}
 
-                    {/* Drinks */}
-                    {drinks.length > 0 && (
-                      <div>
-                        <h3 className="text-lg font-semibold mb-3">Drinks</h3>
-                        <div className="space-y-3">
-                          {drinks.map((item) => (
-                            <Card key={item.id} className="cursor-pointer hover:shadow-md transition-shadow w-full h-32 flex flex-col">
-                              <CardHeader className="pb-2">
-                                <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm line-clamp-2 min-h-[2.5rem]">{item.name}</CardTitle>
-                                  <Badge variant="outline" className={item.isAvailable ? 'bg-gray-800 text-white border-gray-800' : 'bg-red-600 text-white border-red-600'}>
-                                    {item.isAvailable ? 'Available' : 'Unavailable'}
-                                  </Badge>
-                                </div>
-                              </CardHeader>
-                              <CardContent className="pt-0">
-                                <div className="flex items-center justify-between">
-                                  <span className="font-semibold">£{item.price.toFixed(2)}</span>
-                                  <Button
-                                    size="sm"
-                                    onClick={() => handleAddItem(item)}
-                                    disabled={!item.isAvailable}
-                                  >
-                                    Add
-                                  </Button>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                    {/* Drinks - Hidden since they should only be added during customization */}
+
                   </div>
                 </>
               )}
@@ -474,11 +450,11 @@ const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
                           <div className="mb-4">
                             <h4 className="text-base font-semibold mb-2 text-foreground">Extra Steak</h4>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                {menuItems.filter(item => item.name === 'Steak Only').map((addOn) => {
+                                {menuItems.filter(item => item.category === 'Add-ons' && item.name === 'Steak').map((addOn) => {
                                   const quantity = selectedAddOns[addOn.id]?.quantity || 0;
                                   return (
                                     <div key={addOn.id} className="flex items-center p-3 border-2 rounded-lg hover:bg-accent">
-                                      <h5 className="font-semibold text-foreground text-sm text-center flex-1">{addOn.name}</h5>
+                                      <h5 className="font-semibold text-foreground text-sm text-center flex-1">Steak</h5>
                                       <div className="flex items-center gap-3 ml-3">
                                         <span className="font-bold text-yellow-600 text-sm">£{addOn.price.toFixed(2)}</span>
                                         <div className="flex items-center gap-1">
@@ -584,13 +560,13 @@ const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
                             <div className="mb-4">
                               <h4 className="text-base font-semibold mb-2 text-foreground">Drinks</h4>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                {menuItems.filter(item => item.category === 'Drinks').map((addOn) => {
-                                  const quantity = selectedAddOns[addOn.id]?.quantity || 0;
+                                {menuItems.filter(item => item.category === 'Drinks').map((drink) => {
+                                  const quantity = selectedDrinks[drink.id]?.quantity || 0;
                                   return (
-                                    <div key={addOn.id} className="flex items-center p-2 border-2 rounded-lg hover:bg-accent">
-                                      <h5 className="font-semibold text-foreground text-xs text-center flex-1">{addOn.name}</h5>
+                                    <div key={drink.id} className="flex items-center p-2 border-2 rounded-lg hover:bg-accent">
+                                      <h5 className="font-semibold text-foreground text-xs text-center flex-1">{drink.name}</h5>
                                       <div className="flex items-center gap-2 ml-2">
-                                        <span className="font-bold text-yellow-600 text-xs">£{addOn.price.toFixed(2)}</span>
+                                        <span className="font-bold text-yellow-600 text-xs">£{drink.price.toFixed(2)}</span>
                                         <div className="flex items-center gap-1">
                                           {quantity > 0 && (
                                             <Button
@@ -598,10 +574,10 @@ const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
                                               size="sm"
                                               variant="outline"
                                               onClick={(e) => {
-                                                console.log('Drink minus button clicked for:', addOn.name);
+                                                console.log('Drink minus button clicked for:', drink.name);
                                                 e.preventDefault();
                                                 e.stopPropagation();
-                                                updateAddOnQuantity(addOn, quantity - 1);
+                                                updateDrinkQuantity(drink, quantity - 1);
                                               }}
                                               className="w-7 h-7 p-0 text-xs cursor-pointer"
                                               style={{ pointerEvents: 'auto' }}
@@ -617,10 +593,10 @@ const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
                                             size="sm"
                                             variant={quantity > 0 ? 'default' : 'outline'}
                                             onClick={(e) => {
-                                              console.log('Drink plus button clicked for:', addOn.name);
+                                              console.log('Drink plus button clicked for:', drink.name);
                                               e.preventDefault();
                                               e.stopPropagation();
-                                              updateAddOnQuantity(addOn, quantity + 1);
+                                              updateDrinkQuantity(drink, quantity + 1);
                                             }}
                                             className="w-7 h-7 p-0 text-xs cursor-pointer"
                                             style={{ pointerEvents: 'auto' }}
@@ -651,8 +627,8 @@ const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
                         if (selectedItem.category === 'Kids' && selectedItem.name === 'Kids Meal') {
                           return `£${selectedItem.price.toFixed(2)} (includes drink & sauce)`;
                         }
-                        // For other items, calculate based on add-ons
-                        return `£${(selectedItem.price + Object.values(selectedAddOns).reduce((sum, { item, quantity }) => sum + (item.price * quantity), 0)).toFixed(2)}`;
+                        // For other items, calculate based on add-ons and drinks
+                        return `£${(selectedItem.price + Object.values(selectedAddOns).reduce((sum, { item, quantity }) => sum + (item.price * quantity), 0) + Object.values(selectedDrinks).reduce((sum, { item, quantity }) => sum + (item.price * quantity), 0)).toFixed(2)}`;
                       })()}
                     </span>
                   </div>
@@ -666,6 +642,8 @@ const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
                         e.stopPropagation();
                         setDialogMode('select');
                         setSelectedAddOns({});
+                        setSelectedDrinks({});
+                        setSelectedSauce('');
                         setSelectedSauce('');
                       }}
                       className="flex-1 cursor-pointer"
@@ -747,11 +725,33 @@ const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
                                   <div className="space-y-1">
                                     {si.addOns.map((addOn, idx) => (
                                       <div key={idx} className="flex items-center justify-between text-xs">
-                                        <span className="text-foreground truncate mr-1">{addOn.item.name} x{addOn.quantity}</span>
+                                        <span className="text-foreground truncate mr-1">{addOn.item.name === 'Steak Only' ? 'Steak' : addOn.item.name} x{addOn.quantity}</span>
                                         <Button
                                           size="sm"
                                           variant="destructive"
                                           onClick={() => handleRemoveAddOn(idx, si.item.id)}
+                                          className="w-4 h-4 p-0 flex-shrink-0"
+                                        >
+                                          <X className="w-2 h-2" />
+                                        </Button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Drinks */}
+                              {si.drinks && si.drinks.length > 0 && (
+                                <div className="mt-2 pt-2 border-t border-border">
+                                  <p className="text-xs font-medium text-blue-600 mb-1">Drink:</p>
+                                  <div className="space-y-1">
+                                    {si.drinks.map((drink, idx) => (
+                                      <div key={idx} className="flex items-center justify-between text-xs">
+                                        <span className="text-foreground truncate mr-1">{drink.item.name} x{drink.quantity}</span>
+                                        <Button
+                                          size="sm"
+                                          variant="destructive"
+                                          onClick={() => handleRemoveDrink(idx, si.item.id)}
                                           className="w-4 h-4 p-0 flex-shrink-0"
                                         >
                                           <X className="w-2 h-2" />
@@ -1066,11 +1066,11 @@ const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
                             <div className="mb-4">
                               <h4 className="text-base font-semibold mb-2 text-foreground">Extra Steak</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                  {menuItems.filter(item => item.id === '8').map((addOn) => {
+                                  {menuItems.filter(item => item.category === 'Add-ons' && item.name === 'Steak').map((addOn) => {
                                     const quantity = selectedAddOns[addOn.id]?.quantity || 0;
                                     return (
                                       <div key={addOn.id} className="flex items-center p-3 border-2 rounded-lg hover:bg-accent">
-                                        <h5 className="font-semibold text-foreground text-sm text-center flex-1">{addOn.name}</h5>
+                                        <h5 className="font-semibold text-foreground text-sm text-center flex-1">Steak</h5>
                                         <div className="flex items-center gap-3 ml-3">
                                           <span className="font-bold text-yellow-600 text-sm">£{addOn.price.toFixed(2)}</span>
                                           <div className="flex items-center gap-1">
@@ -1176,13 +1176,13 @@ const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
                               <div className="mb-4">
                                 <h4 className="text-base font-semibold mb-2 text-foreground">Drinks</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                  {menuItems.filter(item => item.category === 'Drinks').map((addOn) => {
-                                    const quantity = selectedAddOns[addOn.id]?.quantity || 0;
+                                  {menuItems.filter(item => item.category === 'Drinks').map((drink) => {
+                                    const quantity = selectedDrinks[drink.id]?.quantity || 0;
                                     return (
-                                      <div key={addOn.id} className="flex items-center p-3 border-2 rounded-lg hover:bg-accent">
-                                        <h5 className="font-semibold text-foreground text-sm text-center flex-1">{addOn.name}</h5>
+                                      <div key={drink.id} className="flex items-center p-3 border-2 rounded-lg hover:bg-accent">
+                                        <h5 className="font-semibold text-foreground text-sm text-center flex-1">{drink.name}</h5>
                                         <div className="flex items-center gap-3 ml-3">
-                                          <span className="font-bold text-yellow-600 text-sm">£{addOn.price.toFixed(2)}</span>
+                                          <span className="font-bold text-yellow-600 text-sm">£{drink.price.toFixed(2)}</span>
                                           <div className="flex items-center gap-1">
                                             {quantity > 0 && (
                                               <Button
@@ -1190,10 +1190,10 @@ const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
                                                 size="sm"
                                                 variant="outline"
                                                 onClick={(e) => {
-                                                  console.log('Drink minus button clicked for:', addOn.name);
+                                                  console.log('Drink minus button clicked for:', drink.name);
                                                   e.preventDefault();
                                                   e.stopPropagation();
-                                                  updateAddOnQuantity(addOn, quantity - 1);
+                                                  updateDrinkQuantity(drink, quantity - 1);
                                                 }}
                                                 className="w-7 h-7 p-0 text-xs cursor-pointer"
                                                 style={{ pointerEvents: 'auto' }}
@@ -1209,10 +1209,10 @@ const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
                                               size="sm"
                                               variant={quantity > 0 ? 'default' : 'outline'}
                                               onClick={(e) => {
-                                                console.log('Drink plus button clicked for:', addOn.name);
+                                                console.log('Drink plus button clicked for:', drink.name);
                                                 e.preventDefault();
                                                 e.stopPropagation();
-                                                updateAddOnQuantity(addOn, quantity + 1);
+                                                updateDrinkQuantity(drink, quantity + 1);
                                               }}
                                               className="w-7 h-7 p-0 text-xs cursor-pointer"
                                               style={{ pointerEvents: 'auto' }}
@@ -1243,8 +1243,8 @@ const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
                           if (selectedItem.category === 'Kids' && selectedItem.name === 'Kids Meal') {
                             return `£${selectedItem.price.toFixed(2)} (includes drink & sauce)`;
                           }
-                          // For other items, calculate based on add-ons
-                          return `£${(selectedItem.price + Object.values(selectedAddOns).reduce((sum, { item, quantity }) => sum + (item.price * quantity), 0)).toFixed(2)}`;
+                          // For other items, calculate based on add-ons and drinks
+                          return `£${(selectedItem.price + Object.values(selectedAddOns).reduce((sum, { item, quantity }) => sum + (item.price * quantity), 0) + Object.values(selectedDrinks).reduce((sum, { item, quantity }) => sum + (item.price * quantity), 0)).toFixed(2)}`;
                         })()}
                       </span>
                     </div>
@@ -1333,13 +1333,13 @@ const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ onAddOrder }) => {
                                 <p className="text-sm font-bold text-yellow-600">£{(si.item.price * si.quantity).toFixed(2)}</p>
 
                                 {/* Add-ons */}
-                                {si.addOns.length > 0 && (
+                                {si.addOns && si.addOns.length > 0 && (
                                   <div className="mt-2 pt-2 border-t border-border">
                                     <p className="text-xs font-medium text-green-600 mb-1">Add-ons:</p>
                                     <div className="space-y-1">
                                       {si.addOns.map((addOn, idx) => (
                                         <div key={idx} className="flex items-center justify-between text-xs">
-                                          <span className="text-foreground truncate mr-1">{addOn.item.name} x{addOn.quantity}</span>
+                                          <span className="text-foreground truncate mr-1">{addOn.item.name === 'Steak Only' ? 'Steak' : addOn.item.name} x{addOn.quantity}</span>
                                           <Button
                                             size="sm"
                                             variant="destructive"

@@ -59,7 +59,7 @@ export const menuItems: MenuItem[] = [
     preparationTime: 10
   },
 
-  // Add-ons (Sauces)
+  // Add-ons (Sauces and Steak)
   {
     id: '9',
     name: 'Green Sauce',
@@ -79,6 +79,16 @@ export const menuItems: MenuItem[] = [
     category: 'Add-ons',
     isAvailable: true,
     preparationTime: 0
+  },
+  {
+    id: '13',
+    name: 'Steak',
+    description: 'Extra steak add-on',
+    price: 10.00,
+    image: 'https://146870153.cdn6.editmysite.com/uploads/1/4/6/8/146870153/6SFFU72IPYBV2HVSIGQGO6J6.png?width=1280&dpr=1',
+    category: 'Add-ons',
+    isAvailable: true,
+    preparationTime: 20
   },
 
   // Kids Menu
