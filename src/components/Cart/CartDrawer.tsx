@@ -155,12 +155,6 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, onNavigateToOr
     }
   };
 
-  const handleBackToMenu = () => {
-    setShowSuccess(false);
-    setCreatedOrder(null);
-    onClose();
-  };
-
   if (items.length === 0) {
     return (
       <Sheet open={isOpen} onOpenChange={onClose}>

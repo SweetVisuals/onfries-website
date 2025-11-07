@@ -271,7 +271,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, initialTab 
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="name" />
                           <YAxis tickFormatter={(value) => `£${Number(value).toFixed(0)}`} />
-                          <Tooltip content={<ChartTooltipContent />} formatter={(value) => [`£${value.toFixed(2)}`, 'Revenue']} />
+                          <Tooltip content={<ChartTooltipContent />} formatter={(value) => [`£${Number(value).toFixed(2)}`, 'Revenue']} />
                           <Bar dataKey="revenue" fill="var(--color-revenue)" />
                         </BarChart>
                       </ChartContainer>
@@ -301,7 +301,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, initialTab 
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="date" />
                           <YAxis tickFormatter={(value) => `£${Number(value).toFixed(0)}`} />
-                          <Tooltip content={<ChartTooltipContent />} formatter={(value) => [`£${value.toFixed(2)}`, 'Revenue']} />
+                          <Tooltip content={<ChartTooltipContent />} formatter={(value) => [`£${Number(value).toFixed(2)}`, 'Revenue']} />
                           <Line
                             type="monotone"
                             dataKey="revenue"

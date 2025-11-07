@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { Search, Clock, Calendar } from 'lucide-react';
 import { Order, deleteOrder } from '../../lib/database';
 import { useAuth } from '../../contexts/AuthContext';

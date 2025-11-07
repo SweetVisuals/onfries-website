@@ -1,5 +1,5 @@
 import React from 'react';
-import { Beef, Fish, Drumstick, Cookie } from 'lucide-react';
+import { Beef, Drumstick, Cookie } from 'lucide-react';
 import { Order } from '../../data/orderData';
 
 interface MeatCookingCardsProps {
