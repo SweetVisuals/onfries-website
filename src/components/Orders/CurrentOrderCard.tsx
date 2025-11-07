@@ -4,18 +4,19 @@ import { Order } from '../../data/orderData';
 import { useOrderTimer } from '../../hooks/useOrderTimer';
 
 interface CurrentOrderCardProps {
-  order: Order;
+  order: Order & { queuePosition?: number };
   onComplete?: (updatedOrder: Order) => void;
   onDelete?: (orderId: string) => void;
   isPastOrder?: boolean;
+  isCustomerView?: boolean;
 }
 
-const CurrentOrderCard: React.FC<CurrentOrderCardProps> = ({ order, onComplete, onDelete, isPastOrder = false }) => {
+const CurrentOrderCard: React.FC<CurrentOrderCardProps> = ({ order, onComplete, onDelete, isPastOrder = false, isCustomerView = false }) => {
   const [isCompleting, setIsCompleting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const { formattedTime, totalTimeInMinutes } = useOrderTimer({
     startTime: order.orderDate,
-    endTime: order.completedAt
+    endTime: order.status === 'delivered' ? order.completedAt : undefined
   });
 
   const handleComplete = async () => {
@@ -59,12 +60,21 @@ const CurrentOrderCard: React.FC<CurrentOrderCardProps> = ({ order, onComplete, 
         <div className="flex items-center justify-between">
           <div>
             <h2 className={`text-lg font-bold ${isPastOrder ? 'text-white' : 'text-card-foreground'}`}>{order.customerName}</h2>
-            <p className={`text-sm flex items-center mt-1 ${isPastOrder ? 'text-gray-200' : 'text-muted-foreground'}`}>
-              <Receipt className="w-4 h-4 mr-1.5" />
-              Order #{order.id}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className={`text-sm flex items-center mt-1 ${isPastOrder ? 'text-gray-200' : 'text-muted-foreground'}`}>
+                <Receipt className="w-4 h-4 mr-1.5" />
+                Order #{order.id}
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
+            {/* Queue Badge */}
+            {order.queuePosition && (
+              <div className="bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded-full">
+                Order number #{order.queuePosition} in the queue
+              </div>
+            )}
+
             {/* Delete Button */}
             {onDelete && (
               <button
@@ -80,7 +90,7 @@ const CurrentOrderCard: React.FC<CurrentOrderCardProps> = ({ order, onComplete, 
                 <Trash2 className="w-4 h-4" />
               </button>
             )}
-            
+
             {/* Status Icon */}
             <div className={`flex items-center justify-center w-8 h-8 rounded-full ${isPastOrder ? 'bg-gray-900' : 'bg-yellow-100 dark:bg-yellow-900'}`}>
               {isPastOrder ? (
@@ -96,12 +106,12 @@ const CurrentOrderCard: React.FC<CurrentOrderCardProps> = ({ order, onComplete, 
       </div>
       <div className={`p-5 space-y-4 flex-grow ${isPastOrder ? 'text-white' : 'text-card-foreground'}`}>
         {/* Timer Display for current orders */}
-        {!isPastOrder && (
+        {order.status !== 'delivered' && (
           <div className="bg-yellow-100 dark:bg-yellow-900 rounded-lg p-3 mb-4">
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-yellow-800 dark:text-yellow-200" />
               <span className="text-sm font-medium text-yellow-800 dark:text-yellow-200 truncate">
-                Time Elapsed: {formattedTime}
+                {isCustomerView ? `Estimated pickup: ${order.estimatedDelivery ? new Date(order.estimatedDelivery).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'TBD'}` : `Time Elapsed: ${formattedTime}`}
               </span>
             </div>
           </div>
@@ -158,6 +168,45 @@ const CurrentOrderCard: React.FC<CurrentOrderCardProps> = ({ order, onComplete, 
                   </div>
                 </div>
               )}
+
+              {/* Display add-ons from customer cart items (stored on the item itself) */}
+              {(mainCourse.item as any)?.addOns && (mainCourse.item as any).addOns.length > 0 && (
+                <div className="mt-3 ml-4 border-l-2 border-gray-400 dark:border-gray-500 pl-4">
+                  <p className={`text-sm ${isPastOrder ? 'text-gray-300' : 'text-gray-600 dark:text-gray-400'} font-semibold mb-2 uppercase tracking-wide`}>Add-ons</p>
+                  <div className="space-y-1">
+                    {(mainCourse.item as any).addOns.map((addon: any) => (
+                      <div key={addon.id} className="flex justify-between items-center text-sm">
+                        <span className={`${isPastOrder ? 'text-gray-300' : 'text-gray-700 dark:text-gray-300'} flex-1 mr-2`}>
+                          {addon.name === 'Steak Only' ? 'Steak' : addon.name} x{addon.quantity}
+                        </span>
+                        <span className={`font-medium ${isPastOrder ? 'text-white' : 'text-gray-800 dark:text-gray-200'}`}>
+                          £{(addon.price * addon.quantity).toFixed(2)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Display drinks from customer cart items (stored on the item itself) */}
+              {(mainCourse.item as any)?.drinks && (mainCourse.item as any).drinks.length > 0 && (
+                <div className="mt-3 ml-4 border-l-2 border-gray-400 dark:border-gray-500 pl-4">
+                  <p className={`text-sm ${isPastOrder ? 'text-gray-300' : 'text-gray-600 dark:text-gray-400'} font-semibold mb-2 uppercase tracking-wide`}>Drink</p>
+                  <div className="space-y-1">
+                    {(mainCourse.item as any).drinks.map((drink: any) => (
+                      <div key={drink.id} className="flex justify-between items-center text-sm">
+                        <span className={`${isPastOrder ? 'text-gray-300' : 'text-gray-700 dark:text-gray-300'} flex-1 mr-2`}>
+                          {drink.name} x{drink.quantity}
+                        </span>
+                        <span className={`font-medium ${isPastOrder ? 'text-white' : 'text-gray-800 dark:text-gray-200'}`}>
+                          £{(drink.price * drink.quantity).toFixed(2)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
             </div>
           ))}
         </div>
@@ -168,38 +217,41 @@ const CurrentOrderCard: React.FC<CurrentOrderCardProps> = ({ order, onComplete, 
           <p className={`text-lg font-bold ${isPastOrder ? 'text-white' : 'text-card-foreground'}`}>£{order.total.toFixed(2)}</p>
         </div>
       </div>
-      {isPastOrder ? (
+      {order.status === 'delivered' ? (
         <div className="p-5 border-t border-border">
-          <div className="w-full bg-gray-800 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2">
+          <div className="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2">
             <Check className="w-5 h-5" />
-            Completed
+            {isCustomerView ? 'Ready for pickup' : 'Completed'}
           </div>
         </div>
       ) : (
-        <div className="p-5 border-t border-border">
-          <button
-            onClick={handleComplete}
-            disabled={isCompleting || isDeleting}
-            className="w-full bg-yellow-500 hover:bg-yellow-600 disabled:bg-yellow-300 text-black font-bold py-3 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 focus:ring-offset-background transition-colors duration-200 flex items-center justify-center gap-2"
-          >
-            {isCompleting ? (
-              <>
-                <Check className="w-5 h-5 animate-pulse" />
-                Completing...
-              </>
-            ) : isDeleting ? (
-              <>
-                <Trash2 className="w-5 h-5 animate-pulse" />
-                Deleting...
-              </>
-            ) : (
-              <>
-                <Check className="w-5 h-5" />
-                Mark as Complete
-              </>
-            )}
-          </button>
-        </div>
+        // Only show complete button for admin users (onDelete prop indicates admin context)
+        onDelete && (
+          <div className="p-5 border-t border-border">
+            <button
+              onClick={handleComplete}
+              disabled={isCompleting || isDeleting}
+              className="w-full bg-yellow-500 hover:bg-yellow-600 disabled:bg-yellow-300 text-black font-bold py-3 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 focus:ring-offset-background transition-colors duration-200 flex items-center justify-center gap-2"
+            >
+              {isCompleting ? (
+                <>
+                  <Check className="w-5 h-5 animate-pulse" />
+                  Completing...
+                </>
+              ) : isDeleting ? (
+                <>
+                  <Trash2 className="w-5 h-5 animate-pulse" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Check className="w-5 h-5" />
+                  Mark as Complete
+                </>
+              )}
+            </button>
+          </div>
+        )
       )}
     </div>
   );

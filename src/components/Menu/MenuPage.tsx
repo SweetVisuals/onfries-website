@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Search, Plus, Clock, MapPin, Phone, Navigation, Loader2, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useMenuItems } from '../../hooks/useMenuItems';
 import { useCart } from '../../contexts/CartContext';
@@ -97,7 +98,7 @@ const MenuPage: React.FC = () => {
   const { user } = useAuth();
   const { menuItems, loading, error } = useMenuItems();
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('Steak');
+  const [selectedCategory, setSelectedCategory] = useState('All');
   const [showAddOns, setShowAddOns] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
@@ -247,6 +248,7 @@ const MenuPage: React.FC = () => {
 
   const handleConfirmCustomize = () => {
     let addOnsWithQuantities = [];
+    let drinksWithQuantities = [];
     let itemName = selectedItem.name;
 
     // Handle Kids Meal sauce selection
@@ -255,7 +257,7 @@ const MenuPage: React.FC = () => {
         const selectedSauceItem = menuItems.find(item => item.id === selectedSauce);
         if (selectedSauceItem) {
           addOnsWithQuantities = [{
-            ...selectedSauceItem,
+            item: selectedSauceItem,
             quantity: 1
           }];
           itemName = `${selectedItem.name} + ${selectedSauceItem.name}`;
@@ -263,24 +265,29 @@ const MenuPage: React.FC = () => {
       }
     } else {
       // Handle regular add-ons for main courses
-      addOnsWithQuantities = Object.values(selectedAddOns).map(({ item, quantity }) => ({
-        ...item,
+      const allAddOns = Object.values(selectedAddOns).map(({ item, quantity }) => ({
+        item,
         quantity
       }));
 
-      if (addOnsWithQuantities.length > 0) {
+      // Separate add-ons and drinks
+      addOnsWithQuantities = allAddOns.filter(addOn => addOn.item.category !== 'Drinks');
+      drinksWithQuantities = allAddOns.filter(addOn => addOn.item.category === 'Drinks');
+
+      if (addOnsWithQuantities.length > 0 || drinksWithQuantities.length > 0) {
         itemName = selectedItem.name + ' + Add-ons';
       }
     }
 
     // Calculate total price with add-ons quantities
-    const totalPrice = selectedItem.price + addOnsWithQuantities.reduce((sum, addOn) => sum + (addOn.price * addOn.quantity), 0);
+    const totalPrice = selectedItem.price + addOnsWithQuantities.reduce((sum, addOn) => sum + (addOn.item.price * addOn.quantity), 0) + drinksWithQuantities.reduce((sum, drink) => sum + (drink.item.price * drink.quantity), 0);
 
-    // Create customized item
+    // Create customized item with addOns and drinks as separate arrays
     const customizedItem = {
       ...selectedItem,
       price: totalPrice,
       addOns: addOnsWithQuantities,
+      drinks: drinksWithQuantities,
       name: itemName
     };
 
@@ -753,264 +760,266 @@ const MenuPage: React.FC = () => {
 
         {/* Customize Order Dialog */}
         {showCustomizeDialog && selectedItem && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-            <div className="relative w-full max-w-6xl mx-4 bg-background rounded-lg shadow-lg border-2 border-border">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-0">
+            <div className="relative w-full h-full bg-background rounded-none shadow-lg border-0 overflow-hidden">
               <button
                 onClick={() => setShowCustomizeDialog(false)}
-                className="absolute -top-4 -right-4 z-[60] w-8 h-8 bg-background border border-border rounded-full flex items-center justify-center hover:bg-accent text-xl"
+                className="absolute top-2 right-2 z-[60] w-8 h-8 bg-background border border-border rounded-full flex items-center justify-center hover:bg-accent text-xl"
               >
                 ×
               </button>
 
-              <div className="p-8">
-                <div className="mb-8">
-                  <h2 className="text-3xl font-bold text-foreground mb-3">{selectedItem.name}</h2>
-                  <p className="text-muted-foreground text-lg">{selectedItem.description}</p>
-                  <p className="text-xl font-semibold text-yellow-600 mt-3">Base price: £{selectedItem.price.toFixed(2)}</p>
-                </div>
+              <ScrollArea className="h-full">
+                <div className="p-4 sm:p-6 lg:p-8">
+                   <div className="mb-8">
+                     <h2 className="text-3xl font-bold text-foreground mb-3">{selectedItem.name}</h2>
+                     <p className="text-muted-foreground text-lg">{selectedItem.description}</p>
+                     <p className="text-xl font-semibold text-yellow-600 mt-3">Base price: £{selectedItem.price.toFixed(2)}</p>
+                   </div>
 
-                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent pl-6">
-                  {selectedItem.category === 'Kids' && selectedItem.name === 'Kids Meal' ? (
-                    /* Kids Meal Sauce Selection */
-                    <div className="mb-8">
-                      <h3 className="text-2xl font-semibold mb-6 text-foreground">Choose Your Sauce</h3>
-                      <p className="text-muted-foreground mb-6">
-                        Your Kids Meal includes a drink and one free sauce. Please choose your preferred sauce:
-                      </p>
-                      <div className="flex flex-wrap gap-4">
-                        {/* Check both Sauces and Add-ons categories for sauce items */}
-                        {menuItems.filter(item =>
-                          (item.category === 'Sauces' || item.category === 'Add-ons') &&
-                          item.name.includes('Sauce')
-                        ).map((sauce) => {
-                          const isSelected = selectedSauce === sauce.id;
-                          const isOtherSelected = selectedSauce !== '' && selectedSauce !== sauce.id;
-                          return (
-                            <div
-                              key={sauce.id}
-                              className={`p-6 border-2 rounded-xl cursor-pointer transition-all flex-1 min-w-[300px] ${
-                                isSelected
-                                  ? 'border-yellow-500 bg-yellow-50'
-                                  : isOtherSelected
-                                    ? 'border-gray-300 bg-gray-50 opacity-50 cursor-not-allowed'
-                                    : 'border-gray-300 hover:border-yellow-400 hover:bg-accent'
-                              }`}
-                              onClick={() => {
-                                if (!isOtherSelected) {
-                                  setSelectedSauce(sauce.id);
-                                }
-                              }}
-                            >
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                                    isSelected
-                                      ? 'border-yellow-500 bg-yellow-500'
-                                      : 'border-gray-400'
-                                  }`}>
-                                    {isSelected && (
-                                      <div className="w-3 h-3 rounded-full bg-white"></div>
-                                    )}
-                                  </div>
-                                  <div>
-                                    <h5 className="font-semibold text-foreground text-lg">{sauce.name}</h5>
-                                    <p className="text-muted-foreground mt-1">{sauce.description}</p>
-                                  </div>
-                                </div>
-                                <span className="font-bold text-yellow-600 text-lg">FREE</span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      {menuItems.filter(item =>
-                        (item.category === 'Sauces' || item.category === 'Add-ons') &&
-                        item.name.includes('Sauce')
-                      ).length === 0 && (
-                        <p className="text-muted-foreground">
-                          No sauce options available
-                        </p>
-                      )}
-                      {!selectedSauce && menuItems.filter(item =>
-                        (item.category === 'Sauces' || item.category === 'Add-ons') &&
-                        item.name.includes('Sauce')
-                      ).length > 0 && (
-                        <p className="text-red-500 mt-4 font-medium">
-                          Please select a sauce to continue
-                        </p>
-                      )}
-                    </div>
-                  ) : (
-                    /* Main Course Add-ons */
-                    <>
-                      <h3 className="text-2xl font-semibold mb-6 text-foreground">Add Extras</h3>
+                   <div>
+                     {selectedItem.category === 'Kids' && selectedItem.name === 'Kids Meal' ? (
+                       /* Kids Meal Sauce Selection */
+                       <div className="mb-6 sm:mb-8">
+                         <h3 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-foreground">Choose Your Sauce</h3>
+                         <p className="text-muted-foreground mb-4 sm:mb-6 text-sm sm:text-base">
+                           Your Kids Meal includes a drink and one free sauce. Please choose your preferred sauce:
+                         </p>
+                         <div className="grid gap-3 sm:gap-4 grid-cols-1">
+                           {/* Check both Sauces and Add-ons categories for sauce items */}
+                           {menuItems.filter(item =>
+                             (item.category === 'Sauces' || item.category === 'Add-ons') &&
+                             item.name.includes('Sauce')
+                           ).map((sauce) => {
+                             const isSelected = selectedSauce === sauce.id;
+                             const isOtherSelected = selectedSauce !== '' && selectedSauce !== sauce.id;
+                             return (
+                               <div
+                                 key={sauce.id}
+                                 className={`p-4 sm:p-6 border-2 rounded-xl cursor-pointer transition-all ${
+                                   isSelected
+                                     ? 'border-yellow-500 bg-yellow-50'
+                                     : isOtherSelected
+                                       ? 'border-gray-300 bg-gray-50 opacity-50 cursor-not-allowed'
+                                       : 'border-gray-300 hover:border-yellow-400 hover:bg-accent'
+                                 }`}
+                                 onClick={() => {
+                                   if (!isOtherSelected) {
+                                     setSelectedSauce(sauce.id);
+                                   }
+                                 }}
+                               >
+                                 <div className="flex items-center justify-between">
+                                   <div className="flex items-center gap-3 sm:gap-4">
+                                     <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 flex items-center justify-center ${
+                                       isSelected
+                                         ? 'border-yellow-500 bg-yellow-500'
+                                         : 'border-gray-400'
+                                     }`}>
+                                       {isSelected && (
+                                         <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-white"></div>
+                                       )}
+                                     </div>
+                                     <div className="flex-1">
+                                       <h5 className="font-semibold text-foreground text-base sm:text-lg">{sauce.name}</h5>
+                                       <p className="text-muted-foreground mt-1 text-sm">{sauce.description}</p>
+                                     </div>
+                                   </div>
+                                   <span className="font-bold text-yellow-600 text-base sm:text-lg">FREE</span>
+                                 </div>
+                               </div>
+                             );
+                           })}
+                         </div>
+                         {menuItems.filter(item =>
+                           (item.category === 'Sauces' || item.category === 'Add-ons') &&
+                           item.name.includes('Sauce')
+                         ).length === 0 && (
+                           <p className="text-muted-foreground">
+                             No sauce options available
+                           </p>
+                         )}
+                         {!selectedSauce && menuItems.filter(item =>
+                           (item.category === 'Sauces' || item.category === 'Add-ons') &&
+                           item.name.includes('Sauce')
+                         ).length > 0 && (
+                           <p className="text-red-500 mt-4 font-medium">
+                             Please select a sauce to continue
+                           </p>
+                         )}
+                       </div>
+                     ) : (
+                       /* Main Course Add-ons */
+                       <>
+                         <h3 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-foreground">Add Extras</h3>
 
-                      {/* Meat Add-ons */}
-                      <div className="mb-8">
-                        <div className="flex flex-wrap gap-4">
-                          {menuItems.filter(item =>
-                            item.category === 'Add-ons' &&
-                            (item.name.includes('Steak') || item.name.includes('Lamb') || item.name.includes('Ribs'))
-                          ).map((addOn) => {
-                            const quantity = selectedAddOns[addOn.id]?.quantity || 0;
-                            return (
-                              <div key={addOn.id} className="flex items-center p-4 border-2 rounded-xl hover:bg-accent flex-1 min-w-[300px]">
-                                <h5 className="font-semibold text-foreground text-lg text-center flex-1">{addOn.name}</h5>
-                                <div className="flex items-center gap-4 ml-4">
-                                  <span className="font-bold text-yellow-600 text-lg">£{addOn.price.toFixed(2)}</span>
-                                  <div className="flex items-center gap-2">
-                                    {quantity > 0 && (
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => updateAddOnQuantity(addOn, quantity - 1)}
-                                        className="w-10 h-10 p-0"
-                                      >
-                                        -
-                                      </Button>
-                                    )}
-                                    {quantity > 0 && (
-                                      <span className="w-10 text-center font-medium text-lg">{quantity}</span>
-                                    )}
-                                    <Button
-                                      size="sm"
-                                      variant={quantity > 0 ? 'default' : 'outline'}
-                                      onClick={() => updateAddOnQuantity(addOn, quantity + 1)}
-                                      className="w-10 h-10 p-0"
-                                    >
-                                      +
-                                    </Button>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
+                         {/* Meat Add-ons */}
+                         <div className="mb-6 sm:mb-8">
+                           <div className="grid gap-3 sm:gap-4 grid-cols-1">
+                             {menuItems.filter(item =>
+                               item.category === 'Add-ons' &&
+                               (item.name.includes('Steak') || item.name.includes('Lamb') || item.name.includes('Ribs'))
+                             ).map((addOn) => {
+                               const quantity = selectedAddOns[addOn.id]?.quantity || 0;
+                               return (
+                                 <div key={addOn.id} className="flex flex-col sm:flex-row sm:items-center p-3 sm:p-4 border-2 rounded-xl hover:bg-accent gap-3">
+                                   <h5 className="font-semibold text-foreground text-base sm:text-lg flex-1">{addOn.name}</h5>
+                                   <div className="flex items-center justify-between sm:justify-end gap-4">
+                                     <span className="font-bold text-yellow-600 text-base sm:text-lg">£{addOn.price.toFixed(2)}</span>
+                                     <div className="flex items-center gap-2">
+                                       {quantity > 0 && (
+                                         <Button
+                                           size="sm"
+                                           variant="outline"
+                                           onClick={() => updateAddOnQuantity(addOn, quantity - 1)}
+                                           className="w-8 h-8 sm:w-10 sm:h-10 p-0"
+                                         >
+                                           -
+                                         </Button>
+                                       )}
+                                       {quantity > 0 && (
+                                         <span className="w-8 sm:w-10 text-center font-medium text-sm sm:text-lg">{quantity}</span>
+                                       )}
+                                       <Button
+                                         size="sm"
+                                         variant={quantity > 0 ? 'default' : 'outline'}
+                                         onClick={() => updateAddOnQuantity(addOn, quantity + 1)}
+                                         className="w-8 h-8 sm:w-10 sm:h-10 p-0"
+                                       >
+                                         +
+                                       </Button>
+                                     </div>
+                                   </div>
+                                 </div>
+                               );
+                             })}
+                           </div>
+                         </div>
 
-                      {/* Sauces */}
-                      <div className="mb-8">
-                        <h4 className="text-xl font-semibold mb-4 text-foreground">Sauces</h4>
-                        <div className="flex flex-wrap gap-4">
-                          {menuItems.filter(item => item.category === 'Add-ons' && item.name.includes('Sauce')).map((addOn) => {
-                            const quantity = selectedAddOns[addOn.id]?.quantity || 0;
-                            return (
-                              <div key={addOn.id} className="flex items-center p-4 border-2 rounded-xl hover:bg-accent flex-1 min-w-[300px]">
-                                <h5 className="font-semibold text-foreground text-lg text-center flex-1">{addOn.name}</h5>
-                                <div className="flex items-center gap-4 ml-4">
-                                  <span className="font-bold text-yellow-600 text-lg">£{addOn.price.toFixed(2)}</span>
-                                  <div className="flex items-center gap-2">
-                                    {quantity > 0 && (
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => updateAddOnQuantity(addOn, quantity - 1)}
-                                        className="w-10 h-10 p-0"
-                                      >
-                                        -
-                                      </Button>
-                                    )}
-                                    {quantity > 0 && (
-                                      <span className="w-10 text-center font-medium text-lg">{quantity}</span>
-                                    )}
-                                    <Button
-                                      size="sm"
-                                      variant={quantity > 0 ? 'default' : 'outline'}
-                                      onClick={() => updateAddOnQuantity(addOn, quantity + 1)}
-                                      className="w-10 h-10 p-0"
-                                    >
-                                      +
-                                    </Button>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
+                         {/* Sauces */}
+                         <div className="mb-6 sm:mb-8">
+                           <h4 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-foreground">Sauces</h4>
+                           <div className="grid gap-3 sm:gap-4 grid-cols-1">
+                             {menuItems.filter(item => item.category === 'Add-ons' && item.name.includes('Sauce')).map((addOn) => {
+                               const quantity = selectedAddOns[addOn.id]?.quantity || 0;
+                               return (
+                                 <div key={addOn.id} className="flex flex-col sm:flex-row sm:items-center p-3 sm:p-4 border-2 rounded-xl hover:bg-accent gap-3">
+                                   <h5 className="font-semibold text-foreground text-base sm:text-lg flex-1">{addOn.name}</h5>
+                                   <div className="flex items-center justify-between sm:justify-end gap-4">
+                                     <span className="font-bold text-yellow-600 text-base sm:text-lg">£{addOn.price.toFixed(2)}</span>
+                                     <div className="flex items-center gap-2">
+                                       {quantity > 0 && (
+                                         <Button
+                                           size="sm"
+                                           variant="outline"
+                                           onClick={() => updateAddOnQuantity(addOn, quantity - 1)}
+                                           className="w-8 h-8 sm:w-10 sm:h-10 p-0"
+                                         >
+                                           -
+                                         </Button>
+                                       )}
+                                       {quantity > 0 && (
+                                         <span className="w-8 sm:w-10 text-center font-medium text-sm sm:text-lg">{quantity}</span>
+                                       )}
+                                       <Button
+                                         size="sm"
+                                         variant={quantity > 0 ? 'default' : 'outline'}
+                                         onClick={() => updateAddOnQuantity(addOn, quantity + 1)}
+                                         className="w-8 h-8 sm:w-10 sm:h-10 p-0"
+                                       >
+                                         +
+                                       </Button>
+                                     </div>
+                                   </div>
+                                 </div>
+                               );
+                             })}
+                           </div>
+                         </div>
 
-                      {/* Drinks */}
-                      <div className="mb-8">
-                        <h4 className="text-xl font-semibold mb-4 text-foreground">Drinks</h4>
-                        <div className="flex flex-wrap gap-4">
-                          {menuItems.filter(item => item.category === 'Drinks').map((addOn) => {
-                            const quantity = selectedAddOns[addOn.id]?.quantity || 0;
-                            return (
-                              <div key={addOn.id} className="flex items-center p-4 border-2 rounded-xl hover:bg-accent flex-1 min-w-[300px]">
-                                <h5 className="font-semibold text-foreground text-lg text-center flex-1">{addOn.name}</h5>
-                                <div className="flex items-center gap-4 ml-4">
-                                  <span className="font-bold text-yellow-600 text-lg">£{addOn.price.toFixed(2)}</span>
-                                  <div className="flex items-center gap-2">
-                                    {quantity > 0 && (
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => updateAddOnQuantity(addOn, quantity - 1)}
-                                        className="w-10 h-10 p-0"
-                                      >
-                                        -
-                                      </Button>
-                                    )}
-                                    {quantity > 0 && (
-                                      <span className="w-10 text-center font-medium text-lg">{quantity}</span>
-                                    )}
-                                    <Button
-                                      size="sm"
-                                      variant={quantity > 0 ? 'default' : 'outline'}
-                                      onClick={() => updateAddOnQuantity(addOn, quantity + 1)}
-                                      className="w-10 h-10 p-0"
-                                    >
-                                      +
-                                    </Button>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
+                         {/* Drinks */}
+                         <div className="mb-6 sm:mb-8">
+                           <h4 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-foreground">Drinks</h4>
+                           <div className="grid gap-3 sm:gap-4 grid-cols-1">
+                             {menuItems.filter(item => item.category === 'Drinks').map((addOn) => {
+                               const quantity = selectedAddOns[addOn.id]?.quantity || 0;
+                               return (
+                                 <div key={addOn.id} className="flex flex-col sm:flex-row sm:items-center p-3 sm:p-4 border-2 rounded-xl hover:bg-accent gap-3">
+                                   <h5 className="font-semibold text-foreground text-base sm:text-lg flex-1">{addOn.name}</h5>
+                                   <div className="flex items-center justify-between sm:justify-end gap-4">
+                                     <span className="font-bold text-yellow-600 text-base sm:text-lg">£{addOn.price.toFixed(2)}</span>
+                                     <div className="flex items-center gap-2">
+                                       {quantity > 0 && (
+                                         <Button
+                                           size="sm"
+                                           variant="outline"
+                                           onClick={() => updateAddOnQuantity(addOn, quantity - 1)}
+                                           className="w-8 h-8 sm:w-10 sm:h-10 p-0"
+                                         >
+                                           -
+                                         </Button>
+                                       )}
+                                       {quantity > 0 && (
+                                         <span className="w-8 sm:w-10 text-center font-medium text-sm sm:text-lg">{quantity}</span>
+                                       )}
+                                       <Button
+                                         size="sm"
+                                         variant={quantity > 0 ? 'default' : 'outline'}
+                                         onClick={() => updateAddOnQuantity(addOn, quantity + 1)}
+                                         className="w-8 h-8 sm:w-10 sm:h-10 p-0"
+                                       >
+                                         +
+                                       </Button>
+                                     </div>
+                                   </div>
+                                 </div>
+                               );
+                             })}
+                           </div>
+                         </div>
+                       </>
+                     )}
+                   </div>
 
-                <div className="border-t pt-6 mt-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <span className="text-lg font-semibold text-foreground">Total:</span>
-                    <span className="text-xl font-bold text-yellow-600">
-                      {(() => {
-                        // For Kids Meal, show the fixed price as it includes drink and sauce
-                        if (selectedItem.category === 'Kids' && selectedItem.name === 'Kids Meal') {
-                          return `£${selectedItem.price.toFixed(2)} (includes drink & sauce)`;
-                        }
-                        // For other items, calculate based on add-ons
-                        return `£${(selectedItem.price + Object.values(selectedAddOns).reduce((sum, { item, quantity }) => sum + (item.price * quantity), 0)).toFixed(2)}`;
-                      })()}
-                    </span>
-                  </div>
-                  <div className="flex gap-3">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setShowCustomizeDialog(false);
-                        setSelectedAddOns({});
-                      }}
-                      className="flex-1"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleConfirmCustomize}
-                      className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-black"
-                      disabled={selectedItem.category === 'Kids' && selectedItem.name === 'Kids Meal' && !selectedSauce}
-                    >
-                      {selectedItem.category === 'Kids' && selectedItem.name === 'Kids Meal' ? 'Add Kids Meal' : 'Checkout'}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+                   <div className="border-t pt-6 mt-6">
+                     <div className="flex justify-between items-center mb-4">
+                       <span className="text-lg font-semibold text-foreground">Total:</span>
+                       <span className="text-xl font-bold text-yellow-600">
+                         {(() => {
+                           // For Kids Meal, show the fixed price as it includes drink and sauce
+                           if (selectedItem.category === 'Kids' && selectedItem.name === 'Kids Meal') {
+                             return `£${selectedItem.price.toFixed(2)} (includes drink & sauce)`;
+                           }
+                           // For other items, calculate based on add-ons
+                           return `£${(selectedItem.price + Object.values(selectedAddOns).reduce((sum, { item, quantity }) => sum + (item.price * quantity), 0) + (selectedSauce ? menuItems.find(item => item.id === selectedSauce)?.price || 0 : 0)).toFixed(2)}`;
+                         })()}
+                       </span>
+                     </div>
+                     <div className="flex gap-3">
+                       <Button
+                         variant="outline"
+                         onClick={() => {
+                           setShowCustomizeDialog(false);
+                           setSelectedAddOns({});
+                         }}
+                         className="flex-1"
+                       >
+                         Cancel
+                       </Button>
+                       <Button
+                         onClick={handleConfirmCustomize}
+                         className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-black"
+                         disabled={selectedItem.category === 'Kids' && selectedItem.name === 'Kids Meal' && !selectedSauce}
+                       >
+                         {selectedItem.category === 'Kids' && selectedItem.name === 'Kids Meal' ? 'Add Kids Meal' : 'Add to Cart'}
+                       </Button>
+                     </div>
+                   </div>
+                 </div>
+               </ScrollArea>
+           </div>
+         </div>
+       )}
 
         {/* Floating Auth Modal */}
         {isAuthModalOpen && (

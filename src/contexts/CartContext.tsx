@@ -3,6 +3,8 @@ import { MenuItem } from '../data/menuData';
 
 export interface CartItem extends MenuItem {
   quantity: number;
+  addOns?: { item: MenuItem; quantity: number }[];
+  drinks?: { item: MenuItem; quantity: number }[];
 }
 
 interface CartContextType {

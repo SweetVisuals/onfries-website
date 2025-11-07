@@ -286,83 +286,85 @@ const CustomerOverview: React.FC<CustomerOverviewProps> = ({ onNavigate }) => {
       {/* Enhanced Customer Management */}
       <Card className="shadow-sm border-border/40 bg-card/50 backdrop-blur-sm">
         <CardHeader>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <CardTitle className="text-xl sm:text-2xl">Customer Management</CardTitle>
-            <div className="flex flex-wrap gap-2">
-              <Button onClick={exportCustomerData} variant="outline" size="sm">
-                <Download className="w-4 h-4 mr-2" />
-                Export CSV
-              </Button>
-              <Dialog open={isBulkEmailDialogOpen} onOpenChange={setIsBulkEmailDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" disabled={selectedCustomers.length === 0}>
-                    <Mail className="w-4 h-4 mr-2" />
-                    Bulk Email ({selectedCustomers.length})
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Send Bulk Email</DialogTitle>
-                  </DialogHeader>
-                  <BulkEmailForm
-                    selectedCustomers={selectedCustomers}
-                    onClose={() => setIsBulkEmailDialogOpen(false)}
-                  />
-                </DialogContent>
-              </Dialog>
-              <Button onClick={loadCustomers} variant="outline" size="sm">
-                Refresh
-              </Button>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="relative max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-              <Input
-                placeholder="Search customers..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <CardTitle className="text-lg sm:text-xl lg:text-2xl">Customer Management</CardTitle>
+              <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                <Button onClick={exportCustomerData} variant="outline" size="sm" className="flex-1 sm:flex-none">
+                  <Download className="w-4 h-4 mr-2" />
+                  Export CSV
+                </Button>
+                <Dialog open={isBulkEmailDialogOpen} onOpenChange={setIsBulkEmailDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" disabled={selectedCustomers.length === 0} className="flex-1 sm:flex-none">
+                      <Mail className="w-4 h-4 mr-2" />
+                      Bulk Email ({selectedCustomers.length})
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="w-full max-w-md mx-4">
+                    <DialogHeader>
+                      <DialogTitle>Send Bulk Email</DialogTitle>
+                    </DialogHeader>
+                    <BulkEmailForm
+                      selectedCustomers={selectedCustomers}
+                      onClose={() => setIsBulkEmailDialogOpen(false)}
+                    />
+                  </DialogContent>
+                </Dialog>
+                <Button onClick={loadCustomers} variant="outline" size="sm" className="flex-1 sm:flex-none">
+                  Refresh
+                </Button>
+              </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4">
-              <div className="flex items-center gap-2">
-                <Filter className="w-4 h-4 text-muted-foreground" />
-                <Select value={filterSegment} onValueChange={setFilterSegment}>
-                  <SelectTrigger className="w-full sm:w-40">
-                    <SelectValue placeholder="Segment" />
+            <div className="space-y-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  placeholder="Search customers..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+
+              <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4">
+                <div className="flex items-center gap-2">
+                  <Filter className="w-4 h-4 text-muted-foreground" />
+                  <Select value={filterSegment} onValueChange={setFilterSegment}>
+                    <SelectTrigger className="w-full sm:w-40">
+                      <SelectValue placeholder="Segment" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Segments</SelectItem>
+                      <SelectItem value="vip">VIP</SelectItem>
+                      <SelectItem value="regular">Regular</SelectItem>
+                      <SelectItem value="new">New</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <SelectTrigger className="w-full sm:w-32">
+                    <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Segments</SelectItem>
-                    <SelectItem value="vip">VIP</SelectItem>
-                    <SelectItem value="regular">Regular</SelectItem>
-                    <SelectItem value="new">New</SelectItem>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
                     <SelectItem value="inactive">Inactive</SelectItem>
                   </SelectContent>
                 </Select>
+
+                <Button
+                  onClick={selectAllCustomers}
+                  variant="outline"
+                  size="sm"
+                  className="w-full sm:w-auto"
+                >
+                  {selectedCustomers.length === filteredCustomers.length ? 'Deselect All' : 'Select All'}
+                </Button>
               </div>
-
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-full sm:w-32">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Button
-                onClick={selectAllCustomers}
-                variant="outline"
-                size="sm"
-                className="w-full sm:w-auto"
-              >
-                {selectedCustomers.length === filteredCustomers.length ? 'Deselect All' : 'Select All'}
-              </Button>
             </div>
           </div>
         </CardHeader>
@@ -374,86 +376,85 @@ const CustomerOverview: React.FC<CustomerOverviewProps> = ({ onNavigate }) => {
           <div className="text-lg">Loading customers...</div>
         </div>
       ) : (
-        <div className="grid gap-4 sm:gap-6">
+        <div className="space-y-4">
           {filteredCustomers.map((customer) => {
             return (
               <Card key={customer.id} className="shadow-sm border-border/40 bg-card/50 backdrop-blur-sm hover:bg-card/70 transition-colors">
-                <CardContent className="p-4 sm:p-6">
-                  <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4 sm:gap-6">
-                    <div className="space-y-3 flex-1">
-                      <div className="flex items-center gap-3 sm:gap-4">
-                        <Checkbox
-                          checked={selectedCustomers.includes(customer.id)}
-                          onCheckedChange={() => toggleCustomerSelection(customer.id)}
-                        />
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center flex-shrink-0 shadow-inner">
-                          <span className="font-semibold text-lg sm:text-xl text-orange-600 dark:text-orange-300">
-                            {customer.name.charAt(0).toUpperCase()}
-                          </span>
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-semibold text-lg sm:text-xl truncate">{customer.name}</h3>
-                            <Badge className={`${getSegmentColor(customer.customerSegment || 'new')} text-xs sm:text-sm px-2 py-0.5`}>
-                              {getSegmentIcon(customer.customerSegment || 'new')}
-                              <span className="ml-1 capitalize">{customer.customerSegment || 'new'}</span>
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-1 text-muted-foreground text-sm">
-                            <Mail className="w-4 h-4 flex-shrink-0" />
-                            <span className="truncate">{customer.email}</span>
-                          </div>
-                        </div>
+                <CardContent className="p-4">
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-start gap-3">
+                      <Checkbox
+                        checked={selectedCustomers.includes(customer.id)}
+                        onCheckedChange={() => toggleCustomerSelection(customer.id)}
+                        className="mt-1"
+                      />
+                      <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center flex-shrink-0 shadow-inner">
+                        <span className="font-semibold text-lg text-orange-600 dark:text-orange-300">
+                          {customer.name.charAt(0).toUpperCase()}
+                        </span>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 text-sm">
-                        <div className="bg-background/30 border border-border/30 p-3 rounded-lg">
-                          <div className="font-medium text-lg">{customer.totalOrders}</div>
-                          <div className="text-muted-foreground">Total Orders</div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                          <h3 className="font-semibold text-lg truncate">{customer.name}</h3>
+                          <Badge className={`${getSegmentColor(customer.customerSegment || 'new')} text-xs px-2 py-0.5`}>
+                            {getSegmentIcon(customer.customerSegment || 'new')}
+                            <span className="ml-1 capitalize">{customer.customerSegment || 'new'}</span>
+                          </Badge>
                         </div>
-                        <div className="bg-background/30 border border-border/30 p-3 rounded-lg">
-                          <div className="font-medium text-lg">£{customer.totalSpent.toFixed(2)}</div>
-                          <div className="text-muted-foreground">Total Spent</div>
-                        </div>
-                        <div className="bg-background/30 border border-border/30 p-3 rounded-lg text-center">
-                          <div className="font-medium text-lg flex items-center justify-center gap-1">
-                            <Star className="w-4 h-4 text-yellow-500" />
-                            {customer.loyaltyPoints}
-                          </div>
-                          <div className="text-muted-foreground">Loyalty Points</div>
-                        </div>
-                        <div className="bg-background/30 border border-border/30 p-3 rounded-lg">
-                          <div className="font-medium text-lg">
-                            £{customer.averageOrderValue?.toFixed(2) || '0.00'}
-                          </div>
-                          <div className="text-muted-foreground">Avg. Order Value</div>
-                        </div>
-                        <div className="bg-background/30 border border-border/30 p-3 rounded-lg">
-                          <div className="font-medium text-lg">
-                            {customer.lastOrderDate ? new Date(customer.lastOrderDate).toLocaleDateString() : 'Never'}
-                          </div>
-                          <div className="text-muted-foreground">Last Order</div>
+                        <div className="flex items-center gap-1 text-muted-foreground text-sm">
+                          <Mail className="w-4 h-4 flex-shrink-0" />
+                          <span className="truncate">{customer.email}</span>
                         </div>
                       </div>
-
-                      {customer.preferredItems && customer.preferredItems.length > 0 && (
-                        <div className="bg-background/30 border border-border/30 p-3 rounded-lg">
-                          <div className="font-medium text-sm mb-2">Favourite Items:</div>
-                          <div className="flex flex-wrap gap-1">
-                            {customer.preferredItems.map((item, index) => (
-                              <Badge key={index} variant="outline" className="text-xs">
-                                {item}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
                     </div>
 
-                    <div className="flex flex-col items-start lg:items-end gap-3 w-full lg:w-auto">
-                      <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
-                        <Button size="sm" variant="outline" className="flex-1 sm:flex-none">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 text-sm">
+                      <div className="bg-background/30 border border-border/30 p-3 rounded-lg">
+                        <div className="font-medium text-base">{customer.totalOrders}</div>
+                        <div className="text-muted-foreground text-xs">Total Orders</div>
+                      </div>
+                      <div className="bg-background/30 border border-border/30 p-3 rounded-lg">
+                        <div className="font-medium text-base">£{customer.totalSpent.toFixed(2)}</div>
+                        <div className="text-muted-foreground text-xs">Total Spent</div>
+                      </div>
+                      <div className="bg-background/30 border border-border/30 p-3 rounded-lg">
+                        <div className="font-medium text-base flex items-center justify-center gap-1">
+                          <Star className="w-3 h-3 text-yellow-500" />
+                          {customer.loyaltyPoints}
+                        </div>
+                        <div className="text-muted-foreground text-xs text-center">Loyalty Points</div>
+                      </div>
+                      <div className="bg-background/30 border border-border/30 p-3 rounded-lg">
+                        <div className="font-medium text-base">
+                          £{customer.averageOrderValue?.toFixed(2) || '0.00'}
+                        </div>
+                        <div className="text-muted-foreground text-xs">Avg. Order Value</div>
+                      </div>
+                      <div className="bg-background/30 border border-border/30 p-3 rounded-lg col-span-2 sm:col-span-3 lg:col-span-1">
+                        <div className="font-medium text-base">
+                          {customer.lastOrderDate ? new Date(customer.lastOrderDate).toLocaleDateString() : 'Never'}
+                        </div>
+                        <div className="text-muted-foreground text-xs">Last Order</div>
+                      </div>
+                    </div>
+
+                    {customer.preferredItems && customer.preferredItems.length > 0 && (
+                      <div className="bg-background/30 border border-border/30 p-3 rounded-lg">
+                        <div className="font-medium text-sm mb-2">Favourite Items:</div>
+                        <div className="flex flex-wrap gap-1">
+                          {customer.preferredItems.map((item, index) => (
+                            <Badge key={index} variant="outline" className="text-xs">
+                              {item}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex flex-col sm:flex-row gap-3 pt-2 border-t border-border/30">
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" className="flex-1">
                           <Mail className="w-4 h-4 mr-1" />
                           Email
                         </Button>
@@ -461,14 +462,14 @@ const CustomerOverview: React.FC<CustomerOverviewProps> = ({ onNavigate }) => {
                           size="sm"
                           variant="outline"
                           onClick={() => onNavigate(`customer-detail:${customer.id}`)}
-                          className="flex-1 sm:flex-none"
+                          className="flex-1"
                         >
                           View Orders
                         </Button>
                       </div>
 
-                      <div className="flex items-center gap-2 w-full lg:w-auto">
-                        <label className="text-sm">Active:</label>
+                      <div className="flex items-center justify-between sm:justify-end gap-2">
+                        <label className="text-sm font-medium">Active:</label>
                         <Switch
                           checked={customer.status === 'active'}
                           onCheckedChange={(checked) => toggleCustomerStatus(customer.id, checked ? 'active' : 'inactive')}

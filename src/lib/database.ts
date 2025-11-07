@@ -921,13 +921,42 @@ export const createOrder = async (orderData: {
 
     console.log('Order record created successfully:', order);
 
-    // Create order items
-    const orderItems = orderData.items.map(item => ({
-      order_id: order.id,
-      menu_item_id: item.id,
-      quantity: item.quantity,
-      price: item.price
-    }));
+    // Create order items - handle main items, add-ons, and drinks
+    const orderItems: any[] = [];
+
+    orderData.items.forEach(item => {
+      // Add the main item
+      orderItems.push({
+        order_id: order.id,
+        menu_item_id: item.id,
+        quantity: item.quantity,
+        price: item.price
+      });
+
+      // Add add-ons if they exist
+      if ((item as any).addOns && Array.isArray((item as any).addOns)) {
+        (item as any).addOns.forEach((addOn: any) => {
+          orderItems.push({
+            order_id: order.id,
+            menu_item_id: addOn.id || addOn.item?.id,
+            quantity: addOn.quantity,
+            price: addOn.price || addOn.item?.price || 0
+          });
+        });
+      }
+
+      // Add drinks if they exist
+      if ((item as any).drinks && Array.isArray((item as any).drinks)) {
+        (item as any).drinks.forEach((drink: any) => {
+          orderItems.push({
+            order_id: order.id,
+            menu_item_id: drink.id || drink.item?.id,
+            quantity: drink.quantity,
+            price: drink.price || drink.item?.price || 0
+          });
+        });
+      }
+    });
 
     console.log('Inserting order items...', orderItems);
 

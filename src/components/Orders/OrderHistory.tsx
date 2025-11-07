@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Trash2, Clock, LogIn } from 'lucide-react';
+import { Search, Clock, LogIn } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getCustomerOrders, Order } from '../../lib/database';
 import CurrentOrderCard from './CurrentOrderCard';
@@ -12,6 +12,7 @@ interface OrderWithItems extends Order {
     quantity: number;
     price: number;
     menu_items?: {
+      id: string;
       name: string;
       description: string;
       category: string;
@@ -24,6 +25,14 @@ const OrderHistory: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      loadOrders();
+    } else {
+      setLoading(false);
+    }
+  }, [user]);
 
   if (!user) {
     return (
@@ -44,15 +53,17 @@ const OrderHistory: React.FC = () => {
     );
   }
 
-  useEffect(() => {
-    loadOrders();
-  }, [user]);
-
   const loadOrders = async () => {
     try {
       setLoading(true);
       const customerOrders = await getCustomerOrders(user.id);
-      setOrders(customerOrders);
+      // Sort orders by display_id (newest first) to show sequential numbering
+      const sortedOrders = customerOrders.sort((a, b) => {
+        const aNum = parseInt(a.display_id || '0') || 0;
+        const bNum = parseInt(b.display_id || '0') || 0;
+        return bNum - aNum; // Newest (highest number) first
+      });
+      setOrders(sortedOrders);
     } catch (error) {
       console.error('Error loading orders:', error);
     } finally {
@@ -66,38 +77,220 @@ const OrderHistory: React.FC = () => {
     order.order_items?.some((item) => item.menu_items?.name?.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const handleClearHistory = () => {
-    setSearchTerm('');
-    console.log('Clear history functionality would be implemented here.');
-  };
 
-  const transformOrderForCard = (order: OrderWithItems) => {
-    // Transform database order format to match CurrentOrderCard expectations
+  const transformOrderForCard = (order: OrderWithItems, allOrders: OrderWithItems[]) => {
+    // Handle both admin-created orders (separate order_items) and customer-created orders (customized items)
+    const items: any[] = [];
+
+    // Check if this is a customer order by looking for items with addOns/drinks properties
+    const hasCustomizedItems = order.order_items?.some(item =>
+      (item as any).addOns || (item as any).drinks
+    );
+
+    if (hasCustomizedItems) {
+      // Customer orders - items already have the correct structure
+      order.order_items?.forEach((orderItem) => {
+        const item = orderItem as any;
+        if (item.addOns || item.drinks) {
+          items.push({
+            item: {
+              id: item.id,
+              name: item.name,
+              description: item.description || '',
+              price: item.price,
+              image: item.image || '',
+              category: item.category,
+              isAvailable: true,
+              preparationTime: 0
+            },
+            quantity: item.quantity,
+            addOns: item.addOns || [],
+            drinks: item.drinks || []
+          });
+        } else {
+          // Regular items without add-ons/drinks
+          items.push({
+            item: {
+              id: item.id,
+              name: item.name,
+              description: item.description || '',
+              price: item.price,
+              image: item.image || '',
+              category: item.category,
+              isAvailable: true,
+              preparationTime: 0
+            },
+            quantity: item.quantity,
+            addOns: [],
+            drinks: []
+          });
+        }
+      });
+    } else {
+      // Admin orders - need to group items by their relationships
+      const groupedItems: { [key: string]: { mainItem: any; addOns: any[]; drinks: any[] } } = {};
+      const standaloneItems: any[] = [];
+      let lastMainItemKey: string | null = null;
+
+      // Process all items in this order for grouping
+      order.order_items?.forEach((orderItem, itemIndex) => {
+        const menuItemData = orderItem.menu_items;
+        if (!menuItemData) return;
+
+        const itemIdData = orderItem.menu_items?.id || `item-${itemIndex}`;
+        const categoryData = menuItemData.category;
+        const nameData = menuItemData.name;
+
+        // Determine if this is a main item, add-on, or drink
+        if (categoryData === 'Main Courses' || categoryData === 'Kids') {
+          // Main item - check if it can have add-ons
+          const canHaveAddOns = (categoryData === 'Main Courses' && nameData !== 'Steak Only') || (categoryData === 'Kids' && nameData === 'Kids Meal');
+
+          if (canHaveAddOns) {
+            // Main item that can have add-ons
+            if (!groupedItems[itemIdData]) {
+              groupedItems[itemIdData] = {
+                mainItem: {
+                  item: {
+                    id: itemIdData,
+                    name: menuItemData.name,
+                    description: menuItemData.description,
+                    price: orderItem.price,
+                    image: '',
+                    category: menuItemData.category,
+                    isAvailable: true,
+                    preparationTime: 0
+                  },
+                  quantity: orderItem.quantity
+                },
+                addOns: [],
+                drinks: []
+              };
+            }
+            lastMainItemKey = itemIdData; // Track the last main item that can have add-ons
+          } else {
+            // Standalone main item (like Steak Only)
+            standaloneItems.push({
+              item: {
+                id: itemIdData,
+                name: menuItemData.name,
+                description: menuItemData.description,
+                price: orderItem.price,
+                image: '',
+                category: menuItemData.category,
+                isAvailable: true,
+                preparationTime: 0
+              },
+              quantity: orderItem.quantity,
+              addOns: [],
+              drinks: []
+            });
+            lastMainItemKey = null; // Reset since this item can't have add-ons
+          }
+        } else if (categoryData === 'Add-ons') {
+          // Add-on - associate with the last main item that can have add-ons
+          if (lastMainItemKey && groupedItems[lastMainItemKey]) {
+            groupedItems[lastMainItemKey].addOns.push({
+              item: {
+                id: itemIdData,
+                name: menuItemData.name,
+                description: menuItemData.description,
+                price: orderItem.price,
+                image: '',
+                category: menuItemData.category,
+                isAvailable: true,
+                preparationTime: 0
+              },
+              quantity: orderItem.quantity
+            });
+          } else {
+            // No suitable main item found, treat as standalone
+            standaloneItems.push({
+              item: {
+                id: itemIdData,
+                name: menuItemData.name,
+                description: menuItemData.description,
+                price: orderItem.price,
+                image: '',
+                category: menuItemData.category,
+                isAvailable: true,
+                preparationTime: 0
+              },
+              quantity: orderItem.quantity,
+              addOns: [],
+              drinks: []
+            });
+          }
+        } else if (categoryData === 'Drinks') {
+          // Drink - associate with the last main item that can have add-ons
+          if (lastMainItemKey && groupedItems[lastMainItemKey]) {
+            groupedItems[lastMainItemKey].drinks.push({
+              item: {
+                id: itemIdData,
+                name: menuItemData.name,
+                description: menuItemData.description,
+                price: orderItem.price,
+                image: '',
+                category: menuItemData.category,
+                isAvailable: true,
+                preparationTime: 0
+              },
+              quantity: orderItem.quantity
+            });
+          } else {
+            // No suitable main item found, treat as standalone
+            standaloneItems.push({
+              item: {
+                id: itemIdData,
+                name: menuItemData.name,
+                description: menuItemData.description,
+                price: orderItem.price,
+                image: '',
+                category: menuItemData.category,
+                isAvailable: true,
+                preparationTime: 0
+              },
+              quantity: orderItem.quantity,
+              addOns: [],
+              drinks: []
+            });
+          }
+        }
+      });
+
+      // Convert grouped items to the expected format
+      const groupedResult = [
+        ...Object.values(groupedItems).map((group: any) => ({
+          ...group.mainItem,
+          addOns: group.addOns,
+          drinks: group.drinks
+        })),
+        ...standaloneItems
+      ];
+
+      items.push(...groupedResult);
+    }
+
+    // Calculate queue position - count orders ahead in queue (pending/preparing)
+    const pendingOrders = allOrders.filter(o =>
+      (o.status === 'pending' || o.status === 'preparing') &&
+      new Date(o.order_date) < new Date(order.order_date)
+    );
+    const queuePosition = pendingOrders.length + 1;
+
     return {
-      id: order.id,
+      id: order.display_id || order.id,
       customerId: order.customer_id,
       customerName: order.customer_name,
       customerEmail: order.customer_email,
-      items: order.order_items?.map((item) => ({
-        item: {
-          id: '', // We don't have this in the query result
-          name: item.menu_items?.name || 'Unknown Item',
-          description: item.menu_items?.description || '',
-          price: item.price,
-          image: '',
-          category: item.menu_items?.category || '',
-          isAvailable: true,
-          preparationTime: 0
-        },
-        quantity: item.quantity,
-        addOns: [],
-        drinks: []
-      })) || [],
+      items: items,
       total: order.total,
       status: order.status,
       orderDate: order.order_date,
       estimatedDelivery: order.estimated_delivery,
-      notes: order.notes
+      notes: order.notes,
+      queuePosition: order.status === 'delivered' ? undefined : queuePosition,
+      completedAt: order.status === 'delivered' ? order.order_date : undefined // Use order_date as completedAt for delivered orders
     };
   };
 
@@ -121,14 +314,6 @@ const OrderHistory: React.FC = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button
-            variant="outline"
-            className="flex items-center gap-2 px-6"
-            onClick={handleClearHistory}
-          >
-            <Trash2 className="w-4 h-4" />
-            Clear History
-          </Button>
         </div>
 
         {loading ? (
@@ -150,8 +335,9 @@ const OrderHistory: React.FC = () => {
             {filteredOrders.map((order) => (
               <CurrentOrderCard
                 key={order.id}
-                order={transformOrderForCard(order)}
-                isPastOrder={true}
+                order={transformOrderForCard(order, orders)}
+                isPastOrder={order.status === 'delivered'}
+                isCustomerView={true}
               />
             ))}
           </div>

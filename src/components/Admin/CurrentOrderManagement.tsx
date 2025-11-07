@@ -33,32 +33,12 @@ const CurrentOrderManagement: React.FC = () => {
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [_, setLoading] = useState(false);
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-background py-8 flex items-center justify-center">
-        <p className="text-xl text-muted-foreground">Please login to view your current orders.</p>
-      </div>
-    );
-  }
-
-  useEffect(() => {
-    loadOrders();
-    
-    // Listen for new order updates
-    const cleanup = listenForOrderUpdates(() => {
-      console.log('New order detected, refreshing...');
-      loadOrders();
-    });
-    
-    return cleanup;
-  }, [user]);
-
   const loadOrders = async () => {
     try {
       setLoading(true);
       // Import dynamically to avoid circular dependencies
       const { supabase } = await import('../../lib/supabase');
-      
+
       const { data, error } = await supabase
         .from('orders')
         .select(`
@@ -85,6 +65,26 @@ const CurrentOrderManagement: React.FC = () => {
       setLoading(false);
     }
   };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background py-8 flex items-center justify-center">
+        <p className="text-xl text-muted-foreground">Please login to view your current orders.</p>
+      </div>
+    );
+  }
+
+  useEffect(() => {
+    loadOrders();
+
+    // Listen for new order updates
+    const cleanup = listenForOrderUpdates(() => {
+      console.log('New order detected, refreshing...');
+      loadOrders();
+    });
+
+    return cleanup;
+  }, [user]);
 
   const filteredOrders = orders.filter(order =>
     order.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -551,6 +551,7 @@ const CurrentOrderManagement: React.FC = () => {
                 order={transformOrderForCard(order)}
                 onComplete={handleOrderComplete}
                 onDelete={handleDeleteOrder}
+                isCustomerView={false}
               />
             ))}
           </div>
