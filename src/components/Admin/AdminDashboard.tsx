@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ShoppingCart, DollarSign, Users, TrendingUp, Clock, Settings } from 'lucide-react';
+import { ShoppingCart, DollarSign, Users, TrendingUp, Clock } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -19,7 +19,6 @@ import {
   getRevenueOverTime,
   getRecentOrders,
   getStoreStatus,
-  setStoreStatus,
   DashboardStats,
   RevenueData,
   RevenueByItem,
@@ -40,7 +39,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, initialTab 
   const [revenueOverTime, setRevenueOverTime] = useState<RevenueData[]>([]);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [storeOpen, setStoreOpen] = useState(true);
 
   const handleNavigate = (page: string) => {
     onNavigate(page);
@@ -70,7 +68,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, initialTab 
         setRevenueByItem(revenueByItemData);
         setRevenueOverTime(revenueOverTimeData);
         setRecentOrders(recentOrdersData);
-        setStoreOpen(storeStatusData);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
       } finally {
