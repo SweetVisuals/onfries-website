@@ -104,7 +104,6 @@ const MenuPage: React.FC = () => {
   const [showCustomizeDialog, setShowCustomizeDialog] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [selectedAddOns, setSelectedAddOns] = useState<{[key: string]: {item: any, quantity: number}}>({});
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [orderingStatus, setOrderingStatus] = useState({ allowed: true, isPreOrder: false });
   const [selectedSauce, setSelectedSauce] = useState<string>('');
   // const [businessHours, setBusinessHours] = useState({ openingTime: '09:00', closingTime: '22:00' }); // Not used
@@ -346,11 +345,6 @@ const MenuPage: React.FC = () => {
     });
   };
 
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await refreshMenu();
-    setIsRefreshing(false);
-  };
 
   const noItemsFound = (() => {
     let hasItems = false;

@@ -18,7 +18,6 @@ import {
   getRevenueByItemToday,
   getRevenueOverTime,
   getRecentOrders,
-  getStoreStatus,
   DashboardStats,
   RevenueData,
   RevenueByItem,
