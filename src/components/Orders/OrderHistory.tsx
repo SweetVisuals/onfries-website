@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, Trash2, Clock, LogIn } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { getCustomerOrders, Order, deleteOrder } from '../../lib/database';
+import { getCustomerOrders, Order } from '../../lib/database';
 import CurrentOrderCard from './CurrentOrderCard';
 import { Card, CardContent } from '@/components/ui/card';
 

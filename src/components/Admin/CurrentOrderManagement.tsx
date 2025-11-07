@@ -166,7 +166,7 @@ const CurrentOrderManagement: React.FC = () => {
       const actualOrderId = order?.id || updatedOrder.id;
 
       // Update order status to 'delivered' in the database
-      await updateOrderStatus(actualOrderId, 'delivered', new Date().toISOString());
+      await updateOrderStatus(actualOrderId, 'delivered');
 
       console.log('Order marked as delivered successfully');
 
