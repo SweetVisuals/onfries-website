@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { CheckCircle, Receipt, Clock, CreditCard, ArrowLeft, Sparkles } from 'lucide-react';
+import { CheckCircle, Receipt, Clock, CreditCard, ArrowLeft } from 'lucide-react';
 
 interface PaymentSuccessScreenProps {
   payment: any;
@@ -31,14 +31,10 @@ const PaymentSuccessScreen: React.FC<PaymentSuccessScreenProps> = ({
   isInDrawer = false
 }) => {
   const [isVisible, setIsVisible] = useState(false);
-  const [showConfetti, setShowConfetti] = useState(false);
 
   useEffect(() => {
     // Trigger entrance animation
     setTimeout(() => setIsVisible(true), 100);
-
-    // Show confetti animation
-    setTimeout(() => setShowConfetti(true), 300);
   }, []);
 
   const containerClasses = isInDrawer

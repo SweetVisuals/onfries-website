@@ -20,7 +20,6 @@ import { useCart } from '../../contexts/CartContext';
 import CartDrawer from '../Cart/CartDrawer';
 import { Component as FloatingAuthModal } from '../ui/sign-in-flo';
 import { getCustomerDetails } from '../../lib/database';
-import PaymentSuccessScreen from '../Checkout/PaymentSuccessScreen';
 
 interface PromotionalBanner {
   enabled: boolean;

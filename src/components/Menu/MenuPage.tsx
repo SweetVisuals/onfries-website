@@ -247,8 +247,8 @@ const MenuPage: React.FC = () => {
   };
 
   const handleConfirmCustomize = () => {
-    let addOnsWithQuantities = [];
-    let drinksWithQuantities = [];
+    let addOnsWithQuantities: Array<{ item: any; quantity: number }> = [];
+    let drinksWithQuantities: Array<{ item: any; quantity: number }> = [];
     let itemName = selectedItem.name;
 
     // Handle Kids Meal sauce selection
