@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Tabs } from '../ui/vercel-tabs';
 import MenuPage from '../Menu/MenuPage';
 import OrderHistory from '../Orders/OrderHistory';
+import LoyaltyPage from './LoyaltyPage';
 import OnFriesLogo from '@/images/OnFries-Logo.png';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -34,10 +35,9 @@ interface CustomerDashboardProps {
 }
 
 const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ initialTab = 'menu' }) => {
-  const [selectedTab, setSelectedTab] = React.useState(initialTab);
-  const { user, logout } = useAuth();
-  const { getItemCount } = useCart();
-  const [isCartOpen, setIsCartOpen] = useState(false);
+   const [selectedTab, setSelectedTab] = React.useState(initialTab);
+   const { user, logout } = useAuth();
+   const { getItemCount, isCartOpen, openCart, closeCart } = useCart();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [promotionalBanner, setPromotionalBanner] = useState<PromotionalBanner>({
@@ -149,15 +149,14 @@ const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ initialTab = 'men
       {/* Promotional Banner */}
       {promotionalBanner.enabled && (
         <div
-          className="py-3 px-4 text-center"
+          className="py-2 px-4 text-center"
           style={{
             backgroundColor: promotionalBanner.backgroundColor,
             color: promotionalBanner.textColor
           }}
         >
           <div className="container mx-auto">
-            <h3 className="text-lg font-bold">{promotionalBanner.title}</h3>
-            <p className="text-sm">{promotionalBanner.message}</p>
+            <p className="text-sm font-bold" dangerouslySetInnerHTML={{ __html: promotionalBanner.message }} />
           </div>
         </div>
       )}
@@ -177,6 +176,7 @@ const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ initialTab = 'men
                   tabs={[
                     { id: "menu", label: "Menu" },
                     { id: "orders", label: "Orders" },
+                    ...(user ? [{ id: "loyalty", label: "Loyalty" }] : []),
                     { id: "profile", label: "Profile" }
                   ]}
                   onTabChange={(tabId) => setSelectedTab(tabId)}
@@ -201,7 +201,8 @@ const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ initialTab = 'men
               {/* Cart Button */}
               <div
                 className="cursor-pointer p-2 relative hover:bg-accent rounded-md"
-                onClick={() => setIsCartOpen(true)}
+                onClick={openCart}
+                data-cart-icon
               >
                 <ShoppingCart className="h-4 w-4" />
                 {getItemCount() > 0 && (
@@ -275,6 +276,7 @@ const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ initialTab = 'men
         <div className="container mx-auto px-4">
           {selectedTab === 'menu' && <MenuPage />}
           {selectedTab === 'orders' && <OrderHistory />}
+          {selectedTab === 'loyalty' && user && <LoyaltyPage />}
           {selectedTab === 'profile' && (
             <div className="max-w-7xl mx-auto px-6">
               {loading ? (
@@ -467,7 +469,7 @@ const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ initialTab = 'men
       {/* Cart Drawer */}
       <CartDrawer
         isOpen={isCartOpen}
-        onClose={() => setIsCartOpen(false)}
+        onClose={closeCart}
         onNavigateToOrders={handleNavigateToOrders}
       />
 

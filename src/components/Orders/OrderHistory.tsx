@@ -57,11 +57,11 @@ const OrderHistory: React.FC = () => {
     try {
       setLoading(true);
       const customerOrders = await getCustomerOrders(user.id);
-      // Sort orders by display_id (newest first) to show sequential numbering
+      // Sort orders by display_id (oldest first) to show sequential numbering with #1 at top
       const sortedOrders = customerOrders.sort((a, b) => {
         const aNum = parseInt(a.display_id || '0') || 0;
         const bNum = parseInt(b.display_id || '0') || 0;
-        return bNum - aNum; // Newest (highest number) first
+        return aNum - bNum; // Oldest (lowest number) first
       });
       setOrders(sortedOrders);
     } catch (error) {
@@ -143,50 +143,27 @@ const OrderHistory: React.FC = () => {
 
         // Determine if this is a main item, add-on, or drink
         if (categoryData === 'Main Courses' || categoryData === 'Kids') {
-          // Main item - check if it can have add-ons
-          const canHaveAddOns = (categoryData === 'Main Courses' && nameData !== 'Steak Only') || (categoryData === 'Kids' && nameData === 'Kids Meal');
-
-          if (canHaveAddOns) {
-            // Main item that can have add-ons
-            if (!groupedItems[itemIdData]) {
-              groupedItems[itemIdData] = {
-                mainItem: {
-                  item: {
-                    id: itemIdData,
-                    name: menuItemData.name,
-                    description: menuItemData.description,
-                    price: orderItem.price,
-                    image: '',
-                    category: menuItemData.category,
-                    isAvailable: true,
-                    preparationTime: 0
-                  },
-                  quantity: orderItem.quantity
+          // All main courses can have add-ons and drinks
+          if (!groupedItems[itemIdData]) {
+            groupedItems[itemIdData] = {
+              mainItem: {
+                item: {
+                  id: itemIdData,
+                  name: menuItemData.name,
+                  description: menuItemData.description,
+                  price: orderItem.price,
+                  image: '',
+                  category: menuItemData.category,
+                  isAvailable: true,
+                  preparationTime: 0
                 },
-                addOns: [],
-                drinks: []
-              };
-            }
-            lastMainItemKey = itemIdData; // Track the last main item that can have add-ons
-          } else {
-            // Standalone main item (like Steak Only)
-            standaloneItems.push({
-              item: {
-                id: itemIdData,
-                name: menuItemData.name,
-                description: menuItemData.description,
-                price: orderItem.price,
-                image: '',
-                category: menuItemData.category,
-                isAvailable: true,
-                preparationTime: 0
+                quantity: orderItem.quantity
               },
-              quantity: orderItem.quantity,
               addOns: [],
               drinks: []
-            });
-            lastMainItemKey = null; // Reset since this item can't have add-ons
+            };
           }
+          lastMainItemKey = itemIdData; // Track the last main item
         } else if (categoryData === 'Add-ons') {
           // Add-on - associate with the last main item that can have add-ons
           if (lastMainItemKey && groupedItems[lastMainItemKey]) {
@@ -222,7 +199,7 @@ const OrderHistory: React.FC = () => {
             });
           }
         } else if (categoryData === 'Drinks') {
-          // Drink - associate with the last main item that can have add-ons
+          // Drink - associate with the last main item
           if (lastMainItemKey && groupedItems[lastMainItemKey]) {
             groupedItems[lastMainItemKey].drinks.push({
               item: {
@@ -238,7 +215,7 @@ const OrderHistory: React.FC = () => {
               quantity: orderItem.quantity
             });
           } else {
-            // No suitable main item found, treat as standalone
+            // No main item found, treat as standalone
             standaloneItems.push({
               item: {
                 id: itemIdData,
@@ -331,7 +308,7 @@ const OrderHistory: React.FC = () => {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-8">
             {filteredOrders.map((order) => (
               <CurrentOrderCard
                 key={order.id}

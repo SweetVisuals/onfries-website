@@ -23,7 +23,6 @@ interface OrderWithItems extends Order {
       price: number;
     };
   }>;
-  completed_at?: string;
 }
 
 const CurrentOrderManagement: React.FC = () => {
@@ -47,6 +46,7 @@ const CurrentOrderManagement: React.FC = () => {
             quantity,
             price,
             menu_items (
+              id,
               name,
               description,
               category,
@@ -108,7 +108,11 @@ const CurrentOrderManagement: React.FC = () => {
     const standaloneItems: any[] = [];
     let lastMainItemKey: string | null = null;
 
-    order.order_items?.forEach((item, index) => {
+    // Filter out items without menu_items and sort by menu item id to ensure proper grouping
+    const validOrderItems = (order.order_items || []).filter(item => item.menu_items);
+    const sortedOrderItems = [...validOrderItems].sort((a, b) => a.menu_items!.id.localeCompare(b.menu_items!.id));
+
+    sortedOrderItems.forEach((item, index) => {
       const menuItem = item.menu_items;
       if (!menuItem) return;
 
@@ -254,7 +258,7 @@ const CurrentOrderManagement: React.FC = () => {
       orderDate: order.order_date,
       estimatedDelivery: order.estimated_delivery,
       notes: order.notes,
-      completedAt: order.completed_at
+      completedAt: order.updated_at
     };
   };
 
@@ -427,7 +431,9 @@ const CurrentOrderManagement: React.FC = () => {
 
       // Create the order directly using the admin's user ID (skip customer creation entirely)
       const orderDate = new Date().toISOString();
-      const estimatedDelivery = new Date(Date.now() + 30 * 60 * 1000).toISOString(); // 30 minutes from now
+      const { getAverageOrderTime } = await import('../../lib/database');
+      const averageOrderTime = await getAverageOrderTime();
+      const estimatedDelivery = new Date(Date.now() + averageOrderTime * 60 * 1000).toISOString();
 
       console.log('Inserting order record...', {
         id: orderId,

@@ -14,6 +14,7 @@ import { Component as FloatingAuthModal } from '../ui/sign-in-flo';
 
 // Menu Item Card Component
 const MenuItemCard: React.FC<{ item: any; orderingStatus: any; onAddToCart: (item: any, event?: React.MouseEvent) => void; isSingleCard?: boolean }> = ({ item, orderingStatus, onAddToCart, isSingleCard = false }) => {
+  console.log('Rendering menu item:', item.name, 'isAvailable:', item.isAvailable, 'hasStock:', item.hasStock);
   return (
     <Card className={`hover:shadow-lg transition-all duration-200 hover:border-yellow-400 group border-yellow-200 h-full flex flex-col ${isSingleCard ? 'min-w-[400px]' : ''}`}>
       <CardContent className="p-6 flex flex-col h-full">
@@ -94,7 +95,7 @@ const MenuItemCard: React.FC<{ item: any; orderingStatus: any; onAddToCart: (ite
 };
 
 const MenuPage: React.FC = () => {
-  const { addItem } = useCart();
+  const { addItem, openCart } = useCart();
   const { user } = useAuth();
   const { menuItems, loading, error } = useMenuItems();
   const [searchTerm, setSearchTerm] = useState('');
@@ -163,8 +164,22 @@ const MenuPage: React.FC = () => {
       matchesCategory = item.category === selectedCategory;
     }
 
-    return matchesSearch && matchesCategory && item.isAvailable && item.name !== 'Custom Item';
+    const isVisible = matchesSearch && matchesCategory && item.isAvailable && item.name !== 'Custom Item' && item.hiddenFromCustomers !== true;
+
+    if (!isVisible) {
+      console.log('Filtering out item:', item.name, {
+        matchesSearch,
+        matchesCategory,
+        isAvailable: item.isAvailable,
+        isCustomItem: item.name === 'Custom Item',
+        hiddenFromCustomers: item.hiddenFromCustomers
+      });
+    }
+
+    return isVisible;
   });
+
+  console.log('Filtered items count:', filteredItems.length, 'out of', menuItems.length);
 
   const handleAddToCart = (item: any, event?: React.MouseEvent) => {
     if (!user) {
@@ -234,13 +249,7 @@ const MenuPage: React.FC = () => {
         duration: 3000,
         action: {
           label: 'View Cart',
-          onClick: () => {
-            // Trigger cart opening - we'll need to pass this down or use a global state
-            const cartButton = document.querySelector('[data-cart-icon]');
-            if (cartButton) {
-              (cartButton as HTMLElement).click();
-            }
-          },
+          onClick: openCart,
         },
       });
     }
@@ -320,13 +329,7 @@ const MenuPage: React.FC = () => {
       duration: 3000,
       action: {
         label: 'View Cart',
-        onClick: () => {
-          // Trigger cart opening - we'll need to pass this down or use a global state
-          const cartButton = document.querySelector('[data-cart-icon]');
-          if (cartButton) {
-            (cartButton as HTMLElement).click();
-          }
-        },
+        onClick: openCart,
       },
     });
 
@@ -611,7 +614,7 @@ const MenuPage: React.FC = () => {
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium">Friday</span>
-                      <span className="text-muted-foreground">12:00 - 18:00</span>
+                      <span className="text-muted-foreground">12:00 - 18:00, 19:00 - 22:00</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium">Saturday</span>
@@ -640,13 +643,15 @@ const MenuPage: React.FC = () => {
                         className="w-full text-left flex items-center justify-between py-2 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors text-foreground bg-transparent border-none"
                         onClick={() => setExpandedFAQ(expandedFAQ === 1 ? null : 1)}
                       >
-                        <span className="font-medium">What type of steak do you serve?</span>
+                        <span className="font-medium">What is the signature Green & Red Sauce?</span>
                         {expandedFAQ === 1 ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </button>
                       {expandedFAQ === 1 && (
                         <p className="text-sm text-muted-foreground dark:text-gray-300 mt-2 leading-relaxed">
-                          We serve premium quality beef steaks, including ribeye, sirloin, and tenderloin cuts.
-                          All our steaks are sourced from local suppliers and cooked to your preferred doneness.
+                          We provide our own home made sauces crafted by The Steak Man!
+                          Our green sauce is a zesty lime-based sauce with vibrant citrus notes.
+                          Our red sauce is a vibrant sauce made from roasted red peppers and, 
+                          a splash of red wine vinegar.
                         </p>
                       )}
                     </div>
@@ -656,14 +661,14 @@ const MenuPage: React.FC = () => {
                         className="w-full text-left flex items-center justify-between py-2 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors text-foreground bg-transparent border-none"
                         onClick={() => setExpandedFAQ(expandedFAQ === 2 ? null : 2)}
                       >
-                        <span className="font-medium">How does the ordering process work?</span>
+                        <span className="font-medium">What items on the menu are halal?</span>
                         {expandedFAQ === 2 ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </button>
                       {expandedFAQ === 2 && (
                         <p className="text-sm text-muted-foreground dark:text-gray-300 mt-2 leading-relaxed">
-                          Simply browse our menu, add items to your cart, and proceed to checkout.
-                          You'll need to create an account or sign in to place an order. Orders can be placed
-                          for immediate pickup or scheduled for later collection.
+                          Every meat item on our menu is 100% halal.
+                          The only item that would be considered not halal would be, 
+                          our red sauce as it has red wine vinegar in the sauce.
                         </p>
                       )}
                     </div>
@@ -673,14 +678,15 @@ const MenuPage: React.FC = () => {
                         className="w-full text-left flex items-center justify-between py-2 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors text-foreground bg-transparent border-none"
                         onClick={() => setExpandedFAQ(expandedFAQ === 3 ? null : 3)}
                       >
-                        <span className="font-medium">Do you accommodate dietary restrictions?</span>
+                        <span className="font-medium">What if I have allergies?</span>
                         {expandedFAQ === 3 ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </button>
                       {expandedFAQ === 3 && (
                         <p className="text-sm text-muted-foreground dark:text-gray-300 mt-2 leading-relaxed">
-                          We can accommodate most dietary needs. Please contact us directly for allergies,
-                          gluten-free options, or other special requirements. Our team will work with you
-                          to ensure a safe and enjoyable dining experience.
+                          Below are all the items that contain allergens,
+                          Red & Green Sauce - Soy, Mustard, Sulphites Dioxide
+                          Short Ribs - Nuts
+                          Please add a note or speak to us personally for any allergens we need to know about.
                         </p>
                       )}
                     </div>
@@ -690,14 +696,14 @@ const MenuPage: React.FC = () => {
                         className="w-full text-left flex items-center justify-between py-2 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors text-foreground bg-transparent border-none"
                         onClick={() => setExpandedFAQ(expandedFAQ === 4 ? null : 4)}
                       >
-                        <span className="font-medium">How long does it take to prepare my order?</span>
+                        <span className="font-medium">What's the average wait for an order?</span>
                         {expandedFAQ === 4 ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </button>
                       {expandedFAQ === 4 && (
                         <p className="text-sm text-muted-foreground dark:text-gray-300 mt-2 leading-relaxed">
-                          Preparation time varies by item. Steaks typically take 10-15 minutes depending on your
-                          preferred doneness. Fries and other sides are usually ready in 5-8 minutes. You'll receive
-                          a notification when your order is ready for pickup.
+                          Average order time will be displayed on the main website constantly updated from our current orders.
+                          When placing a order you will recieve average waiting time and a queue number.
+                          When your ready we will call out your name to collect from the truck.
                         </p>
                       )}
                     </div>
@@ -761,7 +767,7 @@ const MenuPage: React.FC = () => {
         {/* Customize Order Dialog */}
         {showCustomizeDialog && selectedItem && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-0">
-            <div className="relative w-full h-full bg-background rounded-none shadow-lg border-0 overflow-hidden">
+            <div className="relative w-full h-full bg-background rounded-none shadow-lg border-0 overflow-hidden flex flex-col">
               <button
                 onClick={() => setShowCustomizeDialog(false)}
                 className="absolute top-2 right-2 z-[60] w-8 h-8 bg-background border border-border rounded-full flex items-center justify-center hover:bg-accent text-xl"
@@ -769,7 +775,7 @@ const MenuPage: React.FC = () => {
                 ×
               </button>
 
-              <ScrollArea className="h-full">
+              <ScrollArea className="flex-1">
                 <div className="p-4 sm:p-6 lg:p-8">
                    <div className="mb-8">
                      <h2 className="text-3xl font-bold text-foreground mb-3">{selectedItem.name}</h2>
@@ -858,7 +864,7 @@ const MenuPage: React.FC = () => {
                            <div className="grid gap-3 sm:gap-4 grid-cols-1">
                              {menuItems.filter(item =>
                                item.category === 'Add-ons' &&
-                               (item.name.includes('Steak') || item.name.includes('Lamb') || item.name.includes('Ribs'))
+                               (item.name.includes('Steak') || item.name.includes('Lamb') || item.name.includes('Rib'))
                              ).map((addOn) => {
                                const quantity = selectedAddOns[addOn.id]?.quantity || 0;
                                return (
@@ -872,19 +878,19 @@ const MenuPage: React.FC = () => {
                                            size="sm"
                                            variant="outline"
                                            onClick={() => updateAddOnQuantity(addOn, quantity - 1)}
-                                           className="w-8 h-8 sm:w-10 sm:h-10 p-0"
+                                           className="w-12 h-12 sm:w-10 sm:h-10 p-0"
                                          >
                                            -
                                          </Button>
                                        )}
                                        {quantity > 0 && (
-                                         <span className="w-8 sm:w-10 text-center font-medium text-sm sm:text-lg">{quantity}</span>
+                                         <span className="w-12 sm:w-10 text-center font-medium text-sm sm:text-lg">{quantity}</span>
                                        )}
                                        <Button
                                          size="sm"
                                          variant={quantity > 0 ? 'default' : 'outline'}
                                          onClick={() => updateAddOnQuantity(addOn, quantity + 1)}
-                                         className="w-8 h-8 sm:w-10 sm:h-10 p-0"
+                                         className="w-12 h-12 sm:w-10 sm:h-10 p-0"
                                        >
                                          +
                                        </Button>
@@ -913,19 +919,19 @@ const MenuPage: React.FC = () => {
                                            size="sm"
                                            variant="outline"
                                            onClick={() => updateAddOnQuantity(addOn, quantity - 1)}
-                                           className="w-8 h-8 sm:w-10 sm:h-10 p-0"
+                                           className="w-12 h-12 sm:w-10 sm:h-10 p-0"
                                          >
                                            -
                                          </Button>
                                        )}
                                        {quantity > 0 && (
-                                         <span className="w-8 sm:w-10 text-center font-medium text-sm sm:text-lg">{quantity}</span>
+                                         <span className="w-12 sm:w-10 text-center font-medium text-sm sm:text-lg">{quantity}</span>
                                        )}
                                        <Button
                                          size="sm"
                                          variant={quantity > 0 ? 'default' : 'outline'}
                                          onClick={() => updateAddOnQuantity(addOn, quantity + 1)}
-                                         className="w-8 h-8 sm:w-10 sm:h-10 p-0"
+                                         className="w-12 h-12 sm:w-10 sm:h-10 p-0"
                                        >
                                          +
                                        </Button>
@@ -954,19 +960,19 @@ const MenuPage: React.FC = () => {
                                            size="sm"
                                            variant="outline"
                                            onClick={() => updateAddOnQuantity(addOn, quantity - 1)}
-                                           className="w-8 h-8 sm:w-10 sm:h-10 p-0"
+                                           className="w-12 h-12 sm:w-10 sm:h-10 p-0"
                                          >
                                            -
                                          </Button>
                                        )}
                                        {quantity > 0 && (
-                                         <span className="w-8 sm:w-10 text-center font-medium text-sm sm:text-lg">{quantity}</span>
+                                         <span className="w-12 sm:w-10 text-center font-medium text-sm sm:text-lg">{quantity}</span>
                                        )}
                                        <Button
                                          size="sm"
                                          variant={quantity > 0 ? 'default' : 'outline'}
                                          onClick={() => updateAddOnQuantity(addOn, quantity + 1)}
-                                         className="w-8 h-8 sm:w-10 sm:h-10 p-0"
+                                         className="w-12 h-12 sm:w-10 sm:h-10 p-0"
                                        >
                                          +
                                        </Button>
@@ -980,43 +986,43 @@ const MenuPage: React.FC = () => {
                        </>
                      )}
                    </div>
-
-                   <div className="border-t pt-6 mt-6">
-                     <div className="flex justify-between items-center mb-4">
-                       <span className="text-lg font-semibold text-foreground">Total:</span>
-                       <span className="text-xl font-bold text-yellow-600">
-                         {(() => {
-                           // For Kids Meal, show the fixed price as it includes drink and sauce
-                           if (selectedItem.category === 'Kids' && selectedItem.name === 'Kids Meal') {
-                             return `£${selectedItem.price.toFixed(2)} (includes drink & sauce)`;
-                           }
-                           // For other items, calculate based on add-ons
-                           return `£${(selectedItem.price + Object.values(selectedAddOns).reduce((sum, { item, quantity }) => sum + (item.price * quantity), 0) + (selectedSauce ? menuItems.find(item => item.id === selectedSauce)?.price || 0 : 0)).toFixed(2)}`;
-                         })()}
-                       </span>
-                     </div>
-                     <div className="flex gap-3">
-                       <Button
-                         variant="outline"
-                         onClick={() => {
-                           setShowCustomizeDialog(false);
-                           setSelectedAddOns({});
-                         }}
-                         className="flex-1"
-                       >
-                         Cancel
-                       </Button>
-                       <Button
-                         onClick={handleConfirmCustomize}
-                         className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-black"
-                         disabled={selectedItem.category === 'Kids' && selectedItem.name === 'Kids Meal' && !selectedSauce}
-                       >
-                         {selectedItem.category === 'Kids' && selectedItem.name === 'Kids Meal' ? 'Add Kids Meal' : 'Add to Cart'}
-                       </Button>
-                     </div>
-                   </div>
                  </div>
                </ScrollArea>
+
+               <div className="border-t pt-6 mt-6 p-4 sm:p-6 lg:p-8">
+                 <div className="flex justify-between items-center mb-4">
+                   <span className="text-lg font-semibold text-foreground">Total:</span>
+                   <span className="text-xl font-bold text-yellow-600">
+                     {(() => {
+                       // For Kids Meal, show the fixed price as it includes drink and sauce
+                       if (selectedItem.category === 'Kids' && selectedItem.name === 'Kids Meal') {
+                         return `£${selectedItem.price.toFixed(2)} (includes drink & sauce)`;
+                       }
+                       // For other items, calculate based on add-ons
+                       return `£${(selectedItem.price + Object.values(selectedAddOns).reduce((sum, { item, quantity }) => sum + (item.price * quantity), 0) + (selectedSauce ? menuItems.find(item => item.id === selectedSauce)?.price || 0 : 0)).toFixed(2)}`;
+                     })()}
+                   </span>
+                 </div>
+                 <div className="flex gap-3">
+                   <Button
+                     variant="outline"
+                     onClick={() => {
+                       setShowCustomizeDialog(false);
+                       setSelectedAddOns({});
+                     }}
+                     className="flex-1"
+                   >
+                     Cancel
+                   </Button>
+                   <Button
+                     onClick={handleConfirmCustomize}
+                     className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-black"
+                     disabled={selectedItem.category === 'Kids' && selectedItem.name === 'Kids Meal' && !selectedSauce}
+                   >
+                     {selectedItem.category === 'Kids' && selectedItem.name === 'Kids Meal' ? 'Add Kids Meal' : 'Add to Cart'}
+                   </Button>
+                 </div>
+               </div>
            </div>
          </div>
        )}

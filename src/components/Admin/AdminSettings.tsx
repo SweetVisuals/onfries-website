@@ -5,12 +5,15 @@ import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs } from '../ui/vercel-tabs';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '../../contexts/AuthContext';
 import { setStoreStatus, getStoreStatus } from '../../lib/database';
 import { ArrowLeft, Store, Bell, MessageSquare, DollarSign, AlertCircle, CheckCircle } from 'lucide-react';
+import logo from '../../images/OnFries-Logo.png';
+import TextFormatter from '../../lib/textFormatter';
+import CouponManagement from './CouponManagement';
 
 interface AdminSettingsProps {
   onNavigate: (page: string) => void;
@@ -50,7 +53,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate }) => {
     promotionalBanner: {
       enabled: false,
       title: 'Welcome to OnFries!',
-      message: 'Check out our amazing steak and fries!',
+      message: 'USE CODE "STEAKMAN" AT CHECKOUT FOR 5% OFF',
       backgroundColor: '#ff6b35',
       textColor: '#ffffff'
     },
@@ -73,10 +76,21 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate }) => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [selectedTab, setSelectedTab] = useState('store');
+
+  const settingsTabs = [
+    { id: "store", label: "Store" },
+    { id: "promotions", label: "Promotions" },
+    { id: "loyalty", label: "Loyalty" },
+    { id: "notifications", label: "Notifications" },
+    { id: "business", label: "Business" },
+    { id: "advanced", label: "Advanced" }
+  ];
 
   useEffect(() => {
     loadSettings();
   }, []);
+
 
   const loadSettings = async () => {
     try {
@@ -146,22 +160,16 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate }) => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <Button 
-              variant="outline" 
-              size="icon"
-              onClick={() => onNavigate('admin')}
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">Admin Settings</h1>
-              <p className="text-muted-foreground">Manage your store settings and preferences</p>
-            </div>
-          </div>
+          <Button
+            variant="outline"
+            onClick={() => onNavigate('admin')}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Dashboard
+          </Button>
           <div className="flex items-center gap-2">
             {saveStatus === 'saved' && (
               <Badge variant="default" className="bg-green-500">
@@ -175,17 +183,30 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate }) => {
           </div>
         </div>
 
-        <Tabs defaultValue="store" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="store">Store</TabsTrigger>
-            <TabsTrigger value="promotions">Promotions</TabsTrigger>
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
-            <TabsTrigger value="business">Business</TabsTrigger>
-            <TabsTrigger value="advanced">Advanced</TabsTrigger>
-          </TabsList>
+        <div className="mb-8">
+          <div className="flex flex-col md:grid md:grid-cols-3 md:items-center mb-4">
+            <img src={logo} alt="OnFries Logo" className="w-auto h-40 md:h-48 mb-4 md:mb-0 md:col-start-1 md:justify-self-start md:mt-4 object-contain" />
+            <div className="text-center md:col-start-2 md:justify-self-center">
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">Admin Settings</h1>
+              <p className="text-sm md:text-base text-muted-foreground">Manage your store settings and preferences</p>
+            </div>
+          </div>
+        </div>
 
+        <div className="mb-8 flex justify-center">
+          <div className="w-full max-w-4xl">
+            <div className="mb-4">
+              <Tabs
+                tabs={settingsTabs}
+                onTabChange={(tabId) => setSelectedTab(tabId)}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-6 mt-6">
           {/* Store Settings */}
-          <TabsContent value="store">
+          {selectedTab === 'store' && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -194,44 +215,51 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate }) => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
+                <div className="grid grid-cols-3 items-center">
+                  <div></div>
+                  <div className="text-center col-start-2">
                     <Label className="text-base font-medium">Store Open</Label>
                     <p className="text-sm text-muted-foreground">
                       Customers can only place orders when the store is open
                     </p>
                   </div>
-                  <Switch
-                    checked={settings.storeOpen}
-                    onCheckedChange={(checked) => updateStoreSetting('storeOpen', checked)}
-                  />
+                  <div className="justify-self-end">
+                    <Switch
+                      checked={settings.storeOpen}
+                      onCheckedChange={(checked) => updateStoreSetting('storeOpen', checked)}
+                    />
+                  </div>
                 </div>
-                
+
                 <Separator />
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <Label htmlFor="openingTime">Opening Time</Label>
+                  <div className="pt-4">
+                    <Label htmlFor="openingTime" className="mb-4">Opening Time</Label>
                     <Input
                       id="openingTime"
                       type="time"
                       value={settings.business.openingTime}
                       onChange={(e) => updateNestedSetting('business', 'openingTime', e.target.value)}
+                      className="mt-2"
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="closingTime">Closing Time</Label>
+                  <div className="pt-4">
+                    <Label htmlFor="closingTime" className="mb-4">Closing Time</Label>
                     <Input
                       id="closingTime"
                       type="time"
                       value={settings.business.closingTime}
                       onChange={(e) => updateNestedSetting('business', 'closingTime', e.target.value)}
+                      className="mt-2"
                     />
                   </div>
                 </div>
-                
-                <div>
-                  <Label htmlFor="prepTime">Estimated Preparation Time (minutes)</Label>
+
+                <Separator />
+
+                <div className="pt-4">
+                  <Label htmlFor="prepTime" className="mb-4">Estimated Preparation Time (minutes)</Label>
                   <Input
                     id="prepTime"
                     type="number"
@@ -239,14 +267,15 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate }) => {
                     onChange={(e) => updateNestedSetting('business', 'estimatedPrepTime', parseInt(e.target.value))}
                     min="5"
                     max="120"
+                    className="mt-2"
                   />
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+          )}
 
           {/* Promotions */}
-          <TabsContent value="promotions">
+          {selectedTab === 'promotions' && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -255,26 +284,29 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate }) => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
+                <div className="grid grid-cols-3 items-center">
+                  <div></div>
+                  <div className="text-center col-start-2">
                     <Label className="text-base font-medium">Enable Promotional Banner</Label>
                     <p className="text-sm text-muted-foreground">
                       Show a banner on the customer page with promotional content
                     </p>
                   </div>
-                  <Switch
-                    checked={settings.promotionalBanner.enabled}
-                    onCheckedChange={(checked) => updateNestedSetting('promotionalBanner', 'enabled', checked)}
-                  />
+                  <div className="justify-self-end">
+                    <Switch
+                      checked={settings.promotionalBanner.enabled}
+                      onCheckedChange={(checked) => updateNestedSetting('promotionalBanner', 'enabled', checked)}
+                    />
+                  </div>
                 </div>
-                
+
                 {settings.promotionalBanner.enabled && (
                   <>
                     <Separator />
-                    
+
                     <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="bannerTitle">Banner Title</Label>
+                      <div className="pt-4">
+                        <Label htmlFor="bannerTitle" className="mb-4">Banner Title</Label>
                         <Input
                           id="bannerTitle"
                           value={settings.promotionalBanner.title}
@@ -282,21 +314,22 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate }) => {
                           placeholder="Enter banner title"
                         />
                       </div>
-                      
-                      <div>
-                        <Label htmlFor="bannerMessage">Banner Message</Label>
-                        <Textarea
-                          id="bannerMessage"
+
+                      <div className="pt-4">
+                        <Label htmlFor="bannerMessage" className="mb-4">Banner Message</Label>
+                        <TextFormatter
                           value={settings.promotionalBanner.message}
-                          onChange={(e) => updateNestedSetting('promotionalBanner', 'message', e.target.value)}
-                          placeholder="Enter banner message"
-                          rows={3}
+                          onChange={(html) => updateNestedSetting('promotionalBanner', 'message', html)}
+                          placeholder="Enter banner message with text formatting"
                         />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Use the toolbar to format text with bold, italic, size, and colors
+                        </p>
                       </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
                         <div>
-                          <Label htmlFor="bgColor">Background Color</Label>
+                          <Label htmlFor="bgColor" className="mb-4">Background Color</Label>
                           <div className="flex gap-2">
                             <Input
                               id="bgColor"
@@ -313,7 +346,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate }) => {
                           </div>
                         </div>
                         <div>
-                          <Label htmlFor="textColor">Text Color</Label>
+                          <Label htmlFor="textColor" className="mb-4">Text Color</Label>
                           <div className="flex gap-2">
                             <Input
                               id="textColor"
@@ -330,19 +363,18 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate }) => {
                           </div>
                         </div>
                       </div>
-                      
+
                       {/* Preview */}
                       <div>
-                        <Label>Preview</Label>
-                        <div 
-                          className="p-4 rounded-lg mt-2"
-                          style={{ 
+                        <Label className="mb-2">Preview</Label>
+                        <div
+                          className="py-2 px-4 text-center rounded-lg mt-2"
+                          style={{
                             backgroundColor: settings.promotionalBanner.backgroundColor,
                             color: settings.promotionalBanner.textColor
                           }}
                         >
-                          <h3 className="font-bold text-lg">{settings.promotionalBanner.title}</h3>
-                          <p>{settings.promotionalBanner.message}</p>
+                          <p className="text-sm font-bold" dangerouslySetInnerHTML={{ __html: settings.promotionalBanner.message }} />
                         </div>
                       </div>
                     </div>
@@ -350,10 +382,21 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate }) => {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
+          )}
+
+          {/* Loyalty Management */}
+          {selectedTab === 'loyalty' && (
+            <div className="space-y-6">
+              <div className="text-center mb-6">
+                <h2 className="text-2xl font-bold">Loyalty Management</h2>
+                <p className="text-muted-foreground">Create and manage loyalty coupons for customers</p>
+              </div>
+              <CouponManagement />
+            </div>
+          )}
 
           {/* Notifications */}
-          <TabsContent value="notifications">
+          {selectedTab === 'notifications' && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -362,54 +405,63 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate }) => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
+                <div className="grid grid-cols-3 items-center">
+                  <div></div>
+                  <div className="text-center col-start-2">
                     <Label className="text-base font-medium">Order Notifications</Label>
                     <p className="text-sm text-muted-foreground">
                       Get notified when new orders are placed
                     </p>
                   </div>
-                  <Switch
-                    checked={settings.notifications.orderNotifications}
-                    onCheckedChange={(checked) => updateNestedSetting('notifications', 'orderNotifications', checked)}
-                  />
+                  <div className="justify-self-end">
+                    <Switch
+                      checked={settings.notifications.orderNotifications}
+                      onCheckedChange={(checked) => updateNestedSetting('notifications', 'orderNotifications', checked)}
+                    />
+                  </div>
                 </div>
-                
+
                 <Separator />
-                
-                <div className="flex items-center justify-between">
-                  <div>
+
+                <div className="grid grid-cols-3 items-center">
+                  <div></div>
+                  <div className="text-center col-start-2">
                     <Label className="text-base font-medium">Low Stock Alerts</Label>
                     <p className="text-sm text-muted-foreground">
                       Get notified when items are running low on stock
                     </p>
                   </div>
-                  <Switch
-                    checked={settings.notifications.lowStockAlerts}
-                    onCheckedChange={(checked) => updateNestedSetting('notifications', 'lowStockAlerts', checked)}
-                  />
+                  <div className="justify-self-end">
+                    <Switch
+                      checked={settings.notifications.lowStockAlerts}
+                      onCheckedChange={(checked) => updateNestedSetting('notifications', 'lowStockAlerts', checked)}
+                    />
+                  </div>
                 </div>
-                
+
                 <Separator />
-                
-                <div className="flex items-center justify-between">
-                  <div>
+
+                <div className="grid grid-cols-3 items-center">
+                  <div></div>
+                  <div className="text-center col-start-2">
                     <Label className="text-base font-medium">New Customer Alerts</Label>
                     <p className="text-sm text-muted-foreground">
                       Get notified when new customers register
                     </p>
                   </div>
-                  <Switch
-                    checked={settings.notifications.newCustomerAlerts}
-                    onCheckedChange={(checked) => updateNestedSetting('notifications', 'newCustomerAlerts', checked)}
-                  />
+                  <div className="justify-self-end">
+                    <Switch
+                      checked={settings.notifications.newCustomerAlerts}
+                      onCheckedChange={(checked) => updateNestedSetting('notifications', 'newCustomerAlerts', checked)}
+                    />
+                  </div>
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+          )}
 
           {/* Business Settings */}
-          <TabsContent value="business">
+          {selectedTab === 'business' && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -418,8 +470,8 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate }) => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div>
-                  <Label htmlFor="minOrder">Minimum Order Amount (£)</Label>
+                <div className="pt-4">
+                  <Label htmlFor="minOrder" className="mb-4">Minimum Order Amount (£)</Label>
                   <Input
                     id="minOrder"
                     type="number"
@@ -432,18 +484,18 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate }) => {
                     Minimum amount required for orders to be accepted
                   </p>
                 </div>
-                
+
                 <Separator />
-                
-                <div>
-                  <Label className="text-base font-medium">Operating Hours</Label>
+
+                <div className="pt-4">
+                  <Label className="text-base font-medium mb-4">Operating Hours</Label>
                   <p className="text-sm text-muted-foreground mb-4">
                     These hours are displayed to customers and used for automatic status updates
                   </p>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="openTime">Opening Time</Label>
+                      <Label htmlFor="openTime" className="mb-4">Opening Time</Label>
                       <Input
                         id="openTime"
                         type="time"
@@ -452,7 +504,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate }) => {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="closeTime">Closing Time</Label>
+                      <Label htmlFor="closeTime" className="mb-4">Closing Time</Label>
                       <Input
                         id="closeTime"
                         type="time"
@@ -464,10 +516,10 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate }) => {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+          )}
 
           {/* Advanced Settings */}
-          <TabsContent value="advanced">
+          {selectedTab === 'advanced' && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -476,62 +528,71 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate }) => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
+                <div className="grid grid-cols-3 items-center">
+                  <div></div>
+                  <div className="text-center col-start-2">
                     <Label className="text-base font-medium">Maintenance Mode</Label>
                     <p className="text-sm text-muted-foreground">
                       Disable the store temporarily for maintenance
                     </p>
                   </div>
-                  <Switch
-                    checked={settings.advanced.maintenanceMode}
-                    onCheckedChange={(checked) => updateNestedSetting('advanced', 'maintenanceMode', checked)}
-                  />
+                  <div className="justify-self-end">
+                    <Switch
+                      checked={settings.advanced.maintenanceMode}
+                      onCheckedChange={(checked) => updateNestedSetting('advanced', 'maintenanceMode', checked)}
+                    />
+                  </div>
                 </div>
-                
+
                 <Separator />
-                
-                <div className="flex items-center justify-between">
-                  <div>
+
+                <div className="grid grid-cols-3 items-center">
+                  <div></div>
+                  <div className="text-center col-start-2">
                     <Label className="text-base font-medium">Debug Mode</Label>
                     <p className="text-sm text-muted-foreground">
                       Enable detailed logging and error reporting
                     </p>
                   </div>
-                  <Switch
-                    checked={settings.advanced.debugMode}
-                    onCheckedChange={(checked) => updateNestedSetting('advanced', 'debugMode', checked)}
-                  />
+                  <div className="justify-self-end">
+                    <Switch
+                      checked={settings.advanced.debugMode}
+                      onCheckedChange={(checked) => updateNestedSetting('advanced', 'debugMode', checked)}
+                    />
+                  </div>
                 </div>
-                
+
                 <Separator />
-                
-                <div className="flex items-center justify-between">
-                  <div>
+
+                <div className="grid grid-cols-3 items-center">
+                  <div></div>
+                  <div className="text-center col-start-2">
                     <Label className="text-base font-medium">Analytics</Label>
                     <p className="text-sm text-muted-foreground">
                       Enable analytics tracking for business insights
                     </p>
                   </div>
-                  <Switch
-                    checked={settings.advanced.analyticsEnabled}
-                    onCheckedChange={(checked) => updateNestedSetting('advanced', 'analyticsEnabled', checked)}
-                  />
+                  <div className="justify-self-end">
+                    <Switch
+                      checked={settings.advanced.analyticsEnabled}
+                      onCheckedChange={(checked) => updateNestedSetting('advanced', 'analyticsEnabled', checked)}
+                    />
+                  </div>
                 </div>
-                
+
                 <Separator />
-                
+
                 <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg">
                   <h4 className="font-medium text-yellow-800 dark:text-yellow-200 mb-2">⚠️ Warning</h4>
                   <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                    Advanced settings can significantly affect your store's functionality. 
+                    Advanced settings can significantly affect your store's functionality.
                     Only modify these if you understand the implications.
                   </p>
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -66,6 +66,8 @@ function AppContent() {
         return <CustomerDashboard />;
       case 'profile':
         return <CustomerDashboard initialTab="profile" />;
+      case 'loyalty':
+        return <CustomerDashboard initialTab="loyalty" />;
       default:
         if (currentPage.startsWith('customer-detail:')) {
           const customerId = currentPage.split(':')[1];

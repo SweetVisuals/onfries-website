@@ -71,7 +71,7 @@ const CurrentOrderCard: React.FC<CurrentOrderCardProps> = ({ order, onComplete, 
             {/* Queue Badge */}
             {order.queuePosition && (
               <div className="bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded-full">
-                Order number #{order.queuePosition} in the queue
+                #{order.queuePosition} in the queue
               </div>
             )}
 
@@ -111,7 +111,7 @@ const CurrentOrderCard: React.FC<CurrentOrderCardProps> = ({ order, onComplete, 
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-yellow-800 dark:text-yellow-200" />
               <span className="text-sm font-medium text-yellow-800 dark:text-yellow-200 truncate">
-                {isCustomerView ? `Estimated pickup: ${order.estimatedDelivery ? new Date(order.estimatedDelivery).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'TBD'}` : `Time Elapsed: ${formattedTime}`}
+                Estimated Order Time: {order.estimatedDelivery ? new Date(order.estimatedDelivery).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'TBD'}
               </span>
             </div>
           </div>

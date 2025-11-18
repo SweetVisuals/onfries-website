@@ -10,7 +10,7 @@ import { useIsMobile } from '../../hooks/use-mobile';
 import Header from '../Layout/Header';
 import CurrentOrderManagement from './CurrentOrderManagement';
 import OrderHistory from './OrderHistory';
-import StockManagement from './StockManagement';
+import StockManagement from './StockManagement.tsx';
 import CustomerOverview from './CustomerOverview';
 import { Tabs } from '../ui/vercel-tabs';
 import logo from '../../images/OnFries-Logo.png';
@@ -365,8 +365,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, initialTab 
         {selectedTab === 'past-orders' && <OrderHistory />}
 
         {selectedTab === 'stock' && <StockManagement />}
-
-
         {selectedTab === 'customers' && <CustomerOverview onNavigate={handleNavigate} />}
       </div>
     </div>

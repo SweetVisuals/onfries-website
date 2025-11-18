@@ -261,10 +261,7 @@ const SquarePaymentForm: React.FC<SquarePaymentFormProps> = ({
         description: `Your payment of £${amount.toFixed(2)} has been processed successfully. (${paymentMode.toUpperCase()} Mode)`,
       });
 
-      // Clear cart after successful payment
-      clearCart();
-
-      // Call success callback
+      // Call success callback (cart clearing is handled by CartDrawer)
       onSuccess(paymentResponse.payment);
 
     } catch (error: any) {

@@ -1,39 +1,43 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Minus, TriangleAlert as AlertTriangle, Package, RotateCcw } from 'lucide-react';
-import { menuCategories } from '../../data/menuData';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Search, Filter, Edit3, Save, X, Plus, Minus, ChevronDown, ChevronUp, Check, PenTool } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import {
-  getStockItems,
-  updateItemStock as dbUpdateItemStock,
-  toggleSoldOutOverride as dbToggleSoldOutOverride,
-  addMenuItem,
-  StockItem
-} from '../../lib/database';
+import { getStockInventory, updateStockInventoryItem, StockInventoryItem, resetAllStockQuantities } from '../../lib/database';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 const StockManagement: React.FC = () => {
   const { toast } = useToast();
-  const [items, setItems] = useState<StockItem[]>([]);
+  const isMobile = useIsMobile();
+  const [stockItems, setStockItems] = useState<StockInventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState('All');
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [editingCell, setEditingCell] = useState<{ id: string; field: keyof StockInventoryItem } | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeCategory, setActiveCategory] = useState('Food');
+  const [bulkEditMode, setBulkEditMode] = useState(false);
+  const [bulkUpdates, setBulkUpdates] = useState<Record<string, Partial<StockInventoryItem>>>({});
+  const [signatureDialog, setSignatureDialog] = useState<{ type: 'trailer' | 'lockup'; open: boolean }>({ type: 'trailer', open: false });
+  const [signatureName, setSignatureName] = useState('');
+  const [showSignatureTick, setShowSignatureTick] = useState<{ trailer: boolean; lockup: boolean }>({ trailer: false, lockup: false });
+  const [signedNames, setSignedNames] = useState<{ trailer: string; lockup: string }>({ trailer: '', lockup: '' });
+  const [lastSignedDate, setLastSignedDate] = useState<string>('');
 
   useEffect(() => {
     loadStockItems();
+    loadSignatureData();
   }, []);
 
   const loadStockItems = async () => {
     try {
       setLoading(true);
-      const stockItems = await getStockItems();
-      setItems(stockItems);
+      const items = await getStockInventory();
+      setStockItems(items);
     } catch (error) {
       console.error('Error loading stock items:', error);
       toast({
@@ -46,427 +50,511 @@ const StockManagement: React.FC = () => {
     }
   };
 
-  const filteredItems = items.filter(item =>
-    selectedCategory === 'All' || item.category === selectedCategory
-  );
-
-  const updateItemStock = async (itemId: string, newStock: number) => {
+  const handleResetStockQuantities = async () => {
     try {
-      // Validate stock input
-      if (newStock < 0) {
-        toast({
-          title: 'Invalid Stock Level',
-          description: 'Stock cannot be negative',
-          variant: 'destructive'
-        });
-        return;
-      }
+      await resetAllStockQuantities();
+      await loadStockItems(); // Reload the items to show updated quantities
+      toast({
+        title: 'Stock Reset',
+        description: 'All stock quantities have been reset to 0',
+      });
+    } catch (error) {
+      console.error('Error resetting stock quantities:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to reset stock quantities',
+        variant: 'destructive'
+      });
+    }
+  };
 
-      const item = items.find(i => i.id === itemId);
-      if (!item) return;
 
-      const oldStock = item.currentStock;
-      
-      // Optimistically update UI
-      setItems(prevItems =>
-        prevItems.map(item =>
-          item.id === itemId ? { ...item, currentStock: newStock } : item
-        )
+  const loadSignatureData = () => {
+    const today = new Date().toDateString();
+    const storedDate = localStorage.getItem('stockSignatureDate');
+    const storedNames = localStorage.getItem('stockSignedNames');
+
+    if (storedDate === today && storedNames) {
+      const names = JSON.parse(storedNames);
+      setSignedNames(names);
+      setShowSignatureTick({ trailer: !!names.trailer, lockup: !!names.lockup });
+    } else if (storedDate !== today) {
+      // Reset signatures for new day
+      setSignedNames({ trailer: '', lockup: '' });
+      setShowSignatureTick({ trailer: false, lockup: false });
+      localStorage.removeItem('stockSignedNames');
+    }
+    setLastSignedDate(storedDate || '');
+  };
+
+  const handleCellEdit = async (id: string, field: keyof StockInventoryItem, value: string | number) => {
+    try {
+      const updatedItem = await updateStockInventoryItem(id, { [field]: value });
+      setStockItems(prev =>
+        prev.map(item => item.id === id ? updatedItem : item)
       );
-
-      await dbUpdateItemStock(itemId, newStock);
-      
-      // Show appropriate toast message
-      if (newStock === 0) {
-        toast({
-          title: 'Item marked as sold out',
-          description: `${item.name} stock set to 0`,
-          variant: 'destructive'
-        });
-      } else if (newStock < item.lowStockThreshold) {
-        toast({
-          title: 'Low stock alert',
-          description: `${item.name} stock is now low (${newStock} remaining)`,
-          variant: 'destructive'
-        });
-      } else {
-        toast({
-          title: 'Stock updated',
-          description: `${item.name} stock updated from ${oldStock} to ${newStock}`,
-        });
-      }
+      setEditingCell(null);
+      toast({
+        title: 'Updated',
+        description: `${field} updated successfully`,
+      });
     } catch (error) {
-      console.error('Error updating stock:', error);
-      // Revert optimistic update on error
-      const item = items.find(i => i.id === itemId);
-      if (item) {
-        setItems(prevItems =>
-          prevItems.map(i =>
-            i.id === itemId ? { ...i, currentStock: item.currentStock } : i
-          )
-        );
-      }
+      console.error('Error updating stock item:', error);
       toast({
         title: 'Error',
-        description: 'Failed to update stock level',
+        description: 'Failed to update stock item',
         variant: 'destructive'
       });
     }
   };
 
-  const toggleSoldOutOverride = async (itemId: string) => {
-    try {
-      const item = items.find(i => i.id === itemId);
-      if (!item) return;
-      
-      const newOverride = !item.soldOutOverride;
-      await dbToggleSoldOutOverride(itemId, newOverride);
-      
-      setItems(prevItems =>
-        prevItems.map(item =>
-          item.id === itemId ? { ...item, soldOutOverride: newOverride } : item
-        )
+  const renderEditableCell = (item: StockInventoryItem, field: keyof StockInventoryItem, type: 'text' | 'number' = 'text') => {
+    const isEditing = editingCell?.id === item.id && editingCell?.field === field;
+    const value = item[field];
+
+    if (isEditing) {
+      const stringValue = type === 'number' ? String(value || 0) : String(value || '');
+      return (
+        <Input
+          type={type}
+          defaultValue={stringValue}
+          onBlur={(e) => handleCellEdit(item.id, field, type === 'number' ? parseInt(e.target.value) || 0 : e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              handleCellEdit(item.id, field, type === 'number' ? parseInt((e.target as HTMLInputElement).value) || 0 : (e.target as HTMLInputElement).value);
+            } else if (e.key === 'Escape') {
+              setEditingCell(null);
+            }
+          }}
+          autoFocus
+          className="w-full"
+        />
       );
-
-      toast({
-        title: newOverride ? 'Sold out override enabled' : 'Sold out override disabled',
-        description: `${item.name} is now ${newOverride ? 'marked as sold out' : 'available'}`,
-      });
-    } catch (error) {
-      console.error('Error toggling sold out override:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update availability',
-        variant: 'destructive'
-      });
     }
+
+    return (
+      <div
+        className="cursor-pointer hover:bg-muted p-2 rounded min-h-[40px] flex items-center"
+        onClick={() => setEditingCell({ id: item.id, field })}
+      >
+        {type === 'number' ? (value ?? 0) : (value || <span className="text-muted-foreground italic">Click to edit</span>)}
+      </div>
+    );
   };
 
-  const addNewItem = async (newItem: any) => {
-    try {
-      const addedItem = await addMenuItem({
-        name: newItem.name,
-        description: newItem.description,
-        price: newItem.price,
-        category: newItem.category,
-        image: newItem.image,
-        is_available: true,
-        preparation_time: newItem.preparationTime
-      });
-      
-      // Add to local state with initial stock
-      const stockItem: StockItem = {
-        id: addedItem.id,
-        name: addedItem.name,
-        category: addedItem.category,
-        currentStock: 0,
-        lowStockThreshold: 5,
-        isAvailable: addedItem.is_available,
-        soldOutOverride: false,
-        price: addedItem.price
-      };
-      
-      setItems(prevItems => [...prevItems, stockItem]);
-      setIsAddDialogOpen(false);
-      
-      toast({
-        title: 'Item added',
-        description: `${newItem.name} has been added to the menu`,
-      });
-    } catch (error) {
-      console.error('Error adding item:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to add menu item',
-        variant: 'destructive'
-      });
-    }
+  const order: Record<string, string[]> = {
+    'Food': ['Steaks', 'Fries', 'Green Sauce', 'Red Sauce', 'Chip Seasoning', 'Ketchup', 'Mayo', 'Short Rib', 'Lamb'],
+    'Drinks': ['Coke / Pepsi', 'Tango Mango', 'Sprite', 'Coke Zero'],
+    'Essentials': ['Napkins', 'Deluxe Boxes', 'Single Boxes', 'Takeaway Bags', 'Sauce pots', 'Blue Roll', 'Cutlery', 'Cilit Bang', 'Hand Sanitizer'],
+    'Ingredients': ['Cooking Oil']
   };
 
-  const getLowStockItems = () => items.filter(item => item.currentStock >= 0 && item.currentStock < 5);
+  const sortItemsInCategory = (items: StockInventoryItem[], category: string) => {
+    const categoryOrder = order[category] || [];
+    return items.sort((a, b) => {
+      const aIndex = categoryOrder.indexOf(a.stock_item);
+      const bIndex = categoryOrder.indexOf(b.stock_item);
+      if (aIndex === -1 && bIndex === -1) return 0;
+      if (aIndex === -1) return 1;
+      if (bIndex === -1) return -1;
+      return aIndex - bIndex;
+    });
+  };
+
+  const filteredAndGroupedItems = useMemo(() => {
+    const filtered = stockItems.filter(item =>
+      item.stock_item.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.supplier?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.notes?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    const grouped = filtered.reduce((acc, item) => {
+      if (!acc[item.category]) {
+        acc[item.category] = [];
+      }
+      acc[item.category].push(item);
+      return acc;
+    }, {} as Record<string, StockInventoryItem[]>);
+
+    Object.keys(grouped).forEach(category => {
+      grouped[category] = sortItemsInCategory(grouped[category], category);
+    });
+
+    return grouped;
+  }, [stockItems, searchQuery]);
+
+  const categories = Object.keys(filteredAndGroupedItems);
+
+  const handleSignature = (type: 'trailer' | 'lockup') => {
+    if (!signatureName.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Please enter your name',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    const newSignedNames = { ...signedNames, [type]: signatureName };
+    setSignedNames(newSignedNames);
+    setShowSignatureTick({ ...showSignatureTick, [type]: true });
+
+    // Save to localStorage
+    const today = new Date().toDateString();
+    localStorage.setItem('stockSignatureDate', today);
+    localStorage.setItem('stockSignedNames', JSON.stringify(newSignedNames));
+
+    // Show success animation
+    setTimeout(() => {
+      setShowSignatureTick({ ...showSignatureTick, [type]: false });
+    }, 2000);
+
+    setSignatureDialog({ type, open: false });
+    setSignatureName('');
+
+    toast({
+      title: 'Signed',
+      description: `${type === 'trailer' ? 'Trailer' : 'Lockup'} stock signed by ${signatureName}`,
+    });
+  };
+
+  const needsDailySignature = () => {
+    const today = new Date().toDateString();
+    return lastSignedDate !== today || !signedNames.trailer;
+  };
+
+  const isLowStock = (item: StockInventoryItem) => {
+    const totalStock = (item.trailer_quantity || 0) + (item.lockup_quantity || 0);
+    return totalStock < 5;
+  };
 
   return (
     <div className="space-y-6">
-      {/* Low Stock Alert */}
-      {getLowStockItems().length > 0 && (
-        <Card className="border-orange-200 bg-orange-50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-orange-600" />
-              <span className="font-medium text-orange-800">
-                {getLowStockItems().length} items are running low on stock
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
             <CardTitle>Stock Management</CardTitle>
-            <Button onClick={loadStockItems} variant="outline" size="sm">
-              Refresh
-            </Button>
-
-            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="md:text-sm text-xs md:px-3 px-2">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Item
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add New Menu Item</DialogTitle>
-                </DialogHeader>
-                <ItemForm onSubmit={addNewItem} />
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          <div className="flex gap-2 mt-4">
-            {menuCategories.map((category) => (
-              <Button
-                key={category}
-                variant={selectedCategory === category ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setSelectedCategory(category)}
-              >
-                {category}
+            <div className="flex gap-2">
+              <Button onClick={handleResetStockQuantities} variant="destructive" size="sm">
+                Reset All to 0
               </Button>
-            ))}
+              <Button onClick={loadStockItems} variant="outline" size="sm">
+                Refresh
+              </Button>
+            </div>
           </div>
         </CardHeader>
-      </Card>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Column: Stock Overview */}
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Stock Overview</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="text-center py-4">Loading...</div>
-              ) : (
-                <div className="space-y-2">
-                  {filteredItems.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between py-2 px-3 border-b">
-                      <div className="flex-1">
-                        <h4 className="font-medium">{item.name}</h4>
-                        <p className="text-sm text-gray-600">{item.category}</p>
+        <CardContent>
+          {loading ? (
+            <div className="text-center py-8">Loading stock items...</div>
+          ) : (
+            <div className="space-y-8">
+              {/* Desktop View - Reorganized into Trailer and Lockup Sections */}
+              <div className="hidden md:block space-y-6">
+                {/* Trailer Section */}
+                <Card className="border-border bg-card shadow-sm">
+                  <CardHeader className="pb-2 pt-3 px-3 bg-muted border-b border-border">
+                    <CardTitle className="text-sm font-semibold text-card-foreground flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span>Trailer Stock</span>
+                        <Badge variant="outline" className="text-xs bg-yellow-400 text-yellow-900">Qty</Badge>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <div className="text-lg font-bold">{item.currentStock}</div>
-                          <div className="text-xs text-gray-500">in stock</div>
-                        </div>
-                        {item.currentStock >= 0 && item.currentStock < 5 && (
-                          <Badge variant="destructive" className="text-xs">
-                            Low
-                          </Badge>
+                      <div className="flex items-center gap-2">
+                        {showSignatureTick.trailer && (
+                          <div className="flex items-center gap-1 text-green-500 animate-pulse">
+                            <Check className="h-4 w-4" />
+                            <span className="text-xs">Signed</span>
+                          </div>
                         )}
+                        {signedNames.trailer && (
+                          <span className="text-xs text-muted-foreground">{signedNames.trailer}</span>
+                        )}
+                        <Button
+                          size="sm"
+                          variant={needsDailySignature() ? "default" : "outline"}
+                          onClick={() => setSignatureDialog({ type: 'trailer', open: true })}
+                          className="h-6 px-2 text-xs"
+                        >
+                          <PenTool className="h-3 w-3 mr-1" />
+                          Sign
+                        </Button>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-2">
+                    <Accordion type="multiple" className="w-full bg-card">
+                      {categories.map((category) => (
+                        <AccordionItem key={category} value={category} className="border-border">
+                          <AccordionTrigger className="py-3 px-2 text-xs font-medium text-card-foreground hover:bg-muted bg-card">
+                            <span>{category}</span>
+                          </AccordionTrigger>
+                          <AccordionContent className="px-2 pb-2 bg-card">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead className="w-40">Stock Item</TableHead>
+                                  <TableHead className="w-20">Trailer Qty</TableHead>
+                                  <TableHead className="w-24">Signed Trailer</TableHead>
+                                  <TableHead className="w-24">Supplier</TableHead>
+                                  <TableHead className="w-32">Notes</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {filteredAndGroupedItems[category]?.map((item) => (
+                                  <TableRow key={item.id}>
+                                    <TableCell className="font-medium">{item.stock_item}</TableCell>
+                                    <TableCell>{renderEditableCell(item, 'trailer_quantity', 'number')}</TableCell>
+                                    <TableCell>{renderEditableCell(item, 'signed_trailer')}</TableCell>
+                                    <TableCell>{renderEditableCell(item, 'supplier')}</TableCell>
+                                    <TableCell>{renderEditableCell(item, 'notes')}</TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </AccordionContent>
+                        </AccordionItem>
+                      ))}
+                    </Accordion>
+                  </CardContent>
+                </Card>
 
-        {/* Right Column: Sold Out Management */}
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Sold Out Management</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="text-center py-4">Loading...</div>
-              ) : (
-                <div className="space-y-2">
-                  {filteredItems.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between py-2 px-3 border-b">
-                      <div className="flex-1">
-                        <h4 className="font-medium">{item.name}</h4>
-                        <p className="text-sm text-gray-600">{item.category}</p>
+                {/* Lockup Section */}
+                <Card className="border-border bg-card shadow-sm">
+                  <CardHeader className="pb-2 pt-3 px-3 bg-muted border-b border-border">
+                    <CardTitle className="text-sm font-semibold text-card-foreground flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span>Lockup Stock</span>
+                        <Badge variant="outline" className="text-xs bg-yellow-400 text-yellow-900">Qty</Badge>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
-                          <Label className="text-sm">Sold Out:</Label>
-                          <Switch
-                            checked={item.soldOutOverride}
-                            onCheckedChange={() => toggleSoldOutOverride(item.id)}
-                          />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Label className="text-sm">Stock:</Label>
-                          <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-2">
+                        {showSignatureTick.lockup && (
+                          <div className="flex items-center gap-1 text-green-500 animate-pulse">
+                            <Check className="h-4 w-4" />
+                            <span className="text-xs">Signed</span>
+                          </div>
+                        )}
+                        {signedNames.lockup && (
+                          <span className="text-xs text-muted-foreground">{signedNames.lockup}</span>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setSignatureDialog({ type: 'lockup', open: true })}
+                          className="h-6 px-2 text-xs"
+                        >
+                          <PenTool className="h-3 w-3 mr-1" />
+                          Sign
+                        </Button>
+                      </div>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-2">
+                    <Accordion type="multiple" className="w-full bg-card">
+                      {categories.map((category) => (
+                        <AccordionItem key={category} value={category} className="border-border">
+                          <AccordionTrigger className="py-3 px-2 text-xs font-medium text-card-foreground hover:bg-muted bg-card">
+                            <span>{category}</span>
+                          </AccordionTrigger>
+                          <AccordionContent className="px-2 pb-2 bg-card">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead className="w-40">Stock Item</TableHead>
+                                  <TableHead className="w-20">Lockup Qty</TableHead>
+                                  <TableHead className="w-24">Signed Lockup</TableHead>
+                                  <TableHead className="w-24">Supplier</TableHead>
+                                  <TableHead className="w-32">Notes</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {filteredAndGroupedItems[category]?.map((item) => (
+                                  <TableRow key={item.id}>
+                                    <TableCell className="font-medium">{item.stock_item}</TableCell>
+                                    <TableCell>{renderEditableCell(item, 'lockup_quantity', 'number')}</TableCell>
+                                    <TableCell>{renderEditableCell(item, 'signed_lockup')}</TableCell>
+                                    <TableCell>{renderEditableCell(item, 'supplier')}</TableCell>
+                                    <TableCell>{renderEditableCell(item, 'notes')}</TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </AccordionContent>
+                        </AccordionItem>
+                      ))}
+                    </Accordion>
+                  </CardContent>
+                </Card>
+              </div>
+              {/* Mobile Card View - Reorganized into Trailer and Lockup Sections */}
+              <div className="block md:hidden space-y-4">
+                    {/* Trailer Section */}
+                    <Card className="border-border bg-card shadow-sm">
+                      <CardHeader className="pb-2 pt-3 px-3 bg-muted border-b border-border">
+                        <CardTitle className="text-sm font-semibold text-card-foreground flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span>Trailer Stock</span>
+                            <Badge variant="outline" className="text-xs bg-yellow-400 text-yellow-900">Qty</Badge>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {showSignatureTick.trailer && (
+                              <div className="flex items-center gap-1 text-green-500 animate-pulse">
+                                <Check className="h-4 w-4" />
+                                <span className="text-xs">Signed</span>
+                              </div>
+                            )}
+                            {signedNames.trailer && (
+                              <span className="text-xs text-muted-foreground">{signedNames.trailer}</span>
+                            )}
                             <Button
                               size="sm"
-                              variant="outline"
-                              className="w-8 h-8 p-0"
-                              onClick={() => updateItemStock(item.id, Math.max(0, item.currentStock - 1))}
+                              variant={needsDailySignature() ? "default" : "outline"}
+                              onClick={() => setSignatureDialog({ type: 'trailer', open: true })}
+                              className="h-6 px-2 text-xs"
                             >
-                              <Minus className="w-3 h-3" />
-                            </Button>
-                            <Input
-                              type="number"
-                              value={item.currentStock}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                // Allow empty string while typing, treat as 0 on blur
-                                const stockValue = value === '' ? 0 : parseInt(value);
-                                if (!isNaN(stockValue) && stockValue >= 0) {
-                                  updateItemStock(item.id, stockValue);
-                                }
-                              }}
-                              onBlur={(e) => {
-                                // Ensure non-negative number on blur
-                                const value = parseInt(e.target.value);
-                                if (isNaN(value) || value < 0) {
-                                  updateItemStock(item.id, 0);
-                                }
-                              }}
-                              className="w-16 h-8 text-center"
-                              min="0"
-                              placeholder="0"
-                            />
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="w-8 h-8 p-0"
-                              onClick={() => updateItemStock(item.id, item.currentStock + 1)}
-                            >
-                              <Plus className="w-3 h-3" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="w-8 h-8 p-0"
-                              onClick={() => updateItemStock(item.id, 0)}
-                              title="Set to sold out"
-                            >
-                              <RotateCcw className="w-3 h-3" />
+                              <PenTool className="h-3 w-3 mr-1" />
+                              Sign
                             </Button>
                           </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-2">
+                        <Accordion type="multiple" className="w-full bg-card">
+                          {categories.map((category) => (
+                            <AccordionItem key={category} value={category} className="border-border">
+                              <AccordionTrigger className="py-3 px-2 text-xs font-medium text-card-foreground hover:bg-muted bg-card">
+                                <span>{category}</span>
+                              </AccordionTrigger>
+                              <AccordionContent className="px-2 pb-2 bg-card">
+                                <div className="grid grid-cols-1 gap-1">
+                                  {filteredAndGroupedItems[category]?.map((item) => (
+                                    <div key={item.id} className="flex justify-between items-center py-1 px-2 bg-muted rounded text-xs">
+                                      <div className="flex items-center gap-2 flex-1">
+                                        <span className="font-medium truncate text-card-foreground">{item.stock_item}</span>
+                                        {isLowStock(item) && (
+                                          <Badge variant="destructive" className="text-xs">Low Stock</Badge>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-muted-foreground">Trailer:</span>
+                                        {renderEditableCell(item, 'trailer_quantity', 'number')}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </AccordionContent>
+                            </AccordionItem>
+                          ))}
+                        </Accordion>
+                      </CardContent>
+                    </Card>
+
+                    {/* Lockup Section */}
+                    <Card className="border-border bg-card shadow-sm">
+                      <CardHeader className="pb-2 pt-3 px-3 bg-muted border-b border-border">
+                        <CardTitle className="text-sm font-semibold text-card-foreground flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span>Lockup Stock</span>
+                            <Badge variant="outline" className="text-xs bg-yellow-400 text-yellow-900">Qty</Badge>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {showSignatureTick.lockup && (
+                              <div className="flex items-center gap-1 text-green-500 animate-pulse">
+                                <Check className="h-4 w-4" />
+                                <span className="text-xs">Signed</span>
+                              </div>
+                            )}
+                            {signedNames.lockup && (
+                              <span className="text-xs text-muted-foreground">{signedNames.lockup}</span>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setSignatureDialog({ type: 'lockup', open: true })}
+                              className="h-6 px-2 text-xs"
+                            >
+                              <PenTool className="h-3 w-3 mr-1" />
+                              Sign
+                            </Button>
+                          </div>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-2">
+                        <Accordion type="multiple" className="w-full bg-card">
+                          {categories.map((category) => (
+                            <AccordionItem key={category} value={category} className="border-border">
+                              <AccordionTrigger className="py-3 px-2 text-xs font-medium text-card-foreground hover:bg-muted bg-card">
+                                <span>{category}</span>
+                              </AccordionTrigger>
+                              <AccordionContent className="px-2 pb-2 bg-card">
+                                <div className="grid grid-cols-1 gap-1">
+                                  {filteredAndGroupedItems[category]?.map((item) => (
+                                    <div key={item.id} className="flex justify-between items-center py-1 px-2 bg-muted rounded text-xs">
+                                      <div className="flex items-center gap-2 flex-1">
+                                        <span className="font-medium truncate text-card-foreground">{item.stock_item}</span>
+                                        {isLowStock(item) && (
+                                          <Badge variant="destructive" className="text-xs">Low Stock</Badge>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-muted-foreground">Lockup:</span>
+                                        {renderEditableCell(item, 'lockup_quantity', 'number')}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </AccordionContent>
+                            </AccordionItem>
+                          ))}
+                        </Accordion>
+                      </CardContent>
+                    </Card>
+                  </div>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+          )}
+        </CardContent>
+      </Card>
 
-      {filteredItems.length === 0 && !loading && (
-        <Card>
-          <CardContent className="text-center py-12">
-            <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No items found</h3>
-            <p className="text-gray-500">No items match your current filter.</p>
-          </CardContent>
-        </Card>
-      )}
+      {/* Signature Dialog */}
+      <Dialog open={signatureDialog.open} onOpenChange={(open) => setSignatureDialog({ ...signatureDialog, open })}>
+        <DialogContent className="sm:max-w-md [&>button]:bg-transparent [&>button]:hover:bg-transparent [&>button]:text-muted-foreground [&>button]:hover:text-foreground">
+          <DialogHeader>
+            <DialogTitle>Sign {signatureDialog.type === 'trailer' ? 'Trailer' : 'Lockup'} Stock</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="signature-name" className="text-sm font-medium">
+                Enter your name:
+              </label>
+              <Input
+                id="signature-name"
+                value={signatureName}
+                onChange={(e) => setSignatureName(e.target.value)}
+                placeholder="Your name"
+                className="mt-1"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSignature(signatureDialog.type);
+                  }
+                }}
+              />
+            </div>
+            {signatureDialog.type === 'trailer' && needsDailySignature() && (
+              <div className="text-sm text-amber-600 dark:text-amber-400">
+                Daily signature required for trailer stock
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSignatureDialog({ ...signatureDialog, open: false })}>
+              Cancel
+            </Button>
+            <Button onClick={() => handleSignature(signatureDialog.type)}>
+              Sign
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
-  );
-};
-
-const ItemForm: React.FC<{ initialData?: any; onSubmit: (data: any) => void }> = ({ 
-  initialData, 
-  onSubmit 
-}) => {
-  const [formData, setFormData] = useState(initialData || {
-    name: '',
-    description: '',
-    price: 0,
-    category: 'Main Courses',
-    image: '',
-    preparationTime: 15,
-    isAvailable: true
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSubmit(formData);
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <Label>Name</Label>
-        <Input 
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          required
-        />
-      </div>
-      
-      <div>
-        <Label>Description</Label>
-        <Input 
-          value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          required
-        />
-      </div>
-      
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label>Price ($)</Label>
-          <Input 
-            type="number"
-            step="0.01"
-            value={formData.price}
-            onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
-            required
-          />
-        </div>
-        
-        <div>
-          <Label>Prep Time (min)</Label>
-          <Input 
-            type="number"
-            value={formData.preparationTime}
-            onChange={(e) => setFormData({ ...formData, preparationTime: parseInt(e.target.value) || 15 })}
-            required
-          />
-        </div>
-      </div>
-      
-      <div>
-        <Label>Category</Label>
-        <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {menuCategories.filter(cat => cat !== 'All').map(category => (
-              <SelectItem key={category} value={category}>{category}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      
-      <div>
-        <Label>Image URL</Label>
-        <Input 
-          value={formData.image}
-          onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-          placeholder="https://example.com/image.jpg"
-          required
-        />
-      </div>
-      
-      <Button type="submit" className="w-full">
-        {initialData ? 'Update Item' : 'Add Item'}
-      </Button>
-    </form>
   );
 };
 

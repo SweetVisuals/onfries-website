@@ -33,8 +33,8 @@ const PaymentSuccessScreen: React.FC<PaymentSuccessScreenProps> = ({
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    // Trigger entrance animation
-    setTimeout(() => setIsVisible(true), 100);
+    // Trigger entrance animation instantly
+    setIsVisible(true);
   }, []);
 
   const containerClasses = isInDrawer
@@ -63,6 +63,9 @@ const PaymentSuccessScreen: React.FC<PaymentSuccessScreenProps> = ({
             <p className={`text-gray-600 dark:text-gray-300 transform transition-all duration-700 delay-500 ${
               isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
             }`}>Your order has been placed successfully.</p>
+            <p className={`text-sm text-gray-500 dark:text-gray-400 mt-2 transform transition-all duration-700 delay-600 ${
+              isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
+            }`}>Go to Orders to check your order status</p>
           </div>
 
           {/* Order Details with Staggered Animation */}
@@ -123,7 +126,14 @@ const PaymentSuccessScreen: React.FC<PaymentSuccessScreenProps> = ({
                 minute: '2-digit'
               })}
             </p>
-            <p className="text-blue-600 dark:text-blue-300 text-xs mt-1">(Approximately 30 minutes)</p>
+            <p className="text-blue-600 dark:text-blue-300 text-xs mt-1">
+              {(() => {
+                const now = new Date();
+                const deliveryTime = new Date(estimatedDelivery);
+                const diffMinutes = Math.round((deliveryTime.getTime() - now.getTime()) / (1000 * 60));
+                return `(Approximately ${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''})`;
+              })()}
+            </p>
           </div>
 
           {/* Action Buttons with Animation */}

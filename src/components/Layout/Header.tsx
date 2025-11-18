@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { ShoppingCart, User, LogOut, Settings, Sun, Moon, ChevronDown } from 'lucide-react';
+import { ShoppingCart, User, LogOut, Settings, Sun, Moon, ChevronDown, Gift } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { useIsMobile } from '../../hooks/use-mobile';
@@ -38,11 +38,11 @@ const Header: React.FC<HeaderProps> = ({
   onAdminTabChange
 }) => {
   const { user, logout } = useAuth();
-  const { getItemCount } = useCart();
+  const { getItemCount, isCartOpen, openCart, closeCart } = useCart();
   const isMobile = useIsMobile();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [isCartOpen, setIsCartOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
@@ -147,7 +147,7 @@ const Header: React.FC<HeaderProps> = ({
                       <User className="mr-2 h-4 w-4" />
                       <span>Profile</span>
                     </DropdownMenuItem>
-                    
+
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout}>
                       <LogOut className="mr-2 h-4 w-4" />
@@ -174,7 +174,7 @@ const Header: React.FC<HeaderProps> = ({
                     variant="ghost"
                     size="icon"
                     className="relative"
-                    onClick={() => setIsCartOpen(true)}
+                    onClick={openCart}
                     data-cart-icon
                   >
                     <ShoppingCart className="h-4 w-4" />
@@ -204,7 +204,7 @@ const Header: React.FC<HeaderProps> = ({
       {/* Cart Drawer */}
       <CartDrawer
         isOpen={isCartOpen}
-        onClose={() => setIsCartOpen(false)}
+        onClose={closeCart}
         onNavigateToOrders={() => onNavigate('customer')}
       />
     </>

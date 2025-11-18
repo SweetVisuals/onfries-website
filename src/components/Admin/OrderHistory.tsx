@@ -20,7 +20,6 @@ interface OrderWithItems extends Order {
       price: number;
     };
   }>;
-  completed_at?: string;
 }
 
 const OrderHistory: React.FC = () => {
@@ -122,7 +121,10 @@ const OrderHistory: React.FC = () => {
     const standaloneItems: any[] = [];
     let lastMainItemKey: string | null = null;
 
-    order.order_items?.forEach((item, index) => {
+    // Sort order_items by id to ensure they are in insertion order for proper grouping
+    const sortedOrderItems = [...(order.order_items || [])].sort((a, b) => a.id.localeCompare(b.id));
+
+    sortedOrderItems.forEach((item, index) => {
       const menuItem = item.menu_items;
       if (!menuItem) return;
 
@@ -268,7 +270,7 @@ const OrderHistory: React.FC = () => {
       orderDate: order.order_date,
       estimatedDelivery: order.estimated_delivery,
       notes: order.notes,
-      completedAt: order.completed_at
+      completedAt: order.updated_at
     };
   };
 

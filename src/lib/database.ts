@@ -18,6 +18,7 @@ export interface MenuItem {
   category: string;
   is_available: boolean;
   preparation_time?: number;
+  stock_requirements?: Array<{ stockItem: string; quantity: number }>;
   created_at: string;
   updated_at: string;
 }
@@ -123,11 +124,11 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
   const customersChange = yesterdayCustomers > 0 ? ((totalCustomers - yesterdayCustomers) / yesterdayCustomers) * 100 : 0;
 
   // Calculate average order time for completed orders
-  const completedOrders = todayOrders?.filter(order => order.status === 'delivered' && order.completedAt) || [];
+  const completedOrders = todayOrders?.filter(order => order.status === 'delivered') || [];
   const averageOrderTime = completedOrders.length > 0
     ? completedOrders.reduce((sum: number, order: any) => {
         const orderDate = new Date(order.order_date);
-        const completedAt = new Date(order.completedAt!);
+        const completedAt = new Date(order.updated_at);
         const timeTaken = (completedAt.getTime() - orderDate.getTime()) / (1000 * 60); // in minutes
         return sum + timeTaken;
       }, 0) / completedOrders.length
@@ -502,22 +503,25 @@ export const toggleMenuItemAvailability = async (id: string, isAvailable: boolea
 
 // Store settings functions
 export const getStoreStatus = async (): Promise<boolean> => {
-  // Force store to always be open
-  console.log('Store status forced to: true');
-  return true;
+  try {
+    const stored = localStorage.getItem('store_open');
+    if (stored !== null) {
+      return stored === 'true';
+    }
+    // Default to true if not set
+    return true;
+  } catch (error) {
+    console.error('Error reading store status from localStorage:', error);
+    return true; // Default to open on error
+  }
 };
 
 export const setStoreStatus = async (isOpen: boolean): Promise<void> => {
-  const { error } = await supabase
-    .from('store_settings')
-    .upsert({
-      key: 'store_open',
-      value: isOpen.toString(),
-      updated_at: new Date().toISOString()
-    });
-
-  if (error) {
-    console.error('Error updating store status:', error);
+  try {
+    localStorage.setItem('store_open', isOpen.toString());
+    console.log('Store status saved to localStorage:', isOpen);
+  } catch (error) {
+    console.error('Error saving store status to localStorage:', error);
     throw error;
   }
 };
@@ -885,7 +889,8 @@ export const createOrder = async (orderData: {
 
     // Create the main order record
     const orderDate = new Date().toISOString();
-    const estimatedDelivery = new Date(Date.now() + 30 * 60 * 1000).toISOString(); // 30 minutes from now
+    const averageOrderTime = await getAverageOrderTime();
+    const estimatedDelivery = new Date(Date.now() + averageOrderTime * 60 * 1000).toISOString();
 
     console.log('Inserting order record...', {
       customer_id: customerId,
@@ -973,6 +978,15 @@ export const createOrder = async (orderData: {
 
     console.log('Order items created successfully');
 
+    // Deduct stock for the ordered items
+    try {
+      await deductStockForOrder(orderData.items);
+      console.log('Stock deducted successfully for order:', order.id);
+    } catch (stockError) {
+      console.error('Error deducting stock:', stockError);
+      // Don't fail the order for stock deduction errors, but log it
+    }
+
     // Trigger refresh event for admin panels
     triggerOrderRefresh();
 
@@ -1009,6 +1023,15 @@ export const updateOrderStatus = async (orderId: string, status: Order['status']
 };
 
 export const deleteOrder = async (orderId: string): Promise<void> => {
+  // First restore stock for the order items before deleting
+  try {
+    await restoreStockForOrder(orderId);
+    console.log('Stock restored successfully for cancelled order:', orderId);
+  } catch (stockError) {
+    console.error('Error restoring stock for cancelled order:', stockError);
+    // Continue with order deletion even if stock restoration fails
+  }
+
   // First delete all order items associated with this order
   const { error: itemsError } = await supabase
     .from('order_items')
@@ -1031,12 +1054,21 @@ export const deleteOrder = async (orderId: string): Promise<void> => {
 
 // Order refresh mechanism for admin panels
 const ORDER_REFRESH_EVENT = 'order_refresh_needed';
+const MENU_REFRESH_EVENT = 'menu_refresh_needed';
 
 export const triggerOrderRefresh = () => {
   // Trigger a custom event to refresh admin panels
   if (typeof window !== 'undefined') {
     localStorage.setItem('last_order_update', Date.now().toString());
     window.dispatchEvent(new CustomEvent(ORDER_REFRESH_EVENT));
+  }
+};
+
+export const triggerMenuRefresh = () => {
+  // Trigger a custom event to refresh menu components
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('last_menu_update', Date.now().toString());
+    window.dispatchEvent(new CustomEvent(MENU_REFRESH_EVENT));
   }
 };
 
@@ -1061,4 +1093,610 @@ export const listenForOrderUpdates = (callback: () => void) => {
     window.removeEventListener(ORDER_REFRESH_EVENT, handleOrderUpdate);
     window.removeEventListener('storage', handleStorageChange);
   };
+};
+
+export const listenForMenuUpdates = (callback: () => void) => {
+  if (typeof window === 'undefined') return () => {};
+
+  const handleMenuUpdate = () => {
+    callback();
+  };
+
+  const handleStorageChange = (e: StorageEvent) => {
+    if (e.key === 'last_menu_update') {
+      callback();
+    }
+  };
+
+  window.addEventListener(MENU_REFRESH_EVENT, handleMenuUpdate);
+  window.addEventListener('storage', handleStorageChange);
+
+  // Return cleanup function
+  return () => {
+    window.removeEventListener(MENU_REFRESH_EVENT, handleMenuUpdate);
+    window.removeEventListener('storage', handleStorageChange);
+  };
+};
+
+// Stock inventory management functions
+export interface StockInventoryItem {
+  id: string;
+  stock_item: string;
+  category: string;
+  lockup_quantity: number;
+  trailer_quantity: number;
+  signed_lockup?: string;
+  signed_trailer?: string;
+  supplier?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+// Coupon interfaces
+export interface Coupon {
+  id: string;
+  name: string;
+  description?: string;
+  type: 'free_item' | 'percent_off' | 'bogo' | 'min_order_discount';
+  value: string;
+  points_cost: number;
+  duration_hours: number;
+  max_per_account: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CustomerCoupon {
+  id: string;
+  customer_id: string;
+  coupon_id: string;
+  claimed_at: string;
+  expires_at: string;
+  is_used: boolean;
+  used_at?: string;
+  order_id?: string;
+  created_at: string;
+  coupon: Coupon;
+}
+
+export const getStockInventory = async (): Promise<StockInventoryItem[]> => {
+  const { data, error } = await supabase
+    .from('stock')
+    .select('*')
+    .order('category', { ascending: true })
+    .order('stock_item', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+};
+
+export const updateStockInventoryItem = async (id: string, updates: Partial<StockInventoryItem>): Promise<StockInventoryItem> => {
+  const { data, error } = await supabase
+    .from('stock')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  // Update menu availability after stock changes
+  try {
+    await updateMenuAvailability();
+  } catch (availabilityError) {
+    console.error('Error updating menu availability after stock change:', availabilityError);
+    // Don't fail the stock update if menu availability update fails
+  }
+
+  return data;
+};
+
+export const createStockInventoryItem = async (item: Omit<StockInventoryItem, 'id' | 'created_at' | 'updated_at'>): Promise<StockInventoryItem> => {
+  // Set default values for quantities to 0, preserving signed fields
+  const itemWithDefaults = {
+    ...item,
+    lockup_quantity: item.lockup_quantity ?? 0,
+    trailer_quantity: item.trailer_quantity ?? 0,
+  };
+
+  const { data, error } = await supabase
+    .from('stock')
+    .insert([itemWithDefaults])
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  // Update menu availability after creating new stock item
+  try {
+    await updateMenuAvailability();
+  } catch (availabilityError) {
+    console.error('Error updating menu availability after creating stock item:', availabilityError);
+    // Don't fail the creation if menu availability update fails
+  }
+
+  return data;
+};
+
+export const deleteStockInventoryItem = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from('stock')
+    .delete()
+    .eq('id', id);
+
+  if (error) throw error;
+};
+
+export const resetAllStockQuantities = async (): Promise<void> => {
+  try {
+    // Get all stock items
+    const { data: stockItems, error: fetchError } = await supabase
+      .from('stock')
+      .select('id, signed_lockup, signed_trailer');
+
+    if (fetchError) throw fetchError;
+
+    if (!stockItems || stockItems.length === 0) {
+      console.log('No stock items to reset');
+      return;
+    }
+
+    // Reset quantities to 0 for all items, preserving signed fields
+    const resetPromises = stockItems.map(item =>
+      supabase
+        .from('stock')
+        .update({
+          lockup_quantity: 0,
+          trailer_quantity: 0,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', item.id)
+    );
+
+    const results = await Promise.all(resetPromises);
+
+    // Check for errors
+    const errors = results.filter(result => result.error);
+    if (errors.length > 0) {
+      console.error('Errors resetting stock quantities:', errors);
+      throw new Error('Failed to reset some stock quantities');
+    }
+
+    console.log(`Reset quantities to 0 for ${stockItems.length} stock items`);
+
+    // Update menu availability after resetting stock
+    await updateMenuAvailability();
+
+  } catch (error) {
+    console.error('Error resetting stock quantities:', error);
+    throw error;
+  }
+};
+// Coupon management functions
+export const getCoupons = async (): Promise<Coupon[]> => {
+  const { data, error } = await supabase
+    .from('coupons')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+};
+
+export const createCoupon = async (coupon: Omit<Coupon, 'id' | 'created_at' | 'updated_at'>): Promise<Coupon> => {
+  const { data, error } = await supabase
+    .from('coupons')
+    .insert([coupon])
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
+export const updateCoupon = async (id: string, updates: Partial<Coupon>): Promise<Coupon> => {
+  const { data, error } = await supabase
+    .from('coupons')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
+export const deleteCoupon = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from('coupons')
+    .delete()
+    .eq('id', id);
+
+  if (error) throw error;
+};
+
+export const getCustomerCoupons = async (customerId: string): Promise<CustomerCoupon[]> => {
+  const { data, error } = await supabase
+    .from('customer_coupons')
+    .select(`
+      *,
+      coupon:coupons(*)
+    `)
+    .eq('customer_id', customerId)
+    .eq('is_used', false)
+    .gt('expires_at', new Date().toISOString())
+    .order('claimed_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+};
+
+export const claimCoupon = async (couponId: string, customerId: string): Promise<CustomerCoupon> => {
+  // First check if customer has enough points and hasn't exceeded max per account
+  const { data: coupon, error: couponError } = await supabase
+    .from('coupons')
+    .select('*')
+    .eq('id', couponId)
+    .single();
+
+  if (couponError) throw couponError;
+
+  // Check customer's loyalty points
+  const customerDetails = await getCustomerDetails(customerId);
+  if (customerDetails.loyaltyPoints < coupon.points_cost) {
+    throw new Error('Insufficient loyalty points');
+  }
+
+  // Check if customer hasn't exceeded max per account for today
+  const today = new Date().toISOString().split('T')[0];
+  const { data: todayClaims, error: claimsError } = await supabase
+    .from('customer_coupons')
+    .select('id')
+    .eq('customer_id', customerId)
+    .eq('coupon_id', couponId)
+    .gte('claimed_at', `${today}T00:00:00.000Z`)
+    .lt('claimed_at', `${today}T23:59:59.999Z`);
+
+  if (claimsError) throw claimsError;
+
+  if (todayClaims && todayClaims.length >= coupon.max_per_account) {
+    throw new Error(`Maximum ${coupon.max_per_account} claims per day exceeded`);
+  }
+
+  // Create the customer coupon
+  const expiresAt = new Date(Date.now() + coupon.duration_hours * 60 * 60 * 1000).toISOString();
+
+  const { data, error } = await supabase
+    .from('customer_coupons')
+    .insert({
+      customer_id: customerId,
+      coupon_id: couponId,
+      expires_at: expiresAt
+    })
+    .select(`
+      *,
+      coupon:coupons(*)
+    `)
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
+export const useCoupon = async (customerCouponId: string, orderId?: string): Promise<void> => {
+  const updateData: any = {
+    is_used: true,
+    used_at: new Date().toISOString()
+  };
+
+  if (orderId) {
+    updateData.order_id = orderId;
+  }
+
+  const { error } = await supabase
+    .from('customer_coupons')
+    .update(updateData)
+    .eq('id', customerCouponId);
+
+  if (error) throw error;
+};
+
+// Stock mapping for menu items to stock inventory items
+const getStockRequirements = async (menuItemId: string, quantity: number = 1): Promise<Array<{ stockItem: string; quantity: number }>> => {
+  const requirements: Array<{ stockItem: string; quantity: number }> = [];
+
+  try {
+    // First try to get requirements from database
+    const { data: menuItem, error } = await supabase
+      .from('menu_items')
+      .select('stock_requirements')
+      .eq('id', menuItemId)
+      .single();
+
+    if (!error && menuItem?.stock_requirements) {
+      // Use database requirements
+      menuItem.stock_requirements.forEach((req: { stockItem: string; quantity: number }) => {
+        requirements.push({
+          stockItem: req.stockItem,
+          quantity: req.quantity * quantity
+        });
+      });
+    } else {
+      // Fallback to hardcoded map for backward compatibility
+      const stockMap: Record<string, Array<{ stockItem: string; quantity: number }>> = {
+        // Main Courses
+        '567b6a07-f08a-48dc-8401-350900404a5a': [ // Deluxe Steak & Fries
+          { stockItem: 'Steaks', quantity: 1 },
+          { stockItem: 'Fries', quantity: 1 }
+        ],
+        'bafb0ca1-7a7d-477c-95db-8340750d5073': [ // Steak & Fries
+          { stockItem: 'Steaks', quantity: 1 },
+          { stockItem: 'Fries', quantity: 1 }
+        ],
+        'dcdedc23-359a-4120-9c3c-488386410364': [ // Steak Only
+          { stockItem: 'Steaks', quantity: 1 }
+        ],
+        '135dda9e-ce09-480a-b7cc-fa48a202fa0b': [ // Signature Fries
+          { stockItem: 'Fries', quantity: 1 }
+        ],
+
+        // Add-ons
+        'f119d64e-3340-4552-a207-58171cf328f0': [ // Green Sauce
+          { stockItem: 'Green Sauce', quantity: 1 }
+        ],
+        'f9d7308a-399c-4abe-a125-237fc4722824': [ // Red Sauce
+          { stockItem: 'Red Sauce', quantity: 1 }
+        ],
+        '4d26334c-0d1e-4c3e-8b87-1075c66b678b': [ // Steak (add-on)
+          { stockItem: 'Steaks', quantity: 1 }
+        ],
+        'a1b2c3d4-e5f6-7890-abcd-ef1234567890': [ // Short Rib
+          { stockItem: 'Short Rib', quantity: 1 }
+        ],
+        'b2c3d4e5-f6a7-8901-bcde-f23456789012': [ // Lamb Chop
+          { stockItem: 'Lamb', quantity: 1 }
+        ],
+
+        // Kids Menu
+        '2836bb5e-3d5e-4a8a-8b63-64b55786b5d4': [ // Kids Meal (includes steak and fries)
+          { stockItem: 'Steaks', quantity: 1 },
+          { stockItem: 'Fries', quantity: 1 }
+        ],
+        '40902b4c-4e1e-46b3-8d91-e44b0bb800cf': [ // Kids Fries
+          { stockItem: 'Fries', quantity: 1 }
+        ],
+        '73919a44-13f5-4976-9cd5-9ab2ec6a9aef': [ // £1 Steak Cone
+          { stockItem: 'Steaks', quantity: 1 }
+        ],
+    
+        // Drinks
+        '4495999f-0737-43c2-a961-9601a2677a66': [ // Coke
+          { stockItem: 'Coke / Pepsi', quantity: 1 }
+        ],
+        '4664385c-0601-4496-94c9-57fbb007a34d': [ // Coke Zero
+          { stockItem: 'Coke Zero', quantity: 1 }
+        ],
+        '992f34f6-6bda-475d-8273-4ba06e115fca': [ // Tango Mango
+          { stockItem: 'Tango Mango', quantity: 1 }
+        ]
+      };
+
+      const itemRequirements = stockMap[menuItemId];
+      if (itemRequirements) {
+        itemRequirements.forEach(req => {
+          requirements.push({
+            stockItem: req.stockItem,
+            quantity: req.quantity * quantity
+          });
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching stock requirements:', error);
+  }
+
+  console.log(`Stock requirements for ${menuItemId}:`, requirements);
+  return requirements;
+};
+
+// Deduct stock when an order is placed
+export const deductStockForOrder = async (items: CartItem[]): Promise<void> => {
+  try {
+    // Collect all stock requirements
+    const stockUpdates: Record<string, number> = {};
+
+    for (const item of items) {
+      const requirements = await getStockRequirements(item.id, item.quantity);
+
+      // Handle main item
+      requirements.forEach(req => {
+        stockUpdates[req.stockItem] = (stockUpdates[req.stockItem] || 0) + req.quantity;
+      });
+
+      // Handle add-ons
+      if ((item as any).addOns) {
+        for (const addOn of (item as any).addOns) {
+          const addOnRequirements = await getStockRequirements(addOn.id || addOn.item?.id, addOn.quantity);
+          addOnRequirements.forEach(req => {
+            stockUpdates[req.stockItem] = (stockUpdates[req.stockItem] || 0) + req.quantity;
+          });
+        }
+      }
+
+      // Handle drinks (drinks don't consume stock for now)
+    }
+
+    // Update stock inventory
+    for (const [stockItem, quantityToDeduct] of Object.entries(stockUpdates)) {
+      const { data: stockRecord } = await supabase
+        .from('stock')
+        .select('id, trailer_quantity')
+        .eq('stock_item', stockItem)
+        .single();
+
+      if (stockRecord) {
+        const newQuantity = Math.max(0, stockRecord.trailer_quantity - quantityToDeduct);
+        await updateStockInventoryItem(stockRecord.id, {
+          trailer_quantity: newQuantity
+        });
+      }
+    }
+
+    // Update menu availability based on new stock levels
+    await updateMenuAvailability();
+
+  } catch (error) {
+    console.error('Error deducting stock:', error);
+    throw error;
+  }
+};
+
+// Update menu item availability based on stock levels
+export const updateMenuAvailability = async (): Promise<void> => {
+  try {
+    // Get all stock items
+    const stockItems = await getStockInventory();
+    console.log('All stock items in database:', stockItems);
+
+    // Create stock map for quick lookup
+    const stockMap = new Map<string, number>();
+    stockItems.forEach(item => {
+      stockMap.set(item.stock_item, item.trailer_quantity || 0);
+    });
+
+    // Get all menu items
+    const menuItems = await getMenuItems();
+
+    // Update availability for each menu item
+    for (const menuItem of menuItems) {
+      const requirements = await getStockRequirements(menuItem.id);
+      let isAvailable = true;
+
+      console.log(`Checking availability for ${menuItem.name} (ID: ${menuItem.id})`);
+      console.log(`Requirements:`, requirements);
+
+      // Check if all required stock items have sufficient quantity
+      // Use total stock (trailer + lockup) like the stock management interface does
+      for (const req of requirements) {
+        const stockItem = stockItems.find(item => item.stock_item === req.stockItem);
+        const totalStock = stockItem ? ((stockItem.trailer_quantity || 0) + (stockItem.lockup_quantity || 0)) : 0;
+        console.log(`Stock item ${req.stockItem}: required ${req.quantity}, available ${totalStock}`);
+        if (totalStock < req.quantity) {
+          isAvailable = false;
+          console.log(`Insufficient stock for ${req.stockItem}`);
+          break;
+        }
+      }
+
+      console.log(`Setting ${menuItem.name} availability to ${isAvailable} (was ${menuItem.is_available})`);
+
+      // Update menu item availability if it has changed
+      if (menuItem.is_available !== isAvailable) {
+        await updateMenuItem(menuItem.id, { is_available: isAvailable });
+        console.log(`Updated ${menuItem.name} availability to ${isAvailable} (total stock check)`);
+      }
+    }
+
+    // Trigger menu refresh for customer-facing components
+    triggerMenuRefresh();
+
+  } catch (error) {
+    console.error('Error updating menu availability:', error);
+  }
+};
+
+// Restore stock when an order is cancelled
+export const restoreStockForOrder = async (orderId: string): Promise<void> => {
+  try {
+    // Get order items
+    const { data: orderItems, error } = await supabase
+      .from('order_items')
+      .select(`
+        quantity,
+        menu_items (
+          id,
+          name
+        )
+      `)
+      .eq('order_id', orderId);
+
+    if (error) throw error;
+
+    // Collect stock to restore
+    const stockRestores: Record<string, number> = {};
+
+    for (const item of orderItems || []) {
+      const menuItem = item.menu_items as any; // Type assertion for Supabase relation
+      const requirements = await getStockRequirements(menuItem?.id || '', item.quantity);
+      requirements.forEach(req => {
+        stockRestores[req.stockItem] = (stockRestores[req.stockItem] || 0) + req.quantity;
+      });
+    }
+
+    // Update stock inventory
+    for (const [stockItem, quantityToRestore] of Object.entries(stockRestores)) {
+      const { data: stockRecord } = await supabase
+        .from('stock')
+        .select('id, trailer_quantity')
+        .eq('stock_item', stockItem)
+        .single();
+
+      if (stockRecord) {
+        const newQuantity = stockRecord.trailer_quantity + quantityToRestore;
+        await updateStockInventoryItem(stockRecord.id, {
+          trailer_quantity: newQuantity
+        });
+      }
+    }
+
+    // Update menu availability
+    await updateMenuAvailability();
+
+  } catch (error) {
+    console.error('Error restoring stock:', error);
+    throw error;
+  }
+};
+
+// Calculate average order completion time from previous orders
+export const getAverageOrderTime = async (): Promise<number> => {
+  try {
+    // Get all delivered orders from the last 30 days
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const { data: deliveredOrders, error } = await supabase
+      .from('orders')
+      .select('order_date, updated_at')
+      .eq('status', 'delivered')
+      .gte('order_date', thirtyDaysAgo.toISOString());
+
+    if (error) throw error;
+
+    if (!deliveredOrders || deliveredOrders.length === 0) {
+      // Default to 30 minutes if no previous orders
+      return 30;
+    }
+
+    // Calculate completion times in minutes
+    const completionTimes = deliveredOrders.map(order => {
+      const startTime = new Date(order.order_date).getTime();
+      // Use updated_at as completion time (when order was marked as delivered)
+      const endTime = new Date(order.updated_at).getTime();
+
+      const timeDiffMinutes = (endTime - startTime) / (1000 * 60);
+      return Math.max(5, Math.min(120, timeDiffMinutes)); // Clamp between 5-120 minutes
+    });
+
+    // Calculate average
+    const averageTime = completionTimes.reduce((sum, time) => sum + time, 0) / completionTimes.length;
+
+    // Round to nearest 5 minutes and ensure minimum 10 minutes
+    return Math.max(10, Math.round(averageTime / 5) * 5);
+  } catch (error) {
+    console.error('Error calculating average order time:', error);
+    // Fallback to 30 minutes on error
+    return 30;
+  }
 };
